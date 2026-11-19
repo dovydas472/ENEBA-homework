@@ -4,12 +4,18 @@ package server
 
 import "net/http"
 
+// Deps are the things handlers need from the outside world. They are passed
+// in explicitly (no globals inside handlers), which keeps handlers testable.
+type Deps struct {
+	DB DBPinger
+}
+
 // NewRouter builds the application router using only the standard library.
 // Go 1.22+ ServeMux supports "METHOD /path" patterns and {id} wildcards.
-func NewRouter() http.Handler {
+func NewRouter(deps Deps) http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /api/health", health)
+	mux.HandleFunc("GET /api/health", healthHandler(deps.DB))
 	// Same path, any other method -> JSON 405 (the more specific GET pattern wins).
 	mux.HandleFunc("/api/health", methodNotAllowed)
 

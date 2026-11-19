@@ -6,11 +6,14 @@ package handler
 import (
 	"net/http"
 
+	"github.com/dovydas472/ENEBA-homework/pkg/db"
 	"github.com/dovydas472/ENEBA-homework/pkg/server"
 )
 
-// The router is built once per cold start and reused across invocations.
-var router = server.NewRouter()
+// Built once per cold start and reused by every request this warm instance
+// serves - including the DB pool (created lazily on first use, see pkg/db).
+// Env vars come from the Vercel project settings (no .env loading here).
+var router = server.NewRouter(server.Deps{DB: db.NewLazy()})
 
 // Handler is the entry point Vercel looks for.
 func Handler(w http.ResponseWriter, r *http.Request) {

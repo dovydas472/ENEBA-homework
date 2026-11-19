@@ -1,17 +1,30 @@
-import { useEffect, useState } from "react";
+import { ApiError } from "./api/client.ts";
+import { useApi } from "./api/useApi.ts";
 
-type Status = "loading" | "ok" | "error";
+type Health = { status: string; db: string; dbLatencyMs?: number };
+
+// The health endpoint answers 503 with {"db":"error"} when only the DB is down.
+// That means the API itself is reachable, which is different from "API: error".
+function isDbError(error: ApiError): boolean {
+  const body = error.body as Partial<Health> | undefined;
+  return error.status === 503 && body?.db === "error";
+}
 
 export default function App() {
-  const [status, setStatus] = useState<Status>("loading");
+  const { data, error, loading, slow, retry } = useApi<Health>("/api/health");
 
-  // On load, ask the API if it is alive.
-  useEffect(() => {
-    fetch("/api/health")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d: { status?: string }) => setStatus(d.status === "ok" ? "ok" : "error"))
-      .catch(() => setStatus("error"));
-  }, []);
+  if (loading) {
+    return <p>{slow ? "Waking up the server, this can take a few seconds…" : "Checking…"}</p>;
+  }
 
-  return <p>API: {status === "loading" ? "..." : status}</p>;
+  if (data) {
+    return <p>API: ok · DB: ok ({data.dbLatencyMs} ms)</p>;
+  }
+
+  return (
+    <>
+      <p>{error && isDbError(error) ? "API: ok · DB: error" : "API: error"}</p>
+      <button onClick={retry}>Retry</button>
+    </>
+  );
 }
