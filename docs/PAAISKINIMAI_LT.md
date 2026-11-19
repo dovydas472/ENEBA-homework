@@ -12,11 +12,18 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Kodėl taip:** taisyklių tvarka svarbi – API rewrite turi būti pirmas, kitaip API užklausas „pagautų" SPA fallback. `framework` nurodytas aiškiai, nes `go.mod` šaknyje galėtų priversti Vercel pasirinkti Go preset'ą.
 - **Gali paklausti:** „Kokį kelią mato funkcija po rewrite?" – tikimės originalaus (`/api/health`); tai reikia patikrinti po deploy (žr. ataskaitos atvirą klausimą).
 
-## `internal/server/` (`router.go`, `health.go`, `respond.go`)
+## `pkg/server/` (`router.go`, `health.go`, `respond.go`)
 - **Ką daro:** `NewRouter()` užregistruoja `GET /api/health` (200, `{"status":"ok"}`), kitus metodus tam pačiam keliui (405 JSON) ir `/api/` „catch-all" (404 JSON). `respond.go` – bendri JSON atsakymo helperiai.
-- **Kodėl `internal/`:** visa logika vienoje vietoje, kurią naudoja ir Vercel funkcija, ir vietinis serveris. `internal/` paketo negali importuoti kiti moduliai – aiški riba. `api/index.go` lieka plonas, o logiką galima testuoti be Vercel.
+- **Kodėl atskiras paketas, o ne logika `api/`:** visa logika vienoje vietoje, kurią naudoja ir Vercel funkcija, ir vietinis serveris. `api/index.go` lieka plonas, o logiką galima testuoti be Vercel. (Kodėl `pkg/`, o ne `internal/` – žr. sekciją žemiau.)
 - **Kodėl tik standartinė biblioteka:** `net/http` ServeMux nuo Go 1.22 palaiko metodus ir kelio parametrus – papildomo router'io nereikia, mažiau priklausomybių.
 - **Gali paklausti:** „Kodėl 404 grąžina JSON?" – frontend visada gauna nuspėjamą formatą, ne HTML. „Kaip veikia pattern'ų pirmenybė?" – konkretesnis pattern (`GET /api/health`) laimi prieš bendresnį (`/api/health`, `/api/`).
+
+## Kodėl `pkg/`, o ne `internal/`
+- **Go `internal` taisyklė:** paketą, esantį kataloge `internal/`, gali importuoti tik kodas, kurio kelias yra to `internal/` tėvinio katalogo viduje (t. y. to paties modulio/medžio kodas). Tai kompiliatoriaus vykdoma „privatumo" riba.
+- **Kas nutiko:** Vercel `api/index.go` kompiliuoja kaip atskirą paketą (`handler/api`, `command-line-arguments`), kurio kelias nėra mūsų modulio medžio viduje. Todėl kompiliatorius jį laiko „išoriniu" ir atmeta importą: `use of internal package .../internal/server not allowed`. Lokaliai (`go build ./...`) viskas veikė, nes ten paketas kompiliuojamas kaip modulio dalis – klaida išlindo tik Vercel build'e.
+- **Sprendimas:** `internal/server` → `pkg/server`. `pkg/` neturi jokios ypatingos reikšmės kompiliatoriui, todėl importas leidžiamas. Logika vis dar yra už `/api` ribų, o `api/index.go` tik perduoda užklausą.
+- **Kompromisas:** prarandame kompiliatoriaus garantiją, kad niekas iš išorės neimportuos šio paketo. Šiame projekte tai nesvarbu – tai ne bibliotekos modulis.
+- **Gali paklausti:** „Kodėl lokaliai veikė, o Vercel – ne?" – skirtingas kompiliavimo kontekstas. „Ar `pkg/` yra Go standartas?" – ne, tai tik paplitusi konvencija (golang-standards/project-layout), kompiliatorius jos neapdoroja.
 
 ## `cmd/local/main.go`
 - **Ką daro:** paleidžia **tą patį** router'į ant `:8080` vietiniam vystymui.

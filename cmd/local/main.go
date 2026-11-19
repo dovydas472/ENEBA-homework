@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/dovydas472/ENEBA-homework/internal/server"
+	"github.com/dovydas472/ENEBA-homework/pkg/server"
 )
 
 func main() {

@@ -26,7 +26,7 @@ Copy `.env.example` to `.env` when the database is added (not needed yet).
 
 ## Layout
 - `api/index.go` – the only Vercel function; forwards to the router
-- `internal/server/` – router and handlers
+- `pkg/server/` – router and handlers
 - `cmd/local/` – local dev server using the same router
 - `src/` – React app
 - `docs/PAAISKINIMAI_LT.md` – explanations in Lithuanian
