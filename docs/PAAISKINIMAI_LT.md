@@ -111,3 +111,81 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Ką daro (principas):** schemą keičiame dviem etapais. *Expand:* pridedame naują (stulpelį/lentelę) taip, kad **sena** kodo versija toliau veiktų. Vėliau, kai visas kodas jau naudoja naują, *contract:* kita migracija pašalina seną.
 - **Kodėl taip:** Vercel deploy ir production migracija vyksta **vienu metu** – trumpai (sekundes ar minutes) veikia sena kodo versija su nauja schema arba atvirkščiai. Jei migracija ištrina ar pervadina stulpelį, kurį sena versija dar skaito, naudotojai gaus 500 klaidas. Pvz., pervadinimas = 1) pridėti naują stulpelį, rašyti į abu, 2) perjungti skaitymą, 3) tik tada ištrinti seną.
 - **Gali paklausti:** „Ar galima pervadinti stulpelį viena migracija?" – ne, jei sena versija jį dar naudoja; skaidome į kelis deploy'us. „Kam `down`?" – patogu lokaliai ir kaip dokumentacija, bet production'e problemas taisome nauja pirmyn einančia migracija, ne `down`.
+
+## Duomenų modelis (`docs/DATA_MODEL.md`) ir migracija `00002_catalog.sql`
+- **Ką daro:** `docs/DATA_MODEL.md` aprašo **visą** schemą (katalogas + planuojamos auth ir commerce lentelės): ER diagrama, kiekvienos lentelės stulpeliai su priežastimis, būsenų mašinos, SQL užklausų eskizai. Migracija `00002_catalog.sql` sukuria tik katalogo lenteles: `platforms`, `regions`, `games`, `products`, `sellers`, `offers`, `keys`. `users`/`sessions` atsiras auth užduotyje, `orders`/`order_items`/`payments` ir `keys.order_item_id` – checkout užduotyje (P7).
+- **Kodėl taip:** schemą suprojektavus visą iš karto, katalogo lentelės jau dabar „žino", kaip prie jų prisijungs užsakymai (pvz., `keys` būsenos ir `reserved_until`), bet nekuriame lentelių, kurių kodas dar nenaudoja. Naujos lentelės = atgal suderinama migracija (expand).
+- **Bendros taisyklės:** pinigai – `integer` centais (EUR); ID – `bigint GENERATED ALWAYS AS IDENTITY` (numerius skiria DB, rankinis ID įterpimas atmetamas, todėl seed'ai remiasi slug'ais); visi laikai `timestamptz` su `now()`; visi FK `ON DELETE RESTRICT`.
+- **Gali paklausti:** „Kodėl `bigint`, o ne `serial`?" – identity yra SQL standartas, `serial` – senesnis Postgres būdas; `GENERATED ALWAYS` neleidžia netyčia įrašyti savo ID ir išderinti sekos. „Kodėl `orders.id` bus UUID?" – jis matomas URL'e: neatspėjamas ir neparodo, kiek užsakymų yra.
+
+## Lentelės `platforms` ir `regions`
+- **Ką daro:** filtrų reikšmių sąrašai (PC, PlayStation 5 … / Global, Europe …): `slug` (URL'ui, unikalus), `name` (rodymui), `sort_order` (tvarka filtre).
+- **Kodėl taip:** `slug` turi CHECK `^[a-z0-9]+(-[a-z0-9]+)*$` – tik mažosios raidės, skaitmenys ir pavieniai brūkšneliai, todėl jis visada saugus URL'e (`?platform=ps5`). Skaitmenys leidžiami, nes jų reikia (`ps5`). `sort_order` – nes tvarka yra verslo sprendimas, ne abėcėlė.
+- **Gali paklausti:** „Kodėl regionas yra produkto dalis?" – „Europe" raktas gali neaktyvuotis kitame regione, todėl tai skirtingi produktai su skirtingomis kainomis.
+
+## Lentelė `games`
+- **Ką daro:** žaidimas kaip toks – tai, kas vienoda visose platformose: pavadinimas, aprašymas, žanrai, išleidimo data, kūrėjas, leidėjas, viršelio URL.
+- **Kodėl taip:** `description` NOT NULL su `''` – viena „nėra aprašymo" reikšmė, Go kode nereikia tikrinti NULL. `genres text[]` – tik rodymui (P6), filtruoti nereikia, todėl atskira lentelė būtų perteklinė. `release_date` yra `date` (tikslumas – diena) ir gali būti NULL (nežinoma). `cover_url` gali būti NULL: vaizdų šaltinis dar nenuspręstas, o frontend'as rodo sugeneruotą placeholder'į, kai URL nėra **arba** paveikslėlis neužsikrauna – modelis veikia abiem atvejais.
+- **Gali paklausti:** „Kodėl `games` ir `products` atskirai?" – vienas žaidimas parduodamas keliais variantais (platforma × regionas × leidimas); aprašymas nekartojamas kiekvienam variantui.
+
+## Lentelė `products`
+- **Ką daro:** tai, ką pirkėjas renkasi: vienas žaidimas + viena platforma + vienas regionas + vienas leidimas (`edition`, numatytai `Standard`), su savo `slug` (pvz., `the-witcher-3-pc-global`).
+- **Kodėl taip:** UNIQUE `(game_id, platform_id, region_id, edition)` neleidžia sukurti to paties varianto du kartus (kitaip pasiūlymai išsiskirstytų per du „vienodus" puslapius). Jo pirmas stulpelis `game_id` kartu tarnauja kaip indeksas „visi žaidimo produktai". Atskiri indeksai `platform_id` ir `region_id` – parduotuvės filtrams (kiekvienas filtras gali būti naudojamas vienas; Postgres juos moka sujungti).
+- **Gali paklausti:** „Kodėl `edition` tekstas, o ne lentelė?" – leidimų pavadinimai skiriasi kiekvienam žaidimui, filtruoti pagal juos nereikia.
+
+## Lentelė `sellers`
+- **Ką daro:** pardavėjai: `name`, `slug`, `positive_feedback_pct` (pvz., 99,4 %), `reviews_count`.
+- **Kodėl taip:** `numeric(4,1)` – tiksli dešimtainė reikšmė rodymui, daugiausia `100.0`; CHECK 0–100. Tai ne pinigai, todėl `numeric` čia tinka. `reviews_count` CHECK ≥ 0.
+- **Gali paklausti:** „Kodėl ne `float`?" – `float` gali rodyti 99.40000001; `numeric` saugo tiksliai tai, ką įrašėme.
+
+## Lentelė `offers`
+- **Ką daro:** vieno pardavėjo kaina vienam produktui (`price_cents`), `is_active` (pardavėjas gali pristabdyti pasiūlymą), `created_at`/`updated_at`.
+- **Kodėl taip:** `price_cents` CHECK > 0 – nemokama ar neigiama kaina visada yra klaida. UNIQUE `(product_id, seller_id)` – pardavėjas keičia kainą, o ne kuria antrą pasiūlymą. Dalinis indeksas `(product_id, price_cents) WHERE is_active` tiksliai atitinka produkto puslapio užklausą „aktyvūs pasiūlymai, pigiausias pirmas" – patikrinta, kad Postgres grąžina eilutes iš indekso jau surikiuotas (be atskiro Sort). Neaktyvių pasiūlymų parduotuvė neskaito, todėl jų indekse nėra. `updated_at` nustato pati `UPDATE` užklausa (be trigerio – paprasčiau).
+- **Gali paklausti:** „Kodėl pasiūlymo neištrinate?" – vėliau į jį rodys užsakymai (RESTRICT), todėl išjungiame `is_active = false`.
+
+## Lentelė `keys`
+- **Ką daro:** vienas aktyvacijos kodas. `status`: `available` / `reserved` / `sold`; `reserved_until` – iki kada rezervuotas; `sold_at` – kada parduotas. Vėliau bus `order_item_id`.
+- **Kodėl taip:** CHECK'ai daro neįmanomas būsenas neįrašomas: `reserved_until` nustatytas **tada ir tik tada**, kai `status = 'reserved'`; `sold_at` – tada ir tik tada, kai `sold`. UNIQUE `(offer_id, code)` – tas pats kodas į pasiūlymą neįkeliamas du kartus. Dalinis indeksas `(offer_id, reserved_until) WHERE status <> 'sold'` laiko tik **neparduotus** raktus: „parduodamas" = `available` arba `reserved` su pasibaigusiu laiku. `now()` negalima naudoti indekso sąlygoje (ji turi būti nekintama), todėl galiojimą tikrina užklausa pagal `reserved_until`, kuris yra antras indekso stulpelis – todėl atsargų skaičiavimas yra *index-only scan* (patikrinta). Parduoti raktai (laikui bėgant – dauguma) indekse nelaikomi, todėl jis lieka dabartinių atsargų dydžio.
+- **Būsenų mašina:** `available → reserved → sold`; `reserved → available`, kai užsakymas nepavyksta; pasibaigusi rezervacija tiesiog vėl skaitoma kaip laisva.
+- **Gali paklausti:** „Kodėl `text + CHECK`, o ne enum?" – tos pačios priežastys kaip P1. „Ar kodai saugomi atvirai?" – čia taip; production'e būtų šifruojami (žr. DATA_MODEL skyrių „What a production system would do differently").
+
+## P1 – lookup lentelės, o ne Postgres `enum`
+- **Ką daro:** platformos ir regionai yra atskiros lentelės (`slug` + `name` + `sort_order`), o produktas į jas rodo FK.
+- **Kodėl taip:** naują platformą pridedame `INSERT`'u, be migracijos; enum reikšmės sunkiai pašalinamos ar pervadinamos; lentelė kartu laiko rodomą pavadinimą ir tvarką. FK garantuoja, kad produktas negali rodyti į neegzistuojančią platformą.
+- **Gali paklausti:** „Ar enum nebūtų greitesnis?" – keliasdešimties eilučių lentelės JOIN kainuoja praktiškai nieko; lankstumas svarbesnis.
+
+## P2 – atsargos ir pigiausia kaina skaičiuojamos, ne saugomos
+- **Ką daro:** atsargos = parduodamų raktų skaičius (`count`), pigiausia kaina = `MIN(price_cents)` tarp aktyvių pasiūlymų. Jokių `stock` ar `min_price` stulpelių.
+- **Kodėl taip:** saugoma išvestinė reikšmė gali išsiderinti (pamiršome atnaujinti, dvi transakcijos vienu metu) – tada parduotuvė meluoja. Skaičiuojant visada teisinga. Mūsų mastu tai pigu, nes yra tinkami indeksai.
+- **Gali paklausti:** „O kai bus milijonai prekių?" – tada cache'intume (`product_stats` lentelė ar materialized view, atnaujinama įvykiais, arba paieškos variklis) – aprašyta DATA_MODEL production skyriuje.
+
+## P3 – rezervacija su galiojimo laiku, be cron
+- **Ką daro:** rezervuojant raktą `reserved_until = now() + 15 min`. Visos „parduodamų raktų" užklausos sąlygą rašo kaip `status <> 'sold' AND (reserved_until IS NULL OR reserved_until < now())` – pasibaigusi rezervacija automatiškai laikoma laisva.
+- **Kodėl taip:** nereikia foninio darbo (Vercel serverless jo patogiai nepaleistų), ir nėra lango, kai raktas „užstrigęs", nes cron dar nesuveikė. Kitas pirkėjas tiesiog paima pasibaigusį raktą ir perrašo `reserved_until`.
+- **Kas apsaugo seną užsakymą?** Raktas priklauso užsakymo eilutei (`order_item_id`, checkout užduotyje). Mokėjimas priimamas tik iki `expires_at`, o raktai parduodami su `WHERE order_item_id = ... AND status = 'reserved'`; jei kažkas spėjo raktą perimti – eilučių mažiau, transakcija atšaukiama, užsakymas `expired`.
+- **Gali paklausti:** „Kas, jei pirkėjas sumoka po 15 min?" – mokėjimas atmetamas, užsakymas `expired`, svetimas raktas niekada neparduodamas.
+
+## P5 – sesijose saugomas token'o hash'as
+- **Ką daro (planuojama):** slapukas turi atsitiktinį 32 baitų token'ą, o `sessions.token_hash` – tik jo SHA-256. Užklausos metu serveris suskaičiuoja hash'ą ir ieško `WHERE token_hash = $1`.
+- **Kodėl taip:** jei nutekėtų DB ar atsarginė kopija, užpuolikas gautų tik hash'us, kurių negalima naudoti kaip slapuko. SHA-256 (ne bcrypt), nes token'as yra atsitiktinis, ne spėjamas slaptažodis – greitas hash'as saugus; be to, reikia ieškoti pagal tikslią reikšmę, o „sūdytas" bcrypt to neleidžia.
+- **Gali paklausti:** „Kodėl ne JWT?" – serverio sesiją galima iš karto atšaukti (logout ištrina eilutę), JWT – ne iki galiojimo pabaigos.
+
+## Trigram indeksas (`games_title_trgm_idx`)
+- **Ką daro:** `CREATE INDEX ... ON games USING gin (title gin_trgm_ops)`. `pg_trgm` skaido tekstą į 3 raidžių gabalus; panašūs tekstai turi daug bendrų gabalų, todėl „witchr" randa „Witcher".
+- **Kodėl GIN + `gin_trgm_ops` ant paprasto `title`:** ši operatorių klasė aptarnauja **ir** `ILIKE '%witcher%'` (dalinis atitikimas), **ir** panašumo operatorius `%`, `<%` (rašybos klaidos) – patikrinta `EXPLAIN`: abi sąlygos naudoja tą patį indeksą (`BitmapOr`). GIN skaito greičiau nei GiST; GiST privalumas (rikiavimas pagal atstumą `<->`) mums nereikalingas – kelis rastus įrašus surikiuojame pagal `word_similarity()`. `lower(title)` nereikia: `pg_trgm` pats mažina raides, o `ILIKE` ir taip nejautrus raidžių dydžiui.
+- **Gali paklausti:** „Ar `similarity()` funkcija naudoja indeksą?" – ne, indeksą naudoja tik operatoriai (`%`, `<%`); funkcija tinka rikiavimui. „Kaip pakeisti slenkstį?" – `SET` per PgBouncer transaction mode neišlieka, todėl reikėtų `SET LOCAL` transakcijos viduje.
+
+## `FOR UPDATE SKIP LOCKED` – raktų rezervavimas
+- **Ką daro:** checkout transakcijoje parenkami N parduodamų raktų su `FOR UPDATE SKIP LOCKED` ir tame pačiame sakinyje pažymimi `reserved`. Jei grįžo mažiau nei N – `ROLLBACK` ir „nepakanka atsargų".
+- **Kodėl taip:** `FOR UPDATE` užrakina pasirinktas eilutes iki transakcijos pabaigos – du pirkėjai niekada negauna to paties rakto. `SKIP LOCKED` – antras pirkėjas tuo pačiu metu **nelaukia**, o praleidžia užrakintas eilutes ir ima kitus laisvus raktus; be jo visi populiaraus pasiūlymo pirkėjai stovėtų eilėje prie tų pačių eilučių. Po užrakinimo Postgres dar kartą patikrina `WHERE` naujausiai eilutės versijai, todėl ką tik kito rezervuotas raktas nepaimamas.
+- **Gali paklausti:** „Kodėl ne `SELECT count(*)` ir paskui `UPDATE`?" – tarp jų kita transakcija gali paimti tuos pačius raktus (race condition). „Kodėl ne `SERIALIZABLE`?" – veiktų, bet konfliktai baigtųsi klaidomis ir pakartojimais; `SKIP LOCKED` tiesiog paima kitus raktus.
+
+## Kodėl `ON DELETE RESTRICT`, o ne `CASCADE`
+- **Ką daro:** visi FK yra `RESTRICT`: negalima ištrinti žaidimo, kuris turi produktų, pasiūlymo, kuris turi raktų, ir t. t. (patikrinta: `DELETE FROM games` atmetamas su klaida `23001 restrict_violation`).
+- **Kodėl taip:** `CASCADE` vieną klaidingą `DELETE` paverstų tyliu produktų, pasiūlymų, raktų, o vėliau ir užsakymų istorijos praradimu. Naudojamus duomenis „išimame" aiškiai (pvz., `is_active = false`). Vienintelė išimtis (planuojama) – `sessions → users` su `CASCADE`, nes sesijos yra vienkartinė prisijungimo būsena, ne istorija.
+- **Gali paklausti:** „Kuo `RESTRICT` skiriasi nuo numatyto `NO ACTION`?" – `RESTRICT` tikrina iš karto, `NO ACTION` patikrinimą galima atidėti iki transakcijos pabaigos (`DEFERRABLE`); mums reikia griežto varianto.
+
+## Kodėl CHECK apribojimai duomenų bazėje, o ne tik Go kode
+- **Ką daro:** taisyklės (`price_cents > 0`, leistinos `status` reikšmės, `reserved_until` tik kai `reserved`, slug formatas, 0–100 %) aprašytos pačioje schemoje.
+- **Kodėl taip:** Go validacija bus (draugiškoms klaidų žinutėms), bet DB yra paskutinė apsaugos linija: ji saugo ir nuo seed skriptų, rankinio SQL Neon konsolėje, būsimų endpoint'ų ir klaidų kode. Netinkama eilutė tiesiog negali egzistuoti, todėl kiekvienas skaitytojas gali pasitikėti duomenimis. Patikrinta testu: 12 netinkamų įrašų atmesti su tiksliu apribojimo pavadinimu.
+- **Gali paklausti:** „Ar tai nedubliuoja logikos?" – iš dalies taip, bet tikslai skirtingi: Go – patogi žinutė vartotojui, DB – garantija. „Kodėl apribojimai turi vardus?" – klaidoje matosi, kuri taisyklė pažeista (`offers_price_positive`), lengviau derinti.
