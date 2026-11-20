@@ -1,0 +1,150 @@
+/*
+ * Design tokens (see docs/DESIGN.md for the source of every value and the usage rules).
+ * Components must use these variables - never hardcode colors, sizes or shadows.
+ * Dark theme only: Eneba is a deep-purple "dark" design, so there is no light variant.
+ */
+:root {
+  color-scheme: dark; /* native controls and scrollbars follow the dark theme */
+
+  /* ---------- Colors: backgrounds and surfaces ---------- */
+  --color-bg: #4618ac; /* page background (body) */
+  --color-bg-deep: #351183; /* nav strip, popups, drawers header: darker than the page */
+  --color-surface: #5825cc; /* lighter panels: filter sidebar, sections inside drawers */
+  --color-surface-card: #1f0a4d; /* product card body (darkest surface) */
+  --color-surface-row: rgba(0, 0, 0, 0.3); /* offer row on the product page */
+  --color-surface-inset: rgba(0, 0, 0, 0.2); /* text input / select background */
+  --color-surface-inset-hover: rgba(0, 0, 0, 0.35);
+  --color-surface-inset-focus: rgba(0, 0, 0, 0.3);
+  --color-surface-hover: rgba(255, 255, 255, 0.1); /* hover on menu items / list rows (derived) */
+  --color-overlay: rgba(0, 0, 0, 0.55); /* dim layer / label over cover images */
+  --color-footer-bg: rgba(0, 0, 0, 0.7);
+  --color-skeleton: rgba(255, 255, 255, 0.1); /* loading placeholder (derived, no Eneba source) */
+  --color-skeleton-shine: rgba(255, 255, 255, 0.2);
+
+  /* ---------- Colors: text ---------- */
+  --color-text: #ffffff; /* default text, headings, prices */
+  --color-text-muted: rgba(255, 255, 255, 0.7); /* secondary text: counts, hints, helper copy */
+  --color-text-subtle: #b3aac9; /* "From", old price, placeholders */
+  --color-text-nav: #dcd8e6; /* navigation links, footer links */
+  --color-text-on-accent: #000000; /* text on the yellow accent (buttons) */
+  --color-text-on-light: #1f0a4d; /* text on light badges (cashback) */
+
+  /* ---------- Colors: accent and brand ---------- */
+  --color-accent: #fad318; /* primary accent: primary buttons, links, checked controls */
+  --color-accent-hover: #f0a613;
+  --color-accent-active: #d7930e;
+  --color-secondary: #23c299; /* secondary accent: region/platform text, cashback text, success */
+  --color-secondary-soft: #63e3c2; /* cashback badge background */
+  --color-promo: #d32252; /* promo / cart-count badge background (white text) */
+  --color-price: #ffffff; /* price is plain white and bold; see --font-size-price */
+  --color-price-old: #b3aac9; /* struck-through previous price */
+  --color-discount: #84e916; /* "-66%" and "Cashback: €2.23" highlights */
+
+  /* ---------- Colors: status ---------- */
+  --color-success: #23c299;
+  --color-warning: #f0a613;
+  --color-error: #f0a3b8; /* error TEXT / icon. Lightened from Eneba's #e76a8c (3.4:1) to pass 4.5:1 */
+  --color-error-border: #e76a8c; /* error outline on inputs (non-text, needs only 3:1) */
+  --color-danger: #d32252; /* destructive/alert background (white text, 5.1:1) */
+  --color-danger-hover: #a21a4a;
+
+  /* ---------- Colors: borders ---------- */
+  --color-border: rgba(255, 255, 255, 0.25); /* subtle dividers, popup outline */
+  --color-border-control: rgba(255, 255, 255, 0.7); /* checkbox / radio outline */
+  --color-border-strong: #ffffff; /* secondary button, search field outline */
+
+  /* ---------- Typography ---------- */
+  --font-family: "Metropolis", Arial, Helvetica, sans-serif;
+
+  --font-size-2xs: 0.625rem; /* 10px  micro labels: "FEATURED OFFER", platform name on cover */
+  --font-size-xs: 0.75rem; /* 12px  card title, regions, "From", old price, footer links */
+  --font-size-sm: 0.875rem; /* 14px  filter labels, nav icons text, helper text */
+  --font-size-md: 0.9375rem; /* 15px  button label */
+  --font-size-base: 1rem; /* 16px  body, nav links, filter group headings */
+  --font-size-lg: 1.25rem; /* 20px  search field text, section subheadings */
+  --font-size-xl: 1.375rem; /* 22px  price on a product card */
+  --font-size-2xl: 1.5rem; /* 24px  page title (mobile) */
+  --font-size-3xl: 1.75rem; /* 28px  price on the product page, wordmark */
+  --font-size-4xl: 1.875rem; /* 30px  page title (desktop) */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500; /* Eneba declares this file as weight 600 */
+  --font-weight-bold: 700; /* Eneba declares this file as weight 800 */
+
+  --line-height-none: 1; /* single-line labels, buttons, prices */
+  --line-height-tight: 1.25; /* headings */
+  --line-height-snug: 1.5; /* card title (12px / 18px) */
+  --line-height-base: 1.5; /* body text */
+
+  /* ---------- Spacing (Eneba spaces things in 5px steps) ---------- */
+  --space-1: 0.3125rem; /* 5px */
+  --space-2: 0.625rem; /* 10px */
+  --space-3: 0.9375rem; /* 15px */
+  --space-4: 1.25rem; /* 20px  also the page gutter */
+  --space-5: 1.875rem; /* 30px */
+  --space-6: 2.5rem; /* 40px */
+  --space-7: 3.75rem; /* 60px */
+
+  /* ---------- Radii (Eneba is mostly square-cornered) ---------- */
+  --radius-none: 0; /* buttons, cards, inputs, panels */
+  --radius-sm: 3px; /* checkbox, small tags */
+  --radius-md: 5px; /* small chips, popups' inner blocks */
+  --radius-pill: 50px; /* pill tags: "Cashback deal", "Best cashback" */
+  --radius-round: 50%; /* avatars, spinner */
+
+  /* ---------- Shadows ---------- */
+  --shadow-inset: inset 0 1px 3px #1f0a4d; /* text inputs: "sunken" look */
+  --shadow-dropdown: 0 7px 15px 0 rgba(0, 0, 0, 0.2); /* menus, select list */
+  --shadow-popup: 0 7px 17px 0 rgba(0, 0, 0, 0.55); /* floating cards, popovers */
+  --shadow-modal: 0 2px 27px 0 rgba(0, 0, 0, 0.5); /* modals, drawers */
+  --shadow-toast: 0 3px 9px rgba(0, 0, 0, 0.4); /* toasts, tooltips */
+
+  /* ---------- Layering (z-index) ---------- */
+  --z-base: 0;
+  --z-raised: 1; /* badges over a cover image */
+  --z-sticky: 10; /* sticky header / filter bar */
+  --z-dropdown: 20; /* menus, selects, search suggestions */
+  --z-drawer: 30; /* mobile filter drawer, cart drawer */
+  --z-modal: 40;
+  --z-toast: 50;
+
+  /* ---------- Motion ---------- */
+  --duration-fast: 150ms; /* hover / focus colour changes (Eneba uses 150ms everywhere) */
+  --ease: ease-in-out;
+  --transition-fast: 150ms ease-in-out;
+
+  /* ---------- Focus ring (not taken from Eneba, which has almost no visible focus; see DESIGN.md) ---------- */
+  --focus-ring-color: #fad318;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* ---------- Layout ---------- */
+  --page-max-width: 1240px; /* home + store: 1200px content + 2 x 20px gutter */
+  --page-gutter: var(--space-4);
+  --page-max-width-wide: 1440px; /* product page is wider: content ran 40px..1400px at a 1440px viewport */
+  --page-gutter-wide: var(--space-6);
+  --header-height: 3.5rem; /* 56px: mobile header; on desktop the header is top row + nav (see DESIGN.md) */
+  --header-top-height: 6.0625rem; /* 97px: desktop logo/search row */
+  --nav-height: 3.125rem; /* 50px: desktop category nav strip */
+  --sidebar-width: 13.75rem; /* 220px: filter sidebar */
+  --card-min-width: 10.3125rem; /* 165px: narrowest product card seen (768px viewport) */
+  --grid-gap: 1.375rem; /* 22px: measured gap between cards */
+  --control-height: 2.5rem; /* 40px: text inputs, selects */
+  --button-height: 2.1875rem; /* 35px desktop; raised to 40px on mobile below */
+  --hit-target-min: 2.5rem; /* 40px: smallest allowed tap target on mobile */
+}
+
+/*
+ * Breakpoints cannot be CSS variables (var() does not work inside @media), so they are fixed numbers.
+ * Use exactly these in *.module.css files (values come from Eneba's own media queries):
+ *   @media (max-width: 600px)   phone: list cards, hamburger header, filters in a drawer
+ *   @media (max-width: 930px)   tablet: sidebar collapses into the "Sort and filter" drawer
+ *   @media (max-width: 1200px)  small desktop: page padding shrinks, fewer card columns
+ */
+
+/* Touch screens need bigger tap targets than 35px. */
+@media (max-width: 600px) {
+  :root {
+    --button-height: 2.5rem; /* 40px */
+  }
+}
