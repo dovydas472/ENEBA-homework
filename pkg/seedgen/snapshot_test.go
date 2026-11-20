@@ -14,7 +14,7 @@ import (
 // If it changes, the seeded data changes: either the snapshot or a rule was changed
 // on purpose (then update this value), or something broke determinism (for example
 // a different random number sequence) - which this test exists to catch.
-const goldenHash = "aee39427e9f69766ebbd1af4f4f469dd423e1ee77fd6ed31868a184a65c3f754"
+const goldenHash = "c2a7beea4dbe41b1388c33cee11cec647116c0bd9e0b248da5a4e7d0942c8437"
 
 func realCatalog(t *testing.T) Catalog {
 	t.Helper()

@@ -114,6 +114,22 @@ func PickRegion(rng *rand.Rand) string {
 	}
 }
 
+// PickPlatform chooses the platform of an extra product. Platforms the game has
+// no product on yet are preferred, so multi-platform games show up under more
+// platform filters (otherwise most extras would be one more Steam product).
+func PickPlatform(services []string, used map[string]bool, rng *rand.Rand) string {
+	var unused []string
+	for _, s := range services {
+		if !used[s] {
+			unused = append(unused, s)
+		}
+	}
+	if len(unused) > 0 {
+		return unused[rng.IntN(len(unused))]
+	}
+	return services[rng.IntN(len(services))]
+}
+
 // EditionFor names the extra edition of a popular game: older games (<= 2017) get
 // a "Game of the Year Edition", newer ones a "Deluxe Edition".
 func EditionFor(releaseYear int) string {
@@ -181,9 +197,20 @@ func abs(x int) int {
 }
 
 // OfferPrice is a seller's price: 25-90 % of the list price, rounded by RoundPrice.
+// Rounding can move a price just outside the range (25 % of 19.99 = 4.99 is 24.96 %),
+// so it is then moved one step (0.50: x.49 <-> x.99) back inside.
 func OfferPrice(msrpCents int, rng *rand.Rand) int {
 	percent := 25 + rng.IntN(66) // 25..90
-	return RoundPrice(msrpCents * percent / 100)
+	price := RoundPrice(msrpCents * percent / 100)
+	minPrice := (msrpCents*25 + 99) / 100 // 25 %, rounded up
+	maxPrice := msrpCents * 90 / 100      // 90 %, rounded down
+	if price < minPrice {
+		price += 50
+	}
+	if price > maxPrice {
+		price -= 50
+	}
+	return price
 }
 
 const codeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

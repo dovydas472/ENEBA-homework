@@ -20,7 +20,7 @@ const (
 
 // Tunable amounts (all deterministic because the RNG is).
 const (
-	editionGames     = 6     // the 6 most popular games also get a Deluxe / GOTY product
+	editionGames     = 8     // the 8 most popular games also get a Deluxe / GOTY product
 	outOfStockChance = 0.06  // product whose keys are all sold
 	inactiveChance   = 0.07  // offer paused by its seller
 	soldChance       = 0.10  // a key that was already sold
@@ -140,7 +140,8 @@ func productsFor(gameSlug string, g igdb.Game, gameIndex, year int, rng *rand.Ra
 	add(variant{services[0], Global, "Standard"})
 	want := 1 + rng.IntN(3)
 	for attempt := 0; len(out) < want && attempt < 20; attempt++ {
-		v := variant{services[rng.IntN(len(services))], PickRegion(rng), "Standard"}
+		platform := PickPlatform(services, platformsOf(out), rng)
+		v := variant{platform, PickRegion(rng), "Standard"}
 		if !used[v] {
 			add(v)
 		}
@@ -149,6 +150,15 @@ func productsFor(gameSlug string, g igdb.Game, gameIndex, year int, rng *rand.Ra
 		add(variant{services[0], Global, EditionFor(year)})
 	}
 	return out
+}
+
+// platformsOf lists the platforms already used by the products.
+func platformsOf(products []Product) map[string]bool {
+	m := map[string]bool{}
+	for _, p := range products {
+		m[p.PlatformSlug] = true
+	}
+	return m
 }
 
 // keysFor makes 0-8 keys for one offer. For an out-of-stock product every key is

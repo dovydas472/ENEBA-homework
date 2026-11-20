@@ -167,15 +167,30 @@ func TestRoundPrice(t *testing.T) {
 
 func TestOfferPriceRange(t *testing.T) {
 	rng := testRNG()
-	for i := 0; i < 1000; i++ {
-		p := OfferPrice(5999, rng)
-		// 25-90 % of 59.99 is 14.99 .. 53.99; rounding moves it by at most 0.50.
-		if p < 1449 || p > 5449 {
-			t.Fatalf("price %d outside 25-90 %% of 5999", p)
+	for _, msrp := range []int{1999, 2999, 3999, 5999, 6999, 8999} {
+		for i := 0; i < 1000; i++ {
+			p := OfferPrice(msrp, rng)
+			if p*100 < msrp*25 || p*100 > msrp*90 {
+				t.Fatalf("price %d outside 25-90 %% of %d", p, msrp)
+			}
+			if c := p % 100; c != 49 && c != 99 {
+				t.Fatalf("price %d does not end in .49 or .99", p)
+			}
 		}
-		if c := p % 100; c != 49 && c != 99 {
-			t.Fatalf("price %d does not end in .49 or .99", p)
+	}
+}
+
+func TestPickPlatformPrefersUnused(t *testing.T) {
+	rng := testRNG()
+	services := []string{Steam, PSN, XboxLive}
+	for i := 0; i < 50; i++ {
+		if got := PickPlatform(services, map[string]bool{Steam: true, PSN: true}, rng); got != XboxLive {
+			t.Fatalf("expected the only unused platform, got %s", got)
 		}
+	}
+	all := map[string]bool{Steam: true, PSN: true, XboxLive: true}
+	if got := PickPlatform(services, all, rng); got == "" {
+		t.Fatal("all used: must still pick one")
 	}
 }
 
