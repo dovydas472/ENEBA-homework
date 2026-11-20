@@ -1,0 +1,1245 @@
+{
+  "header": {
+    "source": "IGDB",
+    "attribution": "Data provided by IGDB",
+    "fetched_at": "2026-11-20T22:35:40Z",
+    "endpoint": "POST https://api.igdb.com/v4/games",
+    "query": "fields id, name, slug, summary, genres.name, first_release_date, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, cover.image_id, total_rating_count, platforms, themes, game_type, version_parent; where game_type = (0,8) & version_parent = null & cover != null & summary != null & themes != (42) & total_rating_count != null & platforms = (6,48,167,49,169,130,508); sort total_rating_count desc; limit 60;",
+    "filters": "game_type in (0,8); no version_parent; cover image_id and summary present; no Erotic theme (42); at least one supported platform; best 50 by total_rating_count desc, then igdb_id asc; summary trimmed to max 2 sentences / 300 characters"
+  },
+  "games": [
+    {
+      "igdb_id": 1020,
+      "name": "Grand Theft Auto V",
+      "slug": "grand-theft-auto-v",
+      "summary": "Grand Theft Auto V is a vast open world game set in Los Santos, a sprawling sun-soaked metropolis struggling to stay afloat in an era of economic uncertainty and cheap reality TV.",
+      "genres": [
+        "Shooter",
+        "Racing",
+        "Adventure"
+      ],
+      "release_date": "2013-09-17",
+      "developers": [
+        "Rockstar North"
+      ],
+      "publishers": [
+        "Take-Two Interactive",
+        "Rockstar Games"
+      ],
+      "cover_image_id": "co2lbd",
+      "total_rating_count": 6075,
+      "platforms": [
+        6,
+        48,
+        49,
+        167,
+        169
+      ]
+    },
+    {
+      "igdb_id": 1942,
+      "name": "The Witcher 3: Wild Hunt",
+      "slug": "the-witcher-3-wild-hunt",
+      "summary": "The Witcher 3: Wild Hunt is an open-world action role-playing game developed by CD Projekt Red. Set in a dark fantasy world, the game follows Geralt of Rivia, a monster hunter searching for his adopted daughter, Ciri, while navigating political conflicts and supernatural threats.",
+      "genres": [
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2015-05-19",
+      "developers": [
+        "CD Projekt RED"
+      ],
+      "publishers": [
+        "WB Games",
+        "cdp.pl",
+        "Spike Chunsoft",
+        "Bandai Namco Entertainment"
+      ],
+      "cover_image_id": "coaarl",
+      "total_rating_count": 5570,
+      "platforms": [
+        6,
+        48,
+        49,
+        130,
+        167,
+        169,
+        508
+      ]
+    },
+    {
+      "igdb_id": 72,
+      "name": "Portal 2",
+      "slug": "portal-2",
+      "summary": "Sequel to the acclaimed Portal (2007), Portal 2 pits the protagonist of the original game, Chell, and her new robot friend, Wheatley, against more puzzles conceived by GLaDOS, an A.I. with the sole purpose of testing the Portal Gun's mechanics and taking revenge on Chell for the events of Portal.",
+      "genres": [
+        "Platform",
+        "Puzzle",
+        "Adventure"
+      ],
+      "release_date": "2011-04-18",
+      "developers": [
+        "Valve"
+      ],
+      "publishers": [
+        "Valve",
+        "Electronic Arts"
+      ],
+      "cover_image_id": "co1rs4",
+      "total_rating_count": 4553,
+      "platforms": [
+        6,
+        130
+      ]
+    },
+    {
+      "igdb_id": 472,
+      "name": "The Elder Scrolls V: Skyrim",
+      "slug": "the-elder-scrolls-v-skyrim",
+      "summary": "Skyrim reimagines and revolutionizes the open-world fantasy epic, bringing to life a complete virtual world open for you to explore any way you choose.",
+      "genres": [
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2011-11-10",
+      "developers": [
+        "Bethesda Game Studios"
+      ],
+      "publishers": [
+        "Bethesda Softworks"
+      ],
+      "cover_image_id": "cocs1l",
+      "total_rating_count": 4388,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 732,
+      "name": "Grand Theft Auto: San Andreas",
+      "slug": "grand-theft-auto-san-andreas",
+      "summary": "Returning after his mother's murder to the semi-fictional city of Los Santos (based on Los Angeles), Carl Johnson, a former gang banger, must take back the streets for his family and friends by gaining respect and once again gaining control over the streets.",
+      "genres": [
+        "Shooter",
+        "Racing",
+        "Adventure"
+      ],
+      "release_date": "2004-10-26",
+      "developers": [
+        "Rockstar North"
+      ],
+      "publishers": [
+        "Take-Two Interactive",
+        "Rockstar Games"
+      ],
+      "cover_image_id": "co2lb9",
+      "total_rating_count": 4139,
+      "platforms": [
+        6,
+        48
+      ]
+    },
+    {
+      "igdb_id": 71,
+      "name": "Portal",
+      "slug": "portal",
+      "summary": "Waking up in a seemingly empty laboratory, the player is made to complete various physics-based puzzle challenges through numerous test chambers in order to test out the new Aperture Science Handheld Portal Device, without an explanation as to how, why or by whom.",
+      "genres": [
+        "Platform",
+        "Puzzle",
+        "Adventure"
+      ],
+      "release_date": "2007-10-10",
+      "developers": [
+        "Valve"
+      ],
+      "publishers": [
+        "Valve",
+        "Electronic Arts"
+      ],
+      "cover_image_id": "coay61",
+      "total_rating_count": 4078,
+      "platforms": [
+        6,
+        130
+      ]
+    },
+    {
+      "igdb_id": 25076,
+      "name": "Red Dead Redemption 2",
+      "slug": "red-dead-redemption-2",
+      "summary": "Red Dead Redemption 2 is the epic tale of outlaw Arthur Morgan and the infamous Van der Linde gang, on the run across America at the dawn of the modern age.",
+      "genres": [
+        "Shooter",
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2018-10-26",
+      "developers": [
+        "Rockstar Games"
+      ],
+      "publishers": [
+        "Take-Two Interactive",
+        "Rockstar Games"
+      ],
+      "cover_image_id": "co1q1f",
+      "total_rating_count": 3960,
+      "platforms": [
+        6,
+        48,
+        49
+      ]
+    },
+    {
+      "igdb_id": 19560,
+      "name": "God of War",
+      "slug": "god-of-war--1",
+      "summary": "God of War is the sequel to God of War III as well as a continuation of the canon God of War chronology. Unlike previous installments, this game focuses on Norse mythology and follows an older and more seasoned Kratos and his son Atreus in the years since the third game.",
+      "genres": [
+        "Role-playing (RPG)",
+        "Hack and slash/Beat 'em up",
+        "Adventure"
+      ],
+      "release_date": "2018-04-20",
+      "developers": [
+        "Santa Monica Studio"
+      ],
+      "publishers": [
+        "Sony Interactive Entertainment"
+      ],
+      "cover_image_id": "cobkt6",
+      "total_rating_count": 3666,
+      "platforms": [
+        6,
+        48,
+        167
+      ]
+    },
+    {
+      "igdb_id": 233,
+      "name": "Half-Life 2",
+      "slug": "half-life-2",
+      "summary": "1998. HALF-LIFE sends a shock through the game industry with its combination of pounding action and continuous, immersive storytelling.",
+      "genres": [
+        "Shooter"
+      ],
+      "release_date": "2004-11-16",
+      "developers": [
+        "Valve"
+      ],
+      "publishers": [
+        "Valve",
+        "NVIDIA Lightspeed Studios",
+        "Electronic Arts",
+        "Sierra Entertainment"
+      ],
+      "cover_image_id": "co1nmw",
+      "total_rating_count": 3506,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 127,
+      "name": "Assassin's Creed II",
+      "slug": "assassin-s-creed-ii",
+      "summary": "Discover an intriguing and epic story of power, revenge and conspiracy set during a pivotal moment in history: the Italian Renaissance. Experience the freedom and immersion of an all new open world and mission structure with settings such as the rooftops and canals of beautiful Venice.",
+      "genres": [
+        "Platform",
+        "Adventure"
+      ],
+      "release_date": "2009-11-17",
+      "developers": [
+        "Ubisoft Montreal"
+      ],
+      "publishers": [
+        "Ubisoft Entertainment"
+      ],
+      "cover_image_id": "co1rcf",
+      "total_rating_count": 3257,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 20,
+      "name": "BioShock",
+      "slug": "bioshock",
+      "summary": "BioShock is a horror-themed first-person shooter set in a steampunk underwater dystopia.",
+      "genres": [
+        "Shooter",
+        "Puzzle",
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2007-08-21",
+      "developers": [
+        "2K Boston",
+        "2K Australia"
+      ],
+      "publishers": [
+        "2K Games"
+      ],
+      "cover_image_id": "co2mli",
+      "total_rating_count": 3253,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 733,
+      "name": "Grand Theft Auto: Vice City",
+      "slug": "grand-theft-auto-vice-city",
+      "summary": "In the year 1986, Tommy Vercetti is heavily indebted to his mafia superiors after a drug deal gone awry, but his dreams of taking over Vice City (based on Miami) push him down a different path.",
+      "genres": [
+        "Shooter",
+        "Racing",
+        "Adventure",
+        "Arcade"
+      ],
+      "release_date": "2002-10-27",
+      "developers": [
+        "Rockstar North"
+      ],
+      "publishers": [
+        "Rockstar Games",
+        "Take-Two Interactive"
+      ],
+      "cover_image_id": "co2lbb",
+      "total_rating_count": 3205,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 7346,
+      "name": "The Legend of Zelda: Breath of the Wild",
+      "slug": "the-legend-of-zelda-breath-of-the-wild",
+      "summary": "The Legend of Zelda: Breath of the Wild is the first 3D open-world game in the Zelda series. Link can travel anywhere and be equipped with weapons and armor found throughout the world to grant him various bonuses.",
+      "genres": [
+        "Puzzle",
+        "Adventure"
+      ],
+      "release_date": "2017-03-03",
+      "developers": [
+        "Nintendo EPD Production Group No. 3"
+      ],
+      "publishers": [
+        "Nintendo"
+      ],
+      "cover_image_id": "co3p2d",
+      "total_rating_count": 3045,
+      "platforms": [
+        130
+      ]
+    },
+    {
+      "igdb_id": 231,
+      "name": "Half-Life",
+      "slug": "half-life",
+      "summary": "Half-Life is a 1998 first-person shooter (FPS) game developed by Valve Corporation and published by Sierra Studios for Windows. It was Valve's debut product and the first game in the Half-Life series.",
+      "genres": [
+        "Shooter",
+        "Puzzle",
+        "Adventure"
+      ],
+      "release_date": "1998-11-19",
+      "developers": [
+        "Valve"
+      ],
+      "publishers": [
+        "Valve",
+        "Sierra Entertainment"
+      ],
+      "cover_image_id": "coc2ea",
+      "total_rating_count": 2961,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 74,
+      "name": "Mass Effect 2",
+      "slug": "mass-effect-2",
+      "summary": "Are you prepared to lose everything to save the galaxy? You'll need to be, Commander Shephard.",
+      "genres": [
+        "Shooter",
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2010-01-26",
+      "developers": [
+        "BioWare",
+        "BioWare Edmonton"
+      ],
+      "publishers": [
+        "Electronic Arts"
+      ],
+      "cover_image_id": "co20ac",
+      "total_rating_count": 2811,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 501,
+      "name": "Batman: Arkham City",
+      "slug": "batman-arkham-city",
+      "summary": "Batman: Arkham City builds upon the intense, atmospheric foundation of Batman: Arkham Asylum, sending players soaring into Arkham City, the new maximum security \"home\" for all of Gotham City's thugs, gangsters and insane criminal masterminds.",
+      "genres": [
+        "Hack and slash/Beat 'em up",
+        "Adventure"
+      ],
+      "release_date": "2011-10-18",
+      "developers": [
+        "Rocksteady Studios"
+      ],
+      "publishers": [
+        "WB Games",
+        "DC Entertainment"
+      ],
+      "cover_image_id": "co1voh",
+      "total_rating_count": 2732,
+      "platforms": [
+        6,
+        130
+      ]
+    },
+    {
+      "igdb_id": 538,
+      "name": "BioShock Infinite",
+      "slug": "bioshock-infinite",
+      "summary": "BioShock Infinite is the third game in the BioShock series. It is not a direct sequel/prequel to any of the previous BioShock games but takes place in an entirely different setting, although it shares similar features, gameplay and concepts with the previous games.",
+      "genres": [
+        "Shooter",
+        "Adventure"
+      ],
+      "release_date": "2013-03-25",
+      "developers": [
+        "Irrational Games"
+      ],
+      "publishers": [
+        "2K Games"
+      ],
+      "cover_image_id": "co2n12",
+      "total_rating_count": 2720,
+      "platforms": [
+        6,
+        48,
+        49
+      ]
+    },
+    {
+      "igdb_id": 7331,
+      "name": "Uncharted 4: A Thief's End",
+      "slug": "uncharted-4-a-thief-s-end",
+      "summary": "Several years after his last adventure, retired fortune hunter, Nathan Drake, is forced back into the world of thieves. With the stakes much more personal, Drake embarks on a globe-trotting journey in pursuit of a historical conspiracy behind a fabled pirate treasure.",
+      "genres": [
+        "Shooter",
+        "Adventure"
+      ],
+      "release_date": "2016-05-10",
+      "developers": [
+        "Naughty Dog"
+      ],
+      "publishers": [
+        "Sony Interactive Entertainment"
+      ],
+      "cover_image_id": "co1r7h",
+      "total_rating_count": 2708,
+      "platforms": [
+        48
+      ]
+    },
+    {
+      "igdb_id": 500,
+      "name": "Batman: Arkham Asylum",
+      "slug": "batman-arkham-asylum",
+      "summary": "Batman: Arkham Asylum is an action-adventure game developed by Rocksteady Studios and published by Warner Bros. Interactive Entertainment.",
+      "genres": [
+        "Hack and slash/Beat 'em up",
+        "Adventure"
+      ],
+      "release_date": "2009-08-25",
+      "developers": [
+        "Rocksteady Studios"
+      ],
+      "publishers": [
+        "Eidos Interactive",
+        "Playcast-media",
+        "Warner Bros. Interactive Entertainment"
+      ],
+      "cover_image_id": "co1voj",
+      "total_rating_count": 2617,
+      "platforms": [
+        6,
+        130
+      ]
+    },
+    {
+      "igdb_id": 434,
+      "name": "Red Dead Redemption",
+      "slug": "red-dead-redemption",
+      "summary": "A modern-day Western epic, Red Dead Redemption takes John Marston, a relic from the fast-closing time of the gunslinger, through an open world filled with wildlife, mini-games, and shootouts. Marston sets out to hunt down his old gang mates for the government, who have taken away his family.",
+      "genres": [
+        "Shooter",
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2010-05-18",
+      "developers": [
+        "Rockstar North",
+        "Rockstar San Diego"
+      ],
+      "publishers": [
+        "Rockstar Games",
+        "Take-Two Interactive"
+      ],
+      "cover_image_id": "co2lcv",
+      "total_rating_count": 2594,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 73,
+      "name": "Mass Effect",
+      "slug": "mass-effect",
+      "summary": "Mass Effect is an action role-playing game set in the year 2183. The player takes the role of Commander Shepard, a customizable character who serves as Executive Officer aboard the SSV Normandy.",
+      "genres": [
+        "Shooter",
+        "Role-playing (RPG)"
+      ],
+      "release_date": "2007-11-20",
+      "developers": [
+        "BioWare",
+        "BioWare Edmonton"
+      ],
+      "publishers": [
+        "Microsoft Game Studios",
+        "Electronic Arts"
+      ],
+      "cover_image_id": "co1x7o",
+      "total_rating_count": 2569,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 11156,
+      "name": "Horizon Zero Dawn",
+      "slug": "horizon-zero-dawn",
+      "summary": "Welcome to a vibrant world rich with the beauty of nature – but inhabited by awe-inspiring, highly advanced machines. As a young machine hunter named Aloy, you must unravel the mysteries of this world and find your own destiny.",
+      "genres": [
+        "Shooter",
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2017-02-28",
+      "developers": [
+        "Guerrilla Games"
+      ],
+      "publishers": [
+        "Sony Interactive Entertainment"
+      ],
+      "cover_image_id": "co2una",
+      "total_rating_count": 2503,
+      "platforms": [
+        6,
+        48,
+        167
+      ]
+    },
+    {
+      "igdb_id": 16,
+      "name": "Fallout: New Vegas",
+      "slug": "fallout-new-vegas",
+      "summary": "In this first-person Western RPG, the player takes on the role of Courier 6, barely surviving after being robbed of their cargo, shot and put into a shallow grave by a New Vegas mob boss.",
+      "genres": [
+        "Shooter",
+        "Role-playing (RPG)"
+      ],
+      "release_date": "2010-10-19",
+      "developers": [
+        "Obsidian Entertainment"
+      ],
+      "publishers": [
+        "Bandai Namco Entertainment",
+        "1C/Cenega",
+        "Bethesda Softworks"
+      ],
+      "cover_image_id": "co1u60",
+      "total_rating_count": 2463,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 1164,
+      "name": "Tomb Raider",
+      "slug": "tomb-raider--2",
+      "summary": "Tomb Raider explores the intense and gritty origin story of Lara Croft and her ascent from a young woman to a hardened survivor.",
+      "genres": [
+        "Shooter",
+        "Platform",
+        "Puzzle",
+        "Adventure"
+      ],
+      "release_date": "2013-03-05",
+      "developers": [
+        "Crystal Dynamics"
+      ],
+      "publishers": [
+        "Square Enix",
+        "Crystal Dynamics",
+        "Feral Interactive"
+      ],
+      "cover_image_id": "co1rbu",
+      "total_rating_count": 2412,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 119133,
+      "name": "Elden Ring",
+      "slug": "elden-ring",
+      "summary": "Elden Ring is an action RPG developed by FromSoftware and published by Bandai Namco Entertainment, released in February 2022. Directed by Hidetaka Miyazaki, with world-building contributions from novelist George R.",
+      "genres": [
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2022-02-25",
+      "developers": [
+        "FromSoftware"
+      ],
+      "publishers": [
+        "Bandai Namco Entertainment",
+        "FromSoftware"
+      ],
+      "cover_image_id": "co4jni",
+      "total_rating_count": 2362,
+      "platforms": [
+        6,
+        48,
+        49,
+        167,
+        169,
+        508
+      ]
+    },
+    {
+      "igdb_id": 14593,
+      "name": "Hollow Knight",
+      "slug": "hollow-knight",
+      "summary": "A 2D metroidvania with an emphasis on close combat and exploration in which the player enters the once-prosperous now-bleak insect kingdom of Hallownest, travels through its various districts, meets friendly inhabitants, fights hostile ones and uncovers the kingdom's history while improving their…",
+      "genres": [
+        "Platform",
+        "Adventure",
+        "Indie"
+      ],
+      "release_date": "2017-02-24",
+      "developers": [
+        "Team Cherry"
+      ],
+      "publishers": [
+        "Team Cherry"
+      ],
+      "cover_image_id": "cobfzp",
+      "total_rating_count": 2290,
+      "platforms": [
+        6,
+        48,
+        49,
+        130,
+        167,
+        169,
+        508
+      ]
+    },
+    {
+      "igdb_id": 529,
+      "name": "Far Cry 3",
+      "slug": "far-cry-3",
+      "summary": "Explore an island playground as stunningly beautiful as it is diverse – from mountain ranges to swampy grasslands and white sandy beaches. Fight your way through the island’s towns, temples, river ports and more.",
+      "genres": [
+        "Shooter",
+        "Adventure"
+      ],
+      "release_date": "2012-11-28",
+      "developers": [
+        "Ubisoft Montreal"
+      ],
+      "publishers": [
+        "Ubisoft Entertainment"
+      ],
+      "cover_image_id": "co1vpd",
+      "total_rating_count": 2264,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 19565,
+      "name": "Marvel's Spider-Man",
+      "slug": "marvels-spider-man",
+      "summary": "Starring the world’s most iconic Super Hero, Spider-Man features the acrobatic abilities, improvisation and web-slinging that the wall-crawler is famous for, while also introducing elements never-before-seen in a Spider-Man game.",
+      "genres": [
+        "Hack and slash/Beat 'em up",
+        "Adventure"
+      ],
+      "release_date": "2018-09-07",
+      "developers": [
+        "Insomniac Games"
+      ],
+      "publishers": [
+        "Sony Interactive Entertainment"
+      ],
+      "cover_image_id": "co1r77",
+      "total_rating_count": 2212,
+      "platforms": [
+        48
+      ]
+    },
+    {
+      "igdb_id": 121,
+      "name": "Minecraft: Java Edition",
+      "slug": "minecraft-java-edition",
+      "summary": "Minecraft focuses on allowing the player to explore, interact with, and modify a dynamically generated map made of one-cubic-meter-sized blocks. In addition to blocks, the environment features plants, mobs, and items.",
+      "genres": [
+        "Simulator",
+        "Adventure"
+      ],
+      "release_date": "2011-11-18",
+      "developers": [
+        "Mojang Studios"
+      ],
+      "publishers": [
+        "Mojang Studios"
+      ],
+      "cover_image_id": "coa77e",
+      "total_rating_count": 2106,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 11133,
+      "name": "Dark Souls III",
+      "slug": "dark-souls-iii",
+      "summary": "Dark Souls III is an action role-playing game developed by FromSoftware and published by Bandai Namco Entertainment. Released in March 2016, it is the fourth entry in the Souls series and the final instalment in the Dark Souls trilogy.",
+      "genres": [
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2016-03-24",
+      "developers": [
+        "FromSoftware"
+      ],
+      "publishers": [
+        "Bandai Namco Entertainment",
+        "FromSoftware"
+      ],
+      "cover_image_id": "cob9ed",
+      "total_rating_count": 2019,
+      "platforms": [
+        6,
+        48,
+        49
+      ]
+    },
+    {
+      "igdb_id": 7351,
+      "name": "Doom",
+      "slug": "doom--2",
+      "summary": "Developed by id software, the studio that pioneered the first-person shooter genre and created multiplayer Deathmatch, Doom returns as a brutally fun and challenging modern-day shooter experience.",
+      "genres": [
+        "Shooter"
+      ],
+      "release_date": "2016-05-12",
+      "developers": [
+        "id Software"
+      ],
+      "publishers": [
+        "Bethesda Softworks"
+      ],
+      "cover_image_id": "co1nc7",
+      "total_rating_count": 1966,
+      "platforms": [
+        6,
+        48,
+        49
+      ]
+    },
+    {
+      "igdb_id": 731,
+      "name": "Grand Theft Auto IV",
+      "slug": "grand-theft-auto-iv",
+      "summary": "Grand Theft Auto IV is an action-adventure video game developed by Rockstar North and published by Rockstar Games. It is the eleventh title in the Grand Theft Auto series, and the first main entry since 2004's Grand Theft Auto: San Andreas.",
+      "genres": [
+        "Shooter",
+        "Racing",
+        "Adventure"
+      ],
+      "release_date": "2008-04-29",
+      "developers": [
+        "Rockstar North"
+      ],
+      "publishers": [
+        "Take-Two Interactive",
+        "Rockstar Games"
+      ],
+      "cover_image_id": "co2lbv",
+      "total_rating_count": 1942,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 533,
+      "name": "Dishonored",
+      "slug": "dishonored",
+      "summary": "Dishonored is an immersive first-person action game that casts you as a supernatural assassin driven by revenge. With Dishonored’s flexible combat system, creatively eliminate your targets as you combine the supernatural abilities, weapons and unusual gadgets at your disposal.",
+      "genres": [
+        "Puzzle",
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2012-10-09",
+      "developers": [
+        "Arkane Studios"
+      ],
+      "publishers": [
+        "Bethesda Softworks"
+      ],
+      "cover_image_id": "coabgu",
+      "total_rating_count": 1941,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 12517,
+      "name": "Undertale",
+      "slug": "undertale",
+      "summary": "A small child falls into the Underground, where monsters have long been banished by humans and are hunting every human that they find.",
+      "genres": [
+        "Puzzle",
+        "Role-playing (RPG)",
+        "Adventure",
+        "Indie"
+      ],
+      "release_date": "2015-09-15",
+      "developers": [
+        "tobyfox"
+      ],
+      "publishers": [
+        "8-4",
+        "tobyfox"
+      ],
+      "cover_image_id": "cob1t2",
+      "total_rating_count": 1918,
+      "platforms": [
+        6,
+        48,
+        49,
+        130
+      ]
+    },
+    {
+      "igdb_id": 7334,
+      "name": "Bloodborne",
+      "slug": "bloodborne",
+      "summary": "An action RPG in which the player embodies a Hunter who, after being transfused with the mysterious blood local to the city of Yharnam, sets off into a \"night of the Hunt\", an extended night in which Hunters may phase in and out of dream and reality in order to thin the outbreak of abominable…",
+      "genres": [
+        "Role-playing (RPG)",
+        "Adventure"
+      ],
+      "release_date": "2015-03-24",
+      "developers": [
+        "FromSoftware",
+        "Japan Studio"
+      ],
+      "publishers": [
+        "Sony Computer Entertainment"
+      ],
+      "cover_image_id": "cob99l",
+      "total_rating_count": 1915,
+      "platforms": [
+        48
+      ]
+    },
+    {
+      "igdb_id": 26758,
+      "name": "Super Mario Odyssey",
+      "slug": "super-mario-odyssey",
+      "summary": "Explore incredible places far from the Mushroom Kingdom as you join Mario and his new ally Cappy on a massive, globe-trotting 3D adventure.",
+      "genres": [
+        "Platform",
+        "Adventure"
+      ],
+      "release_date": "2017-10-27",
+      "developers": [
+        "Nintendo EPD Production Group No. 8"
+      ],
+      "publishers": [
+        "Nintendo"
+      ],
+      "cover_image_id": "co1mxf",
+      "total_rating_count": 1914,
+      "platforms": [
+        130,
+        508
+      ]
+    },
+    {
+      "igdb_id": 7599,
+      "name": "Life Is Strange",
+      "slug": "life-is-strange",
+      "summary": "Life Is Strange is a five part episodic game that sets out to revolutionize story based choice and consequence games by allowing the player to rewind time and affect the past, present and future.",
+      "genres": [
+        "Puzzle",
+        "Adventure",
+        "Indie"
+      ],
+      "release_date": "2015-01-29",
+      "developers": [
+        "DON'T NOD"
+      ],
+      "publishers": [
+        "Feral Interactive",
+        "Square Enix"
+      ],
+      "cover_image_id": "co1r8e",
+      "total_rating_count": 1913,
+      "platforms": [
+        6,
+        48,
+        49
+      ]
+    },
+    {
+      "igdb_id": 1011,
+      "name": "Borderlands 2",
+      "slug": "borderlands-2",
+      "summary": "A new era of shoot and loot is about to begin. Play as one of four new vault hunters facing off against a massive new world of creatures, psychos and the evil mastermind, Handsome Jack.",
+      "genres": [
+        "Shooter",
+        "Role-playing (RPG)"
+      ],
+      "release_date": "2012-09-18",
+      "developers": [
+        "Gearbox Software"
+      ],
+      "publishers": [
+        "2K Games",
+        "Sony Computer Entertainment of America",
+        "Aspyr Media"
+      ],
+      "cover_image_id": "co9ba3",
+      "total_rating_count": 1894,
+      "platforms": [
+        6,
+        48,
+        49,
+        130
+      ]
+    },
+    {
+      "igdb_id": 75,
+      "name": "Mass Effect 3",
+      "slug": "mass-effect-3",
+      "summary": "Mass Effect 3 is an action role-playing game in which Commander Shepard leads a final campaign against the Reapers, a machine race that has invaded Earth and is conquering civilizations across the galaxy.",
+      "genres": [
+        "Shooter",
+        "Role-playing (RPG)",
+        "Strategy",
+        "Adventure"
+      ],
+      "release_date": "2012-03-06",
+      "developers": [
+        "BioWare",
+        "BioWare Edmonton"
+      ],
+      "publishers": [
+        "Electronic Arts"
+      ],
+      "cover_image_id": "co1x7q",
+      "total_rating_count": 1875,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 623,
+      "name": "Call of Duty 4: Modern Warfare",
+      "slug": "call-of-duty-4-modern-warfare",
+      "summary": "Call of Duty 4: Modern Warfare differs from previous installments of the Call of Duty series. Previous Call of Duty games have a distinct three country-specific campaign style, while Call of Duty 4 has a more film-like plot with interlaced story lines from the perspectives of Sgt.",
+      "genres": [
+        "Shooter",
+        "Simulator"
+      ],
+      "release_date": "2007-11-05",
+      "developers": [
+        "Infinity Ward"
+      ],
+      "publishers": [
+        "Activision"
+      ],
+      "cover_image_id": "co1wko",
+      "total_rating_count": 1865,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 17000,
+      "name": "Stardew Valley",
+      "slug": "stardew-valley",
+      "summary": "Stardew Valley is an open-ended country-life RPG! You’ve inherited your grandfather’s old farm plot in Stardew Valley.",
+      "genres": [
+        "Role-playing (RPG)",
+        "Simulator",
+        "Strategy",
+        "Adventure",
+        "Indie"
+      ],
+      "release_date": "2016-02-26",
+      "developers": [
+        "ConcernedApe"
+      ],
+      "publishers": [
+        "Chucklefish Games",
+        "ConcernedApe",
+        "505 Games"
+      ],
+      "cover_image_id": "coa93h",
+      "total_rating_count": 1857,
+      "platforms": [
+        6,
+        48,
+        49,
+        130,
+        508
+      ]
+    },
+    {
+      "igdb_id": 26192,
+      "name": "The Last of Us Part II",
+      "slug": "the-last-of-us-part-ii",
+      "summary": "The Last of Us Part II is an action-adventure game set five years after the events of The Last of Us. The player traverses post-apocalyptic environments such as buildings and forests to advance the story.",
+      "genres": [
+        "Shooter",
+        "Adventure"
+      ],
+      "release_date": "2020-06-19",
+      "developers": [
+        "Naughty Dog"
+      ],
+      "publishers": [
+        "Sony Interactive Entertainment"
+      ],
+      "cover_image_id": "co5ziw",
+      "total_rating_count": 1846,
+      "platforms": [
+        48,
+        167
+      ]
+    },
+    {
+      "igdb_id": 1970,
+      "name": "Assassin's Creed IV Black Flag",
+      "slug": "assassins-creed-iv-black-flag",
+      "summary": "Assassin’s Creed IV Black Flag begins in 1715, when pirates established a lawless republic in the Caribbean and ruled the land and seas. These outlaws paralyzed navies, halted international trade, and plundered vast fortunes.",
+      "genres": [
+        "Adventure"
+      ],
+      "release_date": "2013-10-29",
+      "developers": [
+        "Ubisoft Montreal"
+      ],
+      "publishers": [
+        "Ubisoft Entertainment"
+      ],
+      "cover_image_id": "co4qfn",
+      "total_rating_count": 1836,
+      "platforms": [
+        6,
+        48,
+        49,
+        130
+      ]
+    },
+    {
+      "igdb_id": 18,
+      "name": "Max Payne",
+      "slug": "max-payne",
+      "summary": "Max Payne is a man with nothing to lose in the violent, cold urban night. A fugitive undercover cop framed for murder, hunted by cops and the mob, Max is a man with his back against the wall, fighting a battle he cannot hope to win.",
+      "genres": [
+        "Shooter"
+      ],
+      "release_date": "2001-07-23",
+      "developers": [
+        "Remedy Entertainment"
+      ],
+      "publishers": [
+        "Gathering of Developers",
+        "MacSoft Games",
+        "3D Realms",
+        "Rockstar Games",
+        "Feral Interactive",
+        "Take-Two Interactive"
+      ],
+      "cover_image_id": "co3wb2",
+      "total_rating_count": 1815,
+      "platforms": [
+        6,
+        48,
+        49
+      ]
+    },
+    {
+      "igdb_id": 128,
+      "name": "Assassin's Creed",
+      "slug": "assassin-s-creed",
+      "summary": "Assassin's Creed is a non-linear action-adventure video game, during which the player controls a 12th-century Levantine Assassin named Altaïr Ibn-La'Ahad during the Third Crusade, whose life is experienced through the Animus by his 21st century descendant, Desmond Miles.",
+      "genres": [
+        "Platform",
+        "Adventure"
+      ],
+      "release_date": "2007-11-13",
+      "developers": [
+        "Ubisoft Montreal"
+      ],
+      "publishers": [
+        "Ubisoft Entertainment"
+      ],
+      "cover_image_id": "co1rrw",
+      "total_rating_count": 1807,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 113112,
+      "name": "Hades",
+      "slug": "hades--1",
+      "summary": "A rogue-lite hack and slash dungeon crawler in which Zagreus, son of Hades the Greek god of the dead, attempts to escape his home and his oppressive father by fighting the souls of the dead through the various layers of the ever-shifting underworld, while getting to know and forging relationships…",
+      "genres": [
+        "Role-playing (RPG)",
+        "Hack and slash/Beat 'em up",
+        "Adventure",
+        "Indie"
+      ],
+      "release_date": "2020-09-17",
+      "developers": [
+        "Supergiant Games"
+      ],
+      "publishers": [
+        "Supergiant Games",
+        "Netflix"
+      ],
+      "cover_image_id": "cob9kr",
+      "total_rating_count": 1804,
+      "platforms": [
+        6,
+        48,
+        49,
+        130,
+        167,
+        169
+      ]
+    },
+    {
+      "igdb_id": 15,
+      "name": "Fallout 3",
+      "slug": "fallout-3",
+      "summary": "Fallout 3 from the creators of the award-winning Oblivion, featuring one of the most realized game worlds ever created. Create any kind of character you want and explore the open wastes of post-apocalyptic Washington D.C.",
+      "genres": [
+        "Shooter",
+        "Role-playing (RPG)"
+      ],
+      "release_date": "2008-10-28",
+      "developers": [
+        "Bethesda Game Studios"
+      ],
+      "publishers": [
+        "Bethesda Softworks"
+      ],
+      "cover_image_id": "co1ycw",
+      "total_rating_count": 1795,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 113,
+      "name": "Assassin's Creed Brotherhood",
+      "slug": "assassins-creed-brotherhood",
+      "summary": "Assassin's Creed Brotherhood is an action-adventure game set in Rome, where Master Assassin Ezio Auditore takes on the Templar Order. Players recruit and command a Brotherhood of Assassins to dismantle the corrupt powers entrenched in the city.",
+      "genres": [
+        "Puzzle",
+        "Adventure"
+      ],
+      "release_date": "2010-11-16",
+      "developers": [
+        "Ubisoft Montreal"
+      ],
+      "publishers": [
+        "Ubisoft Entertainment"
+      ],
+      "cover_image_id": "cocdky",
+      "total_rating_count": 1777,
+      "platforms": [
+        6
+      ]
+    },
+    {
+      "igdb_id": 9630,
+      "name": "Fallout 4",
+      "slug": "fallout-4",
+      "summary": "Bethesda Game Studios welcome you to the world of Fallout 4, their most ambitious game ever, and the next generation of open-world gaming. As the sole survivor of Vault 111, you enter a world destroyed by nuclear war.",
+      "genres": [
+        "Shooter",
+        "Role-playing (RPG)"
+      ],
+      "release_date": "2015-11-09",
+      "developers": [
+        "Bethesda Game Studios"
+      ],
+      "publishers": [
+        "Bethesda Softworks"
+      ],
+      "cover_image_id": "co1yc6",
+      "total_rating_count": 1775,
+      "platforms": [
+        6,
+        48,
+        49,
+        167,
+        169
+      ]
+    },
+    {
+      "igdb_id": 76,
+      "name": "Dragon Age: Origins",
+      "slug": "dragon-age-origins",
+      "summary": "Dragon Age: Origins is a third-person role-playing game described as a spiritual successor to Baldur's Gate and Neverwinter Nights franchises. Players create their own character by customizing gender and appearance as well as choosing a race and class.",
+      "genres": [
+        "Role-playing (RPG)"
+      ],
+      "release_date": "2009-11-03",
+      "developers": [
+        "BioWare Edmonton"
+      ],
+      "publishers": [
+        "Electronic Arts"
+      ],
+      "cover_image_id": "co2mvs",
+      "total_rating_count": 1765,
+      "platforms": [
+        6
+      ]
+    }
+  ]
+}
