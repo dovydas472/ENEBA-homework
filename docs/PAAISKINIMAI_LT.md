@@ -126,17 +126,20 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 ## Lentelė `games`
 - **Ką daro:** žaidimas kaip toks – tai, kas vienoda visose platformose: pavadinimas, aprašymas, žanrai, išleidimo data, kūrėjas, leidėjas, viršelio URL.
 - **Kodėl taip:** `description` NOT NULL su `''` – viena „nėra aprašymo" reikšmė, Go kode nereikia tikrinti NULL. `genres text[]` – tik rodymui (P6), filtruoti nereikia, todėl atskira lentelė būtų perteklinė. `release_date` yra `date` (tikslumas – diena) ir gali būti NULL (nežinoma). `cover_url` gali būti NULL: vaizdų šaltinis dar nenuspręstas, o frontend'as rodo sugeneruotą placeholder'į, kai URL nėra **arba** paveikslėlis neužsikrauna – modelis veikia abiem atvejais.
-- **Gali paklausti:** „Kodėl `games` ir `products` atskirai?" – vienas žaidimas parduodamas keliais variantais (platforma × regionas × leidimas); aprašymas nekartojamas kiekvienam variantui.
+- **`popularity` ir `igdb_id`:** `popularity integer NOT NULL DEFAULT 0` bus užpildomas iš IGDB; numatytas parduotuvės rikiavimas – `popularity DESC`. `0` = nežinoma, todėl žaidimas be IGDB duomenų vis tiek rikiuojamas (gale). `igdb_id bigint` – žaidimo ID IGDB sistemoje, **UNIQUE** (to paties IGDB žaidimo neimportuosime du kartus), bet gali būti NULL (nesusietas); UNIQUE leidžia kelis NULL.
+- **Gali paklausti:** „Kodėl `games` ir `products` atskirai?" – vienas žaidimas parduodamas keliais variantais (platforma × regionas × leidimas); aprašymas nekartojamas kiekvienam variantui. „Kodėl `popularity` ant `games`, o ne `products`?" – populiarumas yra žaidimo savybė (IGDB jį duoda žaidimui), visi jo variantai jį paveldi.
 
 ## Lentelė `products`
 - **Ką daro:** tai, ką pirkėjas renkasi: vienas žaidimas + viena platforma + vienas regionas + vienas leidimas (`edition`, numatytai `Standard`), su savo `slug` (pvz., `the-witcher-3-pc-global`).
 - **Kodėl taip:** UNIQUE `(game_id, platform_id, region_id, edition)` neleidžia sukurti to paties varianto du kartus (kitaip pasiūlymai išsiskirstytų per du „vienodus" puslapius). Jo pirmas stulpelis `game_id` kartu tarnauja kaip indeksas „visi žaidimo produktai". Atskiri indeksai `platform_id` ir `region_id` – parduotuvės filtrams (kiekvienas filtras gali būti naudojamas vienas; Postgres juos moka sujungti).
-- **Gali paklausti:** „Kodėl `edition` tekstas, o ne lentelė?" – leidimų pavadinimai skiriasi kiekvienam žaidimui, filtruoti pagal juos nereikia.
+- **`msrp_cents`:** originali (sąrašo) kaina centais, gali būti NULL (nežinoma), CHECK > 0. **Nuolaidos %** nesaugomas – skaičiuojamas užklausoje: `(msrp − kaina) × 100 / msrp` sveikaisiais skaičiais, todėl apvalinama **žemyn** (ženkliukas niekada nežada daugiau, nei sutaupoma). NULL, jei MSRP nežinomas, prekės nėra arba kaina ne mažesnė už MSRP. Rikiavimas „Best discount" – `discount_pct DESC NULLS LAST`.
+- **Gali paklausti:** „Kodėl `edition` tekstas, o ne lentelė?" – leidimų pavadinimai skiriasi kiekvienam žaidimui, filtruoti pagal juos nereikia. „Kodėl MSRP ant produkto, o ne žaidimo?" – skirtingų platformų, regionų ir leidimų originalios kainos skiriasi.
 
 ## Lentelė `sellers`
-- **Ką daro:** pardavėjai: `name`, `slug`, `positive_feedback_pct` (pvz., 99,4 %), `reviews_count`.
-- **Kodėl taip:** `numeric(4,1)` – tiksli dešimtainė reikšmė rodymui, daugiausia `100.0`; CHECK 0–100. Tai ne pinigai, todėl `numeric` čia tinka. `positive_feedback_pct` gali būti **NULL** – naujas pardavėjas dar neturi įvertinimo, UI rodo „New seller" (0 % būtų melas). `reviews_count` CHECK ≥ 0.
-- **Gali paklausti:** „Kodėl ne `float`?" – `float` gali rodyti 99.40000001; `numeric` saugo tiksliai tai, ką įrašėme. „Ar CHECK 0–100 praleidžia NULL?" – taip: CHECK atmeta tik kai sąlyga `false`, o su NULL ji yra `NULL` (nežinoma), todėl eilutė priimama.
+- **Ką daro:** pardavėjai: `name`, `slug`, `rating` (0–10, pvz., 9,42), `reviews_count`.
+- **Kodėl taip:** `rating numeric(4,2)` – tiksli dešimtainė reikšmė rodymui; CHECK 0–10. Tai ne pinigai, todėl `numeric` čia tinka. `rating` gali būti **NULL** – naujas pardavėjas dar neturi įvertinimo, UI rodo „New seller" (0 būtų melas). `reviews_count` CHECK ≥ 0.
+- **Lygio etiketė (Superb, Excellent …) nesaugoma** – ją Go kodas išveda iš `rating`: ≥ 9 Superb, ≥ 8 Excellent, ≥ 7 Very good, ≥ 6 Good, mažiau – be etiketės, NULL – „New seller". Taip etiketė niekada neprieštarauja skaičiui, o ribas keičiame vienoje vietoje, be migracijos.
+- **Gali paklausti:** „Kodėl ne `float`?" – `float` gali rodyti 9.4200001; `numeric` saugo tiksliai tai, ką įrašėme. „Ar CHECK 0–10 praleidžia NULL?" – taip: CHECK atmeta tik kai sąlyga `false`, o su NULL ji yra `NULL` (nežinoma), todėl eilutė priimama. „Kodėl etiketės nėra stulpelis?" – tai išvestinė reikšmė (kaip P2): saugoma galėtų išsiderinti su `rating`.
 
 ## Lentelė `offers`
 - **Ką daro:** vieno pardavėjo kaina vienam produktui (`price_cents`), `is_active` (pardavėjas gali pristabdyti pasiūlymą), `created_at`/`updated_at`.
@@ -156,7 +159,7 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Gali paklausti:** „Ar enum nebūtų greitesnis?" – keliasdešimties eilučių lentelės JOIN kainuoja praktiškai nieko; lankstumas svarbesnis.
 
 ## P2 – atsargos ir pigiausia kaina skaičiuojamos, ne saugomos
-- **Ką daro:** atsargos = parduodamų raktų skaičius (`count`). Kaina parduotuvės sąraše = `MIN(price_cents)` tarp aktyvių pasiūlymų, **kurie turi atsargų** (`min(...) FILTER (WHERE has_stock)`). Jei tokių nėra – kaina `NULL`, produktas rodomas kaip „Out of stock", rikiuojant pagal kainą eina paskutinis (`NULLS LAST`) ir neįtraukiamas, kai nustatytas kainos filtras (`NULL >= 1000` nėra `true`). Jokių `stock` ar `min_price` stulpelių.
+- **Ką daro:** atsargos = parduodamų raktų skaičius (`count`). Kaina parduotuvės sąraše = `MIN(price_cents)` tarp aktyvių pasiūlymų, **kurie turi atsargų** (`min(...) FILTER (WHERE has_stock)`). Jei tokių nėra – kaina `NULL`, produktas rodomas kaip „Out of stock", rikiuojant pagal kainą eina paskutinis (`NULLS LAST`) ir neįtraukiamas, kai nustatytas kainos filtras (`NULL >= 1000` nėra `true`). Nuolaidos % ir pardavėjo etiketė taip pat skaičiuojami, ne saugomi. Jokių `stock`, `min_price` ar `discount` stulpelių.
 - **Kodėl taip:** saugoma išvestinė reikšmė gali išsiderinti (pamiršome atnaujinti, dvi transakcijos vienu metu) – tada parduotuvė meluoja. Skaičiuojant visada teisinga. Mūsų mastu tai pigu, nes yra tinkami indeksai.
 - **Gali paklausti:** „Kodėl kainai neskaičiuoti pasiūlymo be atsargų?" – kortelė rodytų kainą, už kurią nupirkti neįmanoma. „O kai bus milijonai prekių?" – tada cache'intume (`product_stats` lentelė ar materialized view, atnaujinama įvykiais, arba paieškos variklis) – aprašyta DATA_MODEL production skyriuje.
 
@@ -171,8 +174,8 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Kodėl taip:** jei nutekėtų DB ar atsarginė kopija, užpuolikas gautų tik hash'us, kurių negalima naudoti kaip slapuko. SHA-256 (ne bcrypt), nes token'as yra atsitiktinis, ne spėjamas slaptažodis – greitas hash'as saugus; be to, reikia ieškoti pagal tikslią reikšmę, o „sūdytas" bcrypt to neleidžia.
 - **Gali paklausti:** „Kodėl ne JWT?" – serverio sesiją galima iš karto atšaukti (logout ištrina eilutę), JWT – ne iki galiojimo pabaigos.
 
-## Planuojami užsakymai: snapshot'ai ir krepšelis naršyklėje
-- **Ką daro (planuojama, checkout užduotis):** `order_items` saugo pirkimo momento kopiją: `product_title`, `seller_name` ir `unit_price_cents`. Krepšelio lentelės DB nėra – krepšelis gyvena naršyklėje, o checkout metu frontend'as siunčia `(offer_id, quantity)` sąrašą.
+## Planuojami užsakymai: snapshot'ai, krepšelis naršyklėje, imituotas mokėjimas
+- **Ką daro (planuojama, checkout užduotis):** `order_items` saugo pirkimo momento kopiją: `product_title`, `seller_name` ir `unit_price_cents`. Krepšelio lentelės DB nėra – krepšelis gyvena naršyklėje, o checkout metu frontend'as siunčia `(offer_id, quantity)` sąrašą. Mokėjimas – tik pasirinkimas „Mock payment: Success / Decline"; jis nusprendžia `payments.status` (`succeeded` / `declined`). **Jokių kortelės laukų** nei formoje, nei DB – nieko jautraus nerenkame ir nesaugome (nėra PCI rūpesčių).
 - **Kodėl taip:** užsakymas yra istorinis/finansinis įrašas – jis turi atrodyti taip pat ir po to, kai pardavėjas pakeičia kainą, pervadinamas ar katalogo pavadinimas pasikeičia. Krepšelis naršyklėje – mažiau lentelių ir endpoint'ų; serveris vis tiek iš naujo nuskaito kainas iš `offers` (klientu nepasitikime).
 - **Gali paklausti:** „Kodėl ne tiesiog JOIN į `offers`/`sellers`?" – JOIN rodytų **dabartinę** kainą ir vardą, ne tą, už kurią sumokėta. „Kas, jei vartotojas pakeičia kainą naršyklėje?" – nesvarbu: kaina imama iš DB checkout metu.
 
@@ -192,6 +195,6 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Gali paklausti:** „Kuo `RESTRICT` skiriasi nuo numatyto `NO ACTION`?" – `RESTRICT` tikrina iš karto, `NO ACTION` patikrinimą galima atidėti iki transakcijos pabaigos (`DEFERRABLE`); mums reikia griežto varianto.
 
 ## Kodėl CHECK apribojimai duomenų bazėje, o ne tik Go kode
-- **Ką daro:** taisyklės (`price_cents > 0`, leistinos `status` reikšmės, `reserved_until` tik kai `reserved`, slug formatas visuose slug'uose, ne tušti pavadinimai/kodai, 0–100 %) aprašytos pačioje schemoje.
-- **Kodėl taip:** Go validacija bus (draugiškoms klaidų žinutėms), bet DB yra paskutinė apsaugos linija: ji saugo ir nuo seed skriptų, rankinio SQL Neon konsolėje, būsimų endpoint'ų ir klaidų kode. Netinkama eilutė tiesiog negali egzistuoti, todėl kiekvienas skaitytojas gali pasitikėti duomenimis. Patikrinta testu: 21 netinkamas įrašas atmestas su tiksliu apribojimo pavadinimu.
+- **Ką daro:** taisyklės (`price_cents > 0`, leistinos `status` reikšmės, `reserved_until` tik kai `reserved`, slug formatas visuose slug'uose, ne tušti pavadinimai/kodai, rating 0–10, MSRP > 0) aprašytos pačioje schemoje.
+- **Kodėl taip:** Go validacija bus (draugiškoms klaidų žinutėms), bet DB yra paskutinė apsaugos linija: ji saugo ir nuo seed skriptų, rankinio SQL Neon konsolėje, būsimų endpoint'ų ir klaidų kode. Netinkama eilutė tiesiog negali egzistuoti, todėl kiekvienas skaitytojas gali pasitikėti duomenimis. Patikrinta testu: 25 netinkami įrašai atmesti su tiksliu apribojimo pavadinimu.
 - **Gali paklausti:** „Ar tai nedubliuoja logikos?" – iš dalies taip, bet tikslai skirtingi: Go – patogi žinutė vartotojui, DB – garantija. „Kodėl apribojimai turi vardus?" – klaidoje matosi, kuri taisyklė pažeista (`offers_price_positive`), lengviau derinti.
