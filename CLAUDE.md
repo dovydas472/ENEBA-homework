@@ -33,6 +33,11 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
 - Never run migrations against `production` locally. Production is migrated only by the GitHub Actions workflow `migrate-production.yml` (after merge, or the manual "Run workflow" button).
 - `cmd/migrate` must never print the connection string, host, user or password (the Actions logs are public).
 
+## UI rules
+- UI: follow `docs/DESIGN.md`; use tokens from `src/styles/tokens.css`; CSS Modules only; no hardcoded colors/sizes.
+- If a needed value has no token, add the token to `tokens.css` and document it in `docs/DESIGN.md` in the same PR. Breakpoints are the literal numbers from `DESIGN.md` (600 / 930 / 1200 px).
+- Do not copy Eneba's logo, icons, illustrations or images. The wordmark is the text placeholder `APP_NAME`.
+
 ## Workflow rules
 - One task = one branch `task/NN-short-name`, created from an up-to-date `main` (`git checkout main && git pull`).
 - First commit of every task: the task file saved verbatim to `docs/tasks/TASK_NN_name.md`. Then work in small commits.
