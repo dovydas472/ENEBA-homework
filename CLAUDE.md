@@ -57,13 +57,27 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
   Print that link as the last line of the chat summary.
 - If an exported session log is uncommitted in `ai-logs/`, commit it on the current task branch.
 - Do not add dependencies, change architecture decisions, or widen the scope without asking. If something is unclear, ask - don't guess.
-- Verify before reporting: `go build ./...`, `go vet ./...`, `go test ./...`, `npm run build` (plus the task-specific checks).
+- Verify before reporting: `gofmt -l .` (must print nothing), `go build ./...`, `go vet ./...`, `go test ./...`, `npm run lint`, `npm test`, `npm run build` (plus the task-specific checks).
+  CI runs the same checks on every PR (`.github/workflows/ci.yml`; jobs `go`, `migrations`, `frontend`).
+- Before writing the report, run the `task-reviewer` subagent (`.claude/agents/task-reviewer.md`). Give it only the task number, not your own opinion of the work.
+  Fix what it finds, or justify in the report why not; its output goes into the report as section 7 (Self-review).
+- After pushing and opening the PR, wait for CI (`gh pr checks --watch`) and put the result in the chat summary. CI must be green before asking for review;
+  if it fails, fix it on the same branch. If `gh` is not logged in, read the check runs of the pushed commit from the public API instead
+  (`https://api.github.com/repos/dovydas472/ENEBA-homework/commits/<sha>/check-runs`) and say so.
 - Commits use the repo-local git identity (GitHub noreply email); do not change git config or remotes.
+
+## Testing rules
+- New Go logic gets unit tests. DB code gets integration tests that read `TEST_DATABASE_URL` and **skip when it is empty** (`t.Skip`).
+  CI provides it from a Postgres service container (job `migrations`); locally it stays empty unless the owner sets it. Never point it at a Neon branch.
+- Frontend logic that is not visual (api client, hooks, helpers) gets Vitest tests (`*.test.ts(x)` next to the code).
+- No lint rule is disabled without a comment that explains why.
+- Windows: run `npm test` / Vitest from PowerShell (canonical upper-case drive letter, `C:\...`). From Git Bash (lower-case `c:`) Vitest fails with "Cannot read properties of undefined (reading 'config')".
 
 ## Reporting rules
 - Full report goes to `docs/reports/TASK_NN_name.md`, committed in the same PR. Sections:
   1. files changed, 2. verification results, 3. what the owner must do manually,
-  4. plain-language explanation (what and why), 5. deviations from the task and why, 6. open questions.
+  4. plain-language explanation (what and why), 5. deviations from the task and why, 6. open questions,
+  7. self-review (the output of the `task-reviewer` subagent and what was done about each finding).
 - In chat: only a short summary (max ~8 lines) + PR link + report path.
 - PR description: short summary + links to the task file and the report (use `.github/pull_request_template.md`).
 
