@@ -18,7 +18,7 @@ Ground rules used everywhere:
 - **All timestamps are `timestamptz`, default `now()`**, so time zones are never ambiguous.
 - **Foreign keys are `ON DELETE RESTRICT`** (one deliberate exception: `sessions`). See [Why RESTRICT](#why-restrict-and-not-cascade).
 - **Rules live in the database** (`NOT NULL`, `UNIQUE`, `CHECK`, FKs), not only in Go. See [Why CHECK in the DB](#why-check-constraints-in-the-database).
-- **Derived values are not stored** (P2): stock and cheapest price are computed by queries.
+- **Derived values are not stored** (P2): stock, cheapest price, discount % and the seller's tier label are computed (by queries or in Go).
 - Data access is hand-written `pgx` SQL (no ORM, no sqlc, P8). The sketches below are that SQL.
 
 ## ER diagram
@@ -49,6 +49,8 @@ erDiagram
         text developer "nullable"
         text publisher "nullable"
         text cover_url "nullable"
+        integer popularity "from IGDB, default 0"
+        bigint igdb_id UK "nullable"
         timestamptz created_at
     }
     products {
@@ -58,13 +60,14 @@ erDiagram
         bigint region_id FK
         text edition "default Standard"
         text slug UK
+        integer msrp_cents "nullable, original price"
         timestamptz created_at
     }
     sellers {
         bigint id PK
         text slug UK
         text name
-        numeric positive_feedback_pct "0-100, nullable = New seller"
+        numeric rating "0-10, nullable = New seller"
         integer reviews_count
         timestamptz created_at
     }
@@ -179,6 +182,8 @@ The game itself – everything that is the same on every platform.
 | `release_date` | `date`, null | NULL = unknown; `date` (not timestamp) because a day is the real precision |
 | `developer`, `publisher` | `text`, null | not always known |
 | `cover_url` | `text`, null | image source not decided; NULL **or** a broken URL → the frontend shows a generated placeholder |
+| `popularity` | `integer` NN, default `0` | will be filled from IGDB; the **default store sort** is `popularity DESC`. `0` = unknown, so a game without IGDB data still sorts (last) |
+| `igdb_id` | `bigint`, null, **UNIQUE** | the game's id in IGDB, for importing/refreshing data; UNIQUE so one IGDB game cannot be imported twice; NULL = not linked (several NULLs are allowed by UNIQUE) |
 | `created_at` | `timestamptz` NN, default `now()` | |
 
 **Search index:** `CREATE INDEX games_title_trgm_idx ON games USING gin (title gin_trgm_ops);`
@@ -198,6 +203,7 @@ The thing a buyer chooses: **one game on one platform for one region in one edit
 | `region_id` | `bigint` NN, FK → `regions`, RESTRICT | a key bought for "Europe" may not activate elsewhere, so region is part of the product |
 | `edition` | `text` NN, default `'Standard'`, CHECK not blank | Standard / Deluxe / GOTY … – free text, editions differ per game |
 | `slug` | `text` NN, **UNIQUE**, CHECK slug format | product URL, e.g. `the-witcher-3-pc-global` |
+| `msrp_cents` | `integer`, null, CHECK `> 0` | the original (list) price of this variant. The **discount %** shown on cards is derived from it and the listing price, never stored. NULL = unknown → no discount badge |
 | `created_at` | `timestamptz` NN, default `now()` | |
 
 - **UNIQUE `(game_id, platform_id, region_id, edition)`** (`products_variant_key`): the same variant cannot exist twice (otherwise offers would be split between two "identical" pages). Its first column `game_id` also serves "all products of a game" and the FK check when a game is deleted.
@@ -211,9 +217,20 @@ Marketplace sellers (a fixed list from the seed; seller accounts are out of scop
 | `id` | `bigint` identity, PK | |
 | `slug` | `text` NN, **UNIQUE**, CHECK slug format | |
 | `name` | `text` NN, CHECK not blank | |
-| `positive_feedback_pct` | `numeric(4,1)`, **null**, CHECK `0–100` | "99.4 %" – exact decimal for display (not money); `(4,1)` = max `100.0`. **NULL = no rating yet**, the UI shows "New seller" (a CHECK passes for NULL) |
+| `rating` | `numeric(4,2)`, **null**, CHECK `0–10` | e.g. `9.42` – exact decimal for display (not money); `(4,2)` = max `99.99`, the CHECK limits it to `10.00`. **NULL = no rating yet**, the UI shows "New seller" (a CHECK passes for NULL) |
 | `reviews_count` | `integer` NN, default `0`, CHECK `≥ 0` | |
 | `created_at` | `timestamptz` NN, default `now()` | |
+
+**Tier label – derived in Go, not stored** (one place to change the wording, no label that disagrees with the number):
+
+| `rating` | Label |
+|---|---|
+| NULL | New seller |
+| ≥ 9.00 | Superb |
+| ≥ 8.00 | Excellent |
+| ≥ 7.00 | Very good |
+| ≥ 6.00 | Good |
+| < 6.00 | no label (only the number is shown) |
 
 ### `offers`
 One seller's price for one product.
@@ -316,15 +333,19 @@ UNIQUE `(order_id, offer_id)` – one line per offer in an order (more keys = hi
 
 ### `payments`
 Simulated payment attempts (P4). A separate table because one order can have **several attempts**
-("card declined" → the user retries).
+("declined" → the user retries).
+
+**No card data at all** (decided): there is no card form and no card column. The payment step is a
+simple choice **"Mock payment: Success / Decline"**; the choice decides the attempt's `status`. Nothing
+sensitive is collected or stored, so no PCI concerns.
 
 | Column | Type | Why |
 |---|---|---|
 | `id` | `bigint` identity, PK | |
 | `order_id` | `uuid` NN, FK → `orders`, RESTRICT | |
 | `amount_cents` | `integer` NN, CHECK `> 0` | |
-| `status` | `text` NN, CHECK `IN ('succeeded','declined')` | outcome of the (simulated) provider call |
-| `failure_reason` | `text`, null | e.g. "insufficient funds"; set only when declined |
+| `status` | `text` NN, CHECK `IN ('succeeded','declined')` | the user's mock choice: Success → `succeeded`, Decline → `declined` |
+| `failure_reason` | `text`, null | e.g. "Declined (mock payment)"; CHECK: set only when declined |
 | `created_at` | `timestamptz` NN, default `now()` | |
 
 - Index `(order_id)`.
@@ -377,8 +398,8 @@ k.status <> 'sold' AND (k.reserved_until IS NULL OR k.reserved_until < now())
 ```
 
 ### 1. Store listing
-Products with game, platform, region, listing price, offer count and in-stock flag;
-optional filters; one of three sort orders; paging.
+Products with game, platform, region, listing price, MSRP + discount %, offer count and in-stock flag;
+optional filters; one of five sort orders (default: popularity); paging.
 
 **Listing price (decided) = the cheapest active offer that has stock.** An active offer with no
 sellable keys does not set the price (nobody could buy at it). A product with no such offer is
@@ -405,9 +426,14 @@ product_stats AS (                    -- one row per product that has active off
     FROM active_offers
     GROUP BY product_id
 )
-SELECT p.slug, g.title, p.edition, g.cover_url, g.release_date,
+SELECT p.slug, g.title, p.edition, g.cover_url, g.release_date, g.popularity,
        pl.name AS platform, r.name AS region,
        ps.min_price_cents,
+       p.msrp_cents,
+       CASE WHEN ps.min_price_cents < p.msrp_cents           -- only a real discount; NULL if msrp
+            THEN (p.msrp_cents - ps.min_price_cents) * 100   -- unknown, out of stock or price >= msrp
+                 / p.msrp_cents                              -- integer division = rounds DOWN
+       END                            AS discount_pct,
        coalesce(ps.offer_count, 0)    AS offer_count,
        ps.min_price_cents IS NOT NULL AS in_stock,
        count(*) OVER ()               AS total_count  -- for "page 2 of 7", before LIMIT
@@ -420,11 +446,16 @@ WHERE ($1::text IS NULL OR pl.slug = $1)
   AND ($2::text IS NULL OR r.slug  = $2)
   AND ($3::int  IS NULL OR ps.min_price_cents >= $3)   -- NULL price never matches -> out of stock
   AND ($4::int  IS NULL OR ps.min_price_cents <= $4)   -- is excluded when a price filter is set
-ORDER BY ps.min_price_cents ASC NULLS LAST, p.id   -- sort=price   (Go picks ONE of these
--- ORDER BY g.title ASC, p.id                         sort=title    three fixed lines from a
--- ORDER BY g.release_date DESC NULLS LAST, p.id      sort=newest   whitelist; never user text)
+ORDER BY g.popularity DESC, p.id                 -- sort=popular (DEFAULT)
+-- ORDER BY ps.min_price_cents ASC NULLS LAST, p.id  sort=price
+-- ORDER BY discount_pct DESC NULLS LAST, p.id       sort=discount ("Best discount")
+-- ORDER BY g.title ASC, p.id                        sort=title
+-- ORDER BY g.release_date DESC NULLS LAST, p.id     sort=newest
+--   Go picks ONE of these fixed lines from a whitelist; user text never goes into ORDER BY.
 LIMIT $5 OFFSET $6;
 ```
+- **Discount % is derived (decided):** `(msrp − listing price) × 100 / msrp` in integer math, which rounds **down** – the badge never promises more than the real saving (3999 → 1799 = 55.01 % → "−55 %"). It is `NULL` (no badge) when `msrp_cents` is unknown, the product is out of stock, or the price is not below the MSRP. "Best discount" sorts NULLs last.
+- **Default sort = popularity** (from IGDB). Out-of-stock products are *not* pushed down here – only the price sort puts them last (decided).
 - `min(...) FILTER (WHERE has_stock)` takes the minimum only over offers with stock; if there are none, the result is `NULL`, which *is* the out-of-stock signal (`in_stock = min_price_cents IS NOT NULL`).
 - Price filter: `NULL >= 1000` is `NULL` (not true), so out-of-stock products drop out automatically when a price bound is given, and stay when it is not.
 - A product with no active offers at all is also out of stock (no `product_stats` row → `NULL` price, `offer_count = 0`).
@@ -439,7 +470,7 @@ All active offers of one product with seller info and stock per offer, cheapest 
 -- $1 product slug
 SELECT o.id AS offer_id, o.price_cents,
        s.slug AS seller_slug, s.name AS seller_name,
-       s.positive_feedback_pct, s.reviews_count,
+       s.rating, s.reviews_count,       -- rating NULL = "New seller"; tier label made in Go
        (SELECT count(*)
         FROM keys k
         WHERE k.offer_id = o.id
