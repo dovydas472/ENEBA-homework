@@ -15,7 +15,7 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
 - Local dev server is `cmd/local`. Never add a root `main.go`, `cmd/api` or `cmd/server` (Vercel's Go preset auto-detects them and changes the deploy model).
 - Router: standard `net/http` ServeMux (Go 1.22+ patterns like `GET /api/x/{id}`). No chi/gin.
   Dependencies are passed into `NewRouter(Deps{...})`; handlers depend on small interfaces, not concrete types (see `DBPinger`).
-- `godotenv` is allowed only in `cmd/*` tools (`cmd/local`, `cmd/migrate`), never in `api/` or `pkg/`.
+- `godotenv` is allowed only in `cmd/*` tools (`cmd/local`, `cmd/migrate`, `cmd/seed`, `cmd/igdb-snapshot`), never in `api/` or `pkg/`.
 - Frontend API calls go through `src/api/client.ts` (`apiFetch`) and the `useApi` hook. No raw `fetch` in components.
 - Money is integer cents. Never float.
 
@@ -33,6 +33,14 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
 - Never run migrations against `production` locally. Production is migrated only by the GitHub Actions workflow `migrate-production.yml` (after merge, or the manual "Run workflow" button).
 - `cmd/migrate` must never print the connection string, host, user or password (the Actions logs are public).
 
+## Seed data rules
+- `seed/igdb_snapshot.json` is generated **only locally by the owner** with `go run ./cmd/igdb-snapshot`. Never call IGDB from the app, `cmd/seed`, CI or Vercel.
+- IGDB credentials (`IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`) live only in the local `.env`. Never in code, logs, GitHub secrets or Vercel; never print the token.
+- `cmd/seed` is deterministic (fixed RNG seed, timestamps derived from the snapshot date, no `time.Now()` in generated data). The golden test in `pkg/seedgen` pins the output: if a rule or the snapshot changes on purpose, update the hash in the same PR and say so in the report.
+- `cmd/seed` uses `DATABASE_URL_DIRECT` (same `-pooler` guard and redaction as `cmd/migrate`, shared in `pkg/dbsafe`), refuses a non-empty catalog without `--reset`, and writes everything in one transaction.
+- Locally seed only the Neon `dev` branch. **Production is seeded only by the GitHub Actions workflow `seed-production.yml`** (manual, `confirm` = `seed-production`).
+- Key codes are always fake: `DEMO-XXXX-XXXX-XXXX`.
+
 ## UI rules
 - UI: follow `docs/DESIGN.md`; use tokens from `src/styles/tokens.css`; CSS Modules only; no hardcoded colors/sizes.
 - If a needed value has no token, add the token to `tokens.css` and document it in `docs/DESIGN.md` in the same PR. Breakpoints are the literal numbers from `DESIGN.md` (600 / 930 / 1200 px).
@@ -41,9 +49,12 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
 ## Workflow rules
 - One task = one branch `task/NN-short-name`, created from an up-to-date `main` (`git checkout main && git pull`).
 - First commit of every task: the task file saved verbatim to `docs/tasks/TASK_NN_name.md`. Then work in small commits.
-- Push the branch and open a PR to `main` (`gh pr create`). **Never merge, never push to `main`, never force-push.**
-  If `gh` is missing or not authenticated: push the branch, skip the PR, tell the owner the exact command to run.
-  After opening the PR, print the PR URL in the chat.
+- Push the branch and open a PR to `main`. **Never merge, never push to `main`, never force-push.**
+- The PR is always created by Claude Code with the template already filled in: Summary (3–5 lines), Task file link, Report link, CI status, Manual test checklist.
+  Use `gh pr create --title "Task NN: …" --body-file <generated file>`. After opening the PR, print the PR URL in the chat.
+- If `gh` is missing or not logged in: push the branch and generate a pre-filled GitHub link instead, so the owner opens the PR with one click:
+  `https://github.com/dovydas472/ENEBA-homework/compare/main...<branch>?expand=1&title=<url-encoded title>&body=<url-encoded body>`.
+  Print that link as the last line of the chat summary.
 - If an exported session log is uncommitted in `ai-logs/`, commit it on the current task branch.
 - Do not add dependencies, change architecture decisions, or widen the scope without asking. If something is unclear, ask - don't guess.
 - Verify before reporting: `go build ./...`, `go vet ./...`, `go test ./...`, `npm run build` (plus the task-specific checks).
