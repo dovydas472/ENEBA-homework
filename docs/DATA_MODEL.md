@@ -181,8 +181,8 @@ The game itself – everything that is the same on every platform.
 | `genres` | `text[]` NN, default `'{}'` | display only (P6): an array is enough, no join table because we never filter by genre |
 | `release_date` | `date`, null | NULL = unknown; `date` (not timestamp) because a day is the real precision |
 | `developer`, `publisher` | `text`, null | not always known |
-| `cover_url` | `text`, null | image source not decided; NULL **or** a broken URL → the frontend shows a generated placeholder |
-| `popularity` | `integer` NN, default `0` | will be filled from IGDB; the **default store sort** is `popularity DESC`. `0` = unknown, so a game without IGDB data still sorts (last) |
+| `cover_url` | `text`, null | IGDB image CDN URL (`t_cover_big`, built from the IGDB `image_id`; nothing is stored in the repo). NULL **or** a broken URL → the frontend shows a generated placeholder |
+| `popularity` | `integer` NN, default `0` | IGDB `total_rating_count` (set by the seed); the **default store sort** is `popularity DESC`. `0` = unknown, so a game without IGDB data still sorts (last) |
 | `igdb_id` | `bigint`, null, **UNIQUE** | the game's id in IGDB, for importing/refreshing data; UNIQUE so one IGDB game cannot be imported twice; NULL = not linked (several NULLs are allowed by UNIQUE) |
 | `created_at` | `timestamptz` NN, default `now()` | |
 
@@ -210,7 +210,7 @@ The thing a buyer chooses: **one game on one platform for one region in one edit
 - **Indexes `products_platform_id_idx`, `products_region_id_idx`:** the store filters; they also make the RESTRICT check fast when a platform/region is deleted. Two single-column indexes because each filter can be used alone (Postgres can combine them with a BitmapAnd).
 
 ### `sellers`
-Marketplace sellers (a fixed list from the seed; seller accounts are out of scope).
+Marketplace sellers (a fixed list of 8 fictional sellers from the seed, `pkg/seedgen`; seller accounts are out of scope).
 
 | Column | Type | Why |
 |---|---|---|

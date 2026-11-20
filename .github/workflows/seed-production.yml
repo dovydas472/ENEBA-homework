@@ -1,0 +1,64 @@
+# Seeds the catalog of the Neon `production` branch from the committed IGDB snapshot.
+# This is the ONLY way production is seeded (never from a laptop). Manual only.
+name: Seed production
+
+on:
+  workflow_dispatch:
+    inputs:
+      reset:
+        description: "Delete the existing catalog first (go run ./cmd/seed --reset)"
+        type: boolean
+        default: false
+      confirm:
+        description: 'Type "seed-production" to confirm'
+        type: string
+        required: true
+
+# Shares the group with migrate-production.yml on purpose: seeding and migrating the
+# production database never run at the same time (the later run waits).
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Neon DIRECT connection string (no "-pooler") of the production branch.
+      DATABASE_URL_DIRECT: ${{ secrets.PROD_DATABASE_URL_DIRECT }}
+      # Inputs go through env variables, never straight into the script text
+      # (prevents script injection through the free-text input).
+      CONFIRM: ${{ inputs.confirm }}
+      RESET: ${{ inputs.reset }}
+    steps:
+      - name: Check the confirmation
+        run: |
+          if [ "$CONFIRM" != "seed-production" ]; then
+            echo "::error::Input 'confirm' must be exactly: seed-production"
+            exit 1
+          fi
+
+      - name: Check that the secret exists
+        run: |
+          if [ -z "$DATABASE_URL_DIRECT" ]; then
+            echo "::error::GitHub secret PROD_DATABASE_URL_DIRECT is not set. Add it in Settings > Secrets and variables > Actions (value: Neon production branch, DIRECT connection string)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+
+      - name: Seed the catalog
+        run: |
+          if [ "$RESET" = "true" ]; then
+            go run ./cmd/seed --reset
+          else
+            go run ./cmd/seed
+          fi
