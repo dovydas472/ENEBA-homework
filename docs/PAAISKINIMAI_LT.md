@@ -67,7 +67,7 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 ## Kodėl `godotenv` tik `cmd/*` įrankiuose (`cmd/local`, `cmd/migrate`, `cmd/seed`, `cmd/igdb-snapshot`)
 - **Ką daro:** `cmd/local/main.go` įkelia `.env` iš repo šaknies. Jau nustatyti proceso aplinkos kintamieji turi pirmenybę prieš `.env`. Jei failo nėra – serveris vis tiek startuoja (health grąžins 503).
 - **Kodėl tik čia:** Vercel kintamuosius paduoda iš projekto nustatymų (Production / Preview), todėl `.env` skaitymas `api/` ar `pkg/` būtų nereikalingas ir keistų elgseną tarp aplinkų. `pkg/` lieka švarus nuo „dev patogumų", o `.env` niekada nepatenka į production kodo kelią.
-- **Gali paklausti:** „Kaip veikia lokali vs. Vercel konfigūracija?" – lokaliai `.env` (Neon `dev` šaka), Vercel Production – `main` šaka, Preview – `dev` šaka, nustatoma Vercel dashboard'e.
+- **Gali paklausti:** „Kaip veikia lokali vs. Vercel konfigūracija?" – lokaliai `.env` (Neon `dev` šaka), Vercel Production – `production` šaka, Preview – `dev` šaka, nustatoma Vercel dashboard'e.
 
 ## Frontend: `apiFetch`, `useApi` ir „slow / waking up" signalas
 - **Ką daro:** `src/api/client.ts` – `apiFetch<T>(path, options)`: viena funkcija visiems API kvietimams. Parsina JSON, ne-2xx atveju meta tipizuotą `ApiError` (`code`: `http` / `network` / `timeout` / `parse`, `status`, `body`), nutraukia užklausą po 15 s. `src/api/useApi.ts` – hook'as `useApi<T>(path)` grąžina `{ data, error, loading, slow, retry }`.
