@@ -399,7 +399,7 @@ platforms | games | sellers | keys
 
 Product page, reserve and search behave as before. The product page now shows `rating` (NULL for the new seller).
 
-### 7.4 Interpretations – please confirm
+### 7.4 Interpretations – confirmed by the owner (tiers replaced, see 7.6)
 - **A product with no active offers at all** is treated like any other out-of-stock product: visible as "Out of stock" (that follows from "products without stock stay visible"). Before review such products were hidden.
 - **`offer_count`** on the card now counts only offers **with stock** ("from 17.99 € · 2 offers"), matching the price. Out of stock → 0.
 - **Rating tier thresholds** (9 / 8 / 7 / 6) are my proposal. You named the labels but not the limits. If your research has exact limits, it is a doc + Go change only (no migration).
@@ -408,3 +408,9 @@ Product page, reserve and search behave as before. The product page now shows `r
 
 ### 7.5 New open question
 - **Product page order:** offers are still "cheapest first" including offers with **stock 0**, so a stock-less 12.99 € offer appears above buyable ones. Should out-of-stock offers go last there too (`ORDER BY (stock = 0), price_cents`), like on the listing?
+
+### 7.6 Round 3 (doc-only, no migration change)
+- **Rating tiers (decided)**, from real Eneba examples (9.90 Superb, 9.67 Excellent, 9.41 Very good): ≥ 9.75 Superb, ≥ 9.50 Excellent, ≥ 9.00 Very good, ≥ 8.00 Good, below → no label, NULL → "New seller". Updated in `DATA_MODEL.md` and `PAAISKINIMAI_LT.md`. The proposal in 7.2/7.4 no longer applies.
+- **7.5 answered: offers with stock 0 are hidden** on the product page; only buyable offers are listed. The sketch now computes the stock with `CROSS JOIN LATERAL` and filters `st.stock > 0`. Re-run on sample data (rolled back): `w3-pc-global` returned GameVault 1799 (stock 1) and KeyShop 1999 (stock 2), and the stock-less EmptyShop 1299 was **hidden**. After reserving all sellable keys, the same query returned **0 rows** (the page shows "Out of stock").
+- `00002_catalog.sql` is unchanged in this round; `dev` stays at version 2.
+- No open questions remain.

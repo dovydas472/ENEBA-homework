@@ -226,11 +226,14 @@ Marketplace sellers (a fixed list from the seed; seller accounts are out of scop
 | `rating` | Label |
 |---|---|
 | NULL | New seller |
-| ≥ 9.00 | Superb |
-| ≥ 8.00 | Excellent |
-| ≥ 7.00 | Very good |
-| ≥ 6.00 | Good |
-| < 6.00 | no label (only the number is shown) |
+| ≥ 9.75 | Superb |
+| ≥ 9.50 | Excellent |
+| ≥ 9.00 | Very good |
+| ≥ 8.00 | Good |
+| < 8.00 | no label (only the number is shown) |
+
+Thresholds (decided) are based on real Eneba examples: 9.90 → Superb, 9.67 → Excellent, 9.41 → Very good.
+The checks run top-down, so the first matching row wins.
 
 ### `offers`
 One seller's price for one product.
@@ -464,26 +467,32 @@ LIMIT $5 OFFSET $6;
 - `$1::text IS NULL OR …` = "filter only if given", so one SQL string serves every filter combination.
 
 ### 2. Product page – offers
-All active offers of one product with seller info and stock per offer, cheapest first.
+Only **buyable** offers of one product (active **and** stock > 0, decided), with seller info and
+stock per offer, cheapest first.
 
 ```sql
 -- $1 product slug
 SELECT o.id AS offer_id, o.price_cents,
        s.slug AS seller_slug, s.name AS seller_name,
        s.rating, s.reviews_count,       -- rating NULL = "New seller"; tier label made in Go
-       (SELECT count(*)
-        FROM keys k
-        WHERE k.offer_id = o.id
-          AND k.status <> 'sold'
-          AND (k.reserved_until IS NULL OR k.reserved_until < now())) AS stock
+       st.stock
 FROM products p
 JOIN offers  o ON o.product_id = p.id AND o.is_active
 JOIN sellers s ON s.id = o.seller_id
+CROSS JOIN LATERAL (                    -- stock of THIS offer, usable in WHERE below
+    SELECT count(*) AS stock
+    FROM keys k
+    WHERE k.offer_id = o.id
+      AND k.status <> 'sold'
+      AND (k.reserved_until IS NULL OR k.reserved_until < now())
+) st
 WHERE p.slug = $1
+  AND st.stock > 0                      -- offers without stock are hidden
 ORDER BY o.price_cents, o.id;
 ```
-- `offers_active_product_price_idx` returns the offers already in price order; each `stock` count is an index-only scan of `keys_unsold_offer_idx`.
-- Offers with `stock = 0` are still returned (shown as "out of stock"); the product header (title, cover, platform …) is a separate one-row query.
+- **Offers with `stock = 0` are not listed**, so the first row is always the cheapest offer you can actually buy (the same rule as the listing price). If no row comes back, the page shows the product as "Out of stock".
+- `CROSS JOIN LATERAL` computes the count once per offer and gives it a name (`st.stock`), so it can be both returned and filtered on. A subquery in the `SELECT` list cannot be used in `WHERE`.
+- `offers_active_product_price_idx` returns the offers already in price order; each `stock` count is an index-only scan of `keys_unsold_offer_idx`. The product header (title, cover, platform …) is a separate one-row query.
 
 ### 3. Reserve N keys of one offer (checkout)
 ```sql
