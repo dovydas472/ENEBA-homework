@@ -1,4 +1,6 @@
-# ENEBA homework
+> **Disclaimer & Attribution:** This repository is a non-commercial portfolio and internship assignment project demonstrating marketplace UI and architecture. It is not affiliated with, endorsed by, or connected to Eneba (JSC "Helis play"). Authentication and checkout are strictly simulated – no real payments, user credentials, or digital keys are processed or issued. Game metadata and cover images are provided by IGDB under the Twitch Developer Service Agreement for non-commercial use. All product names, logos, brands and artwork remain the property of their respective owners.
+
+# EneHomeworkBa (ENEBA homework)
 
 ## Stack
 - Frontend: React + TypeScript (Vite), repo root
@@ -31,7 +33,8 @@ Tests: `go test ./...`
 | Variable | Used by | Notes |
 |---|---|---|
 | `DATABASE_URL` | API (local `.env`, Vercel project settings) | Neon **pooled** string. Local + Vercel Preview: `dev` branch. Vercel Production: `main` branch. |
-| `DATABASE_URL_DIRECT` | migrations only (`cmd/migrate`; local `.env` = `dev` branch, GitHub secret `PROD_DATABASE_URL_DIRECT` = `production`) | Neon **direct** string (no `-pooler`). **Never set on Vercel.** |
+| `DATABASE_URL_DIRECT` | `cmd/migrate` and `cmd/seed` (local `.env` = `dev` branch, GitHub secret `PROD_DATABASE_URL_DIRECT` = `production`) | Neon **direct** string (no `-pooler`). **Never set on Vercel.** |
+| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | `cmd/igdb-snapshot` only, local `.env` only | Twitch app credentials. **Never on Vercel or GitHub.** |
 
 `.env` is git-ignored; only `.env.example` is committed.
 
@@ -52,6 +55,24 @@ automatically after a merge to `main` that touches `migrations/` or `cmd/migrate
 *Actions → Migrate production → Run workflow*. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
 (Neon `production` branch, **direct** connection string). Never run migrations against production from a laptop.
 
+## Seed data
+The catalog (50 real games, 9 platforms, 4 regions, 8 fictional sellers, offers and fake keys) comes from a
+committed **IGDB snapshot** – *Data provided by [IGDB](https://www.igdb.com/)*. Covers are loaded straight from
+IGDB's image CDN; nothing is downloaded into the repo.
+
+```bash
+# owner only, once (needs IGDB_CLIENT_ID / IGDB_CLIENT_SECRET in the local .env):
+go run ./cmd/igdb-snapshot     # writes seed/igdb_snapshot.json
+
+# local: Neon `dev` branch (DATABASE_URL_DIRECT from .env), from the repo root
+go run ./cmd/seed              # seeds an EMPTY catalog, refuses if data exists
+go run ./cmd/seed --reset      # deletes the catalog and seeds it again
+```
+
+- **Deterministic:** a fixed RNG seed – the same snapshot always gives exactly the same rows (and ids). The tool prints a `catalog checksum`; it is identical on `dev` and `production`.
+- Everything is written in **one transaction** (all or nothing). Key codes are obviously fake: `DEMO-XXXX-XXXX-XXXX`.
+- **Production** is seeded only by GitHub Actions: *Actions → Seed production → Run workflow* (`confirm` = `seed-production`, tick `reset` to replace existing data).
+
 ## How this project was built
 Planning chat → task file → Claude Code works on a `task/NN-name` branch → PR with a report → review → merge.
 
@@ -66,6 +87,13 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - `pkg/db/` – lazy, shared pgx connection pool
 - `cmd/local/` – local dev server using the same router (loads `.env`)
 - `cmd/migrate/` – goose migration runner (`up`/`down`/`status`/`version`/`create`)
+- `cmd/igdb-snapshot/` – one-time, local IGDB download → `seed/igdb_snapshot.json`
+- `cmd/seed/` – deterministic catalog seed from the snapshot (`--reset`)
+- `seed/` – the committed IGDB snapshot, embedded with `go:embed`
+- `pkg/igdb/` – snapshot format, Twitch OAuth + IGDB client, selection filters
+- `pkg/seedgen/` – generation rules (platforms, products, prices, offers, keys), validation, bulk insert
+- `pkg/dbsafe/` – `-pooler` guard and secret-free error messages shared by `cmd/migrate` and `cmd/seed`
+- `public/robots.txt` – the demo asks search engines not to index it (plus `noindex` in `index.html`)
 - `migrations/` – numbered SQL migrations, embedded with `go:embed`
 - `docs/DATA_MODEL.md` – the data model (ER diagram, tables, state machines, query sketches)
 - `src/api/` – `apiFetch` client and `useApi` hook (timeout, typed errors, "waking up" signal)
