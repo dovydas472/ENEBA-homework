@@ -1,0 +1,47 @@
+# CLAUDE.md
+
+## Project
+Eneba-style game marketplace (internship assignment). React + TypeScript (Vite) at the repo root,
+a Go API, Neon Postgres, deployed on Vercel (one Go serverless function + static frontend).
+The owner must be able to explain ALL code in an interview, so keep code simple and explained.
+
+## Structure rules
+- `api/index.go` is the ONLY Go file in `/api` (each file there becomes a Vercel function). It only forwards to the router.
+- All Go logic lives in `pkg/`, NOT `internal/`: Vercel builds `api/index.go` as a separate package and Go's `internal` rule breaks the build.
+- Local dev server is `cmd/local`. Never add a root `main.go`, `cmd/api` or `cmd/server` (Vercel's Go preset auto-detects them and changes the deploy model).
+- Router: standard `net/http` ServeMux (Go 1.22+ patterns like `GET /api/x/{id}`). No chi/gin.
+  Dependencies are passed into `NewRouter(Deps{...})`; handlers depend on small interfaces, not concrete types (see `DBPinger`).
+- Frontend API calls go through `src/api/client.ts` (`apiFetch`) and the `useApi` hook. No raw `fetch` in components.
+- Money is integer cents. Never float.
+
+## Database rules
+- The app uses `DATABASE_URL` (Neon **pooled**, host contains `-pooler`). Migrations use `DATABASE_URL_DIRECT`. Never set the direct string on Vercel.
+- Local `.env` points to the Neon `dev` branch only. Never connect to or modify the `production` branch.
+- PgBouncer transaction mode: no session state (`SET`, `LISTEN`, SQL-level `PREPARE`). Keep pgx defaults.
+- Never print, log or commit connection strings, passwords or `.env` contents. `.env` is git-ignored; only `.env.example` is committed.
+- Never return raw DB/driver errors to the client; log server-side, return a generic message.
+
+## Workflow rules
+- One task = one branch `task/NN-short-name`, created from an up-to-date `main` (`git checkout main && git pull`).
+- First commit of every task: the task file saved verbatim to `docs/tasks/TASK_NN_name.md`. Then work in small commits.
+- Push the branch and open a PR to `main` (`gh pr create`). **Never merge, never push to `main`, never force-push.**
+  If `gh` is missing or not authenticated: push the branch, skip the PR, tell the owner the exact command to run.
+- Do not add dependencies, change architecture decisions, or widen the scope without asking. If something is unclear, ask - don't guess.
+- Verify before reporting: `go build ./...`, `go vet ./...`, `go test ./...`, `npm run build` (plus the task-specific checks).
+- Commits use the repo-local git identity (GitHub noreply email); do not change git config or remotes.
+
+## Reporting rules
+- Full report goes to `docs/reports/TASK_NN_name.md`, committed in the same PR. Sections:
+  1. files changed, 2. verification results, 3. what the owner must do manually,
+  4. plain-language explanation (what and why), 5. deviations from the task and why, 6. open questions.
+- In chat: only a short summary (max ~8 lines) + PR link + report path.
+- PR description: short summary + links to the task file and the report (use `.github/pull_request_template.md`).
+
+## Explanation rules
+- Short English comments at important functions (router, handlers, pool, client, hooks).
+- `docs/PAAISKINIMAI_LT.md` (Lithuanian): for each important function/file - *ką daro, kodėl taip, ko gali paklausti pokalbyje*.
+  Update it in every task that adds such code.
+- Everything else in the repo (code, docs, commits, PRs, reports) is in English.
+
+## AI logs
+- At the end of a session the owner runs `/export`; logs are saved as `ai-logs/YYYY-MM-DD_NN_short-topic.md`.

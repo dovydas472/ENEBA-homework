@@ -35,6 +35,14 @@ Tests: `go test ./...`
 
 `.env` is git-ignored; only `.env.example` is committed.
 
+## How this project was built
+Planning chat → task file → Claude Code works on a `task/NN-name` branch → PR with a report → review → merge.
+
+- [`CLAUDE.md`](CLAUDE.md) – standing rules Claude Code follows in every session
+- [`docs/tasks/`](docs/tasks/) – the task files, saved verbatim
+- [`docs/reports/`](docs/reports/) – one report per task (what changed, how it was verified, open questions)
+- [`ai-logs/`](ai-logs/) – exported Claude Code sessions
+
 ## Layout
 - `api/index.go` – the only Vercel function; forwards to the router
 - `pkg/server/` – router and handlers (health check depends on a `DBPinger` interface)
