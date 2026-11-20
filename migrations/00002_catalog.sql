@@ -38,6 +38,8 @@ CREATE TABLE games (
     developer    text,
     publisher    text,
     cover_url    text,                          -- NULL = frontend shows a generated placeholder
+    popularity   integer NOT NULL DEFAULT 0,    -- from IGDB; default store sort = popularity DESC
+    igdb_id      bigint UNIQUE,                 -- IGDB game id; NULL = not linked (yet)
     created_at   timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT games_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
     CONSTRAINT games_title_not_blank CHECK (btrim(title) <> '')
@@ -57,9 +59,11 @@ CREATE TABLE products (
     region_id   bigint NOT NULL REFERENCES regions (id)   ON DELETE RESTRICT,
     edition     text   NOT NULL DEFAULT 'Standard',
     slug        text   NOT NULL UNIQUE,
+    msrp_cents  integer, -- original (list) price; NULL = unknown. Discount % is derived, never stored.
     created_at  timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT products_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
     CONSTRAINT products_edition_not_blank CHECK (btrim(edition) <> ''),
+    CONSTRAINT products_msrp_positive CHECK (msrp_cents > 0),
     -- The same variant must not exist twice. Its leading game_id also serves "products of a game".
     CONSTRAINT products_variant_key UNIQUE (game_id, platform_id, region_id, edition)
 );
@@ -72,12 +76,13 @@ CREATE TABLE sellers (
     id                    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     slug                  text         NOT NULL UNIQUE,
     name                  text         NOT NULL,
-    positive_feedback_pct numeric(4,1),          -- e.g. 99.4; NULL = no rating yet ("New seller")
+    rating                numeric(4,2),          -- 0.00-10.00, e.g. 9.42; NULL = no rating yet ("New seller").
+                                                 -- The tier label (Superb, Excellent ...) is derived in code.
     reviews_count         integer      NOT NULL DEFAULT 0,
     created_at            timestamptz  NOT NULL DEFAULT now(),
     CONSTRAINT sellers_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
     CONSTRAINT sellers_name_not_blank CHECK (btrim(name) <> ''),
-    CONSTRAINT sellers_feedback_pct_range CHECK (positive_feedback_pct BETWEEN 0 AND 100),
+    CONSTRAINT sellers_rating_range CHECK (rating BETWEEN 0 AND 10),
     CONSTRAINT sellers_reviews_count_non_negative CHECK (reviews_count >= 0)
 );
 
