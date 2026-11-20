@@ -7,7 +7,7 @@
 // in GitHub Actions it comes from a secret. Production is migrated only by CI.
 //
 // SECURITY: this tool never prints the connection string, host, user or password -
-// GitHub Actions logs of a public repo are public. See safeMessage.
+// GitHub Actions logs of a public repo are public. See pkg/dbsafe.
 package main
 
 import (
@@ -26,6 +26,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/dovydas472/ENEBA-homework/migrations"
+	"github.com/dovydas472/ENEBA-homework/pkg/dbsafe"
 )
 
 const (
@@ -42,7 +43,7 @@ func main() {
 	_ = godotenv.Load(".env")
 
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", safeMessage(err, os.Getenv(envName)))
+		fmt.Fprintln(os.Stderr, "error:", dbsafe.SafeMessage(err, os.Getenv(envName)))
 		os.Exit(1)
 	}
 }
@@ -75,7 +76,7 @@ func run(args []string) error {
 	}
 
 	url := os.Getenv(envName)
-	if err := checkDirectURL(url); err != nil {
+	if err := dbsafe.CheckDirectURL(envName, url); err != nil {
 		return err
 	}
 
