@@ -67,6 +67,7 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - `cmd/local/` – local dev server using the same router (loads `.env`)
 - `cmd/migrate/` – goose migration runner (`up`/`down`/`status`/`version`/`create`)
 - `migrations/` – numbered SQL migrations, embedded with `go:embed`
+- `docs/DATA_MODEL.md` – the data model (ER diagram, tables, state machines, query sketches)
 - `src/api/` – `apiFetch` client and `useApi` hook (timeout, typed errors, "waking up" signal)
 - `src/` – React app
 - `docs/PAAISKINIMAI_LT.md` – explanations in Lithuanian

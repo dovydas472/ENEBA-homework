@@ -25,6 +25,7 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
 - PgBouncer transaction mode: no session state (`SET`, `LISTEN`, SQL-level `PREPARE`). Keep pgx defaults.
 - Never print, log or commit connection strings, passwords or `.env` contents. `.env` is git-ignored; only `.env.example` is committed.
 - Never return raw DB/driver errors to the client; log server-side, return a generic message.
+- Data model: see `docs/DATA_MODEL.md`. Any schema change must update it in the same PR.
 
 ## Migration rules
 - Create migrations only with `go run ./cmd/migrate create <name>`. Never edit a migration that is already merged - add a new one.
