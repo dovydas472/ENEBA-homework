@@ -27,6 +27,21 @@ func TestSlugify(t *testing.T) {
 	}
 }
 
+func TestGameSlug(t *testing.T) {
+	tests := map[string]string{
+		"god-of-war--1":      "god-of-war",
+		"tomb-raider--2":     "tomb-raider",
+		"elden-ring":         "elden-ring",
+		"half-life-2":        "half-life-2",
+		"marvels-spider-man": "marvels-spider-man",
+	}
+	for in, want := range tests {
+		if got := GameSlug(in); got != want {
+			t.Errorf("GameSlug(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestPCStore(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -35,6 +50,7 @@ func TestPCStore(t *testing.T) {
 		want       string
 	}{
 		{"EA publisher -> EA App", []string{"Electronic Arts"}, nil, EAApp},
+		{"Valve game co-published by EA -> Steam", []string{"Valve", "Electronic Arts"}, []string{"Valve"}, Steam},
 		{"Ubisoft publisher -> Ubisoft Connect", []string{"Ubisoft Entertainment"}, nil, UbisoftConnect},
 		{"Blizzard developer -> Battle.net", []string{"Activision"}, []string{"Blizzard Entertainment"}, BattleNet},
 		{"anyone else -> Steam", []string{"Valve"}, []string{"Valve"}, Steam},

@@ -20,11 +20,11 @@ const (
 
 // Tunable amounts (all deterministic because the RNG is).
 const (
-	editionGames     = 6    // the 6 most popular games also get a Deluxe / GOTY product
-	outOfStockChance = 0.06 // product whose keys are all sold
-	inactiveChance   = 0.07 // offer paused by its seller
-	soldChance       = 0.10 // a key that was already sold
-	reservedChance   = 0.005
+	editionGames     = 6     // the 6 most popular games also get a Deluxe / GOTY product
+	outOfStockChance = 0.06  // product whose keys are all sold
+	inactiveChance   = 0.07  // offer paused by its seller
+	soldChance       = 0.10  // a key that was already sold
+	reservedChance   = 0.003 // "a couple" of reservations, all already expired
 	maxKeysPerOffer  = 8
 	fallbackBase     = 2999 // price base when the MSRP is unknown (the MSRP itself stays NULL)
 )
@@ -87,7 +87,7 @@ func Generate(s igdb.Snapshot) (Catalog, error) {
 
 // gameRow converts a snapshot game into a games row.
 func gameRow(g igdb.Game, used map[string]bool) Game {
-	slug := Slugify(g.Slug)
+	slug := GameSlug(g.Slug)
 	if slug == "" {
 		slug = Slugify(g.Name)
 	}

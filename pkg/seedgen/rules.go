@@ -12,11 +12,21 @@ import (
 // Rules that need randomness take the *rand.Rand, so a test (and the seed) can
 // pass a generator with a fixed seed and always get the same answer.
 
-var notSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
+var (
+	notSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
+	igdbSuffix   = regexp.MustCompile(`--\d+$`)
+)
+
+// GameSlug turns an IGDB slug into ours. IGDB makes slugs unique with a "--N"
+// suffix ("god-of-war--1" = the 2018 game); we drop it ("god-of-war") because our
+// catalog has only one game with that name (gameRow adds "-2" if two collide).
+func GameSlug(igdbSlug string) string {
+	return Slugify(igdbSuffix.ReplaceAllString(igdbSlug, ""))
+}
 
 // Slugify makes a URL-safe slug that matches the CHECK in the database
 // (^[a-z0-9]+(-[a-z0-9]+)*$): lowercase, every other character run becomes one "-".
-// IGDB slugs are almost there already, but some contain "--" (e.g. "god-of-war--1").
+// Used for game names, editions and IGDB slugs.
 func Slugify(s string) string {
 	return strings.Trim(notSlugChars.ReplaceAllString(strings.ToLower(s), "-"), "-")
 }
@@ -34,8 +44,12 @@ func hasCompany(names []string, word string) bool {
 
 // PCStore picks the main PC activation service from the publisher:
 // EA -> EA App, Ubisoft -> Ubisoft Connect, Blizzard -> Battle.net, otherwise Steam.
+// Valve's own games are always Steam (Steam is Valve's store), even when IGDB also
+// lists EA as a publisher (EA published the retail boxes of Portal / Portal 2).
 func PCStore(g igdb.Game) string {
 	switch {
+	case hasCompany(g.Publishers, "Valve") || hasCompany(g.Developers, "Valve"):
+		return Steam
 	case hasCompany(g.Publishers, "Electronic Arts"):
 		return EAApp
 	case hasCompany(g.Publishers, "Ubisoft"):
