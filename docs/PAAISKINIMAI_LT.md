@@ -115,8 +115,8 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 ## Duomenų modelis (`docs/DATA_MODEL.md`) ir migracija `00002_catalog.sql`
 - **Ką daro:** `docs/DATA_MODEL.md` aprašo **visą** schemą (katalogas + planuojamos auth ir commerce lentelės): ER diagrama, kiekvienos lentelės stulpeliai su priežastimis, būsenų mašinos, SQL užklausų eskizai. Migracija `00002_catalog.sql` sukuria tik katalogo lenteles: `platforms`, `regions`, `games`, `products`, `sellers`, `offers`, `keys`. `users`/`sessions` atsiras auth užduotyje, `orders`/`order_items`/`payments` ir `keys.order_item_id` – checkout užduotyje (P7).
 - **Kodėl taip:** schemą suprojektavus visą iš karto, katalogo lentelės jau dabar „žino", kaip prie jų prisijungs užsakymai (pvz., `keys` būsenos ir `reserved_until`), bet nekuriame lentelių, kurių kodas dar nenaudoja. Naujos lentelės = atgal suderinama migracija (expand).
-- **Bendros taisyklės:** pinigai – `integer` centais (EUR); ID – `bigint GENERATED ALWAYS AS IDENTITY` (numerius skiria DB, rankinis ID įterpimas atmetamas, todėl seed'ai remiasi slug'ais); visi laikai `timestamptz` su `now()`; visi FK `ON DELETE RESTRICT`.
-- **Gali paklausti:** „Kodėl `bigint`, o ne `serial`?" – identity yra SQL standartas, `serial` – senesnis Postgres būdas; `GENERATED ALWAYS` neleidžia netyčia įrašyti savo ID ir išderinti sekos. „Kodėl `orders.id` bus UUID?" – jis matomas URL'e: neatspėjamas ir neparodo, kiek užsakymų yra.
+- **Bendros taisyklės:** pinigai – `integer` centais (EUR); ID – `bigint GENERATED ALWAYS AS IDENTITY` (numerius skiria DB, rankinis ID įterpimas atmetamas, todėl seed'ai remiasi slug'ais); visi laikai `timestamptz` su `now()`; visi FK `ON DELETE RESTRICT`. **Kiekvienas** slug (`platforms`, `regions`, `games`, `products`, `sellers`) turi tą patį formato CHECK, o kiekvienas privalomas tekstas (pavadinimai, `title`, `edition`, `code`) – CHECK `btrim(x) <> ''` („ne tuščias"), nes `NOT NULL` vis tiek leidžia `''` ar `'   '`. Išimtis – `games.description`, kur `''` sąmoningai reiškia „nėra aprašymo".
+- **Gali paklausti:** „Kodėl `btrim`?" – kad ir tarpų eilutė būtų laikoma tuščia. „Kodėl `bigint`, o ne `serial`?" – identity yra SQL standartas, `serial` – senesnis Postgres būdas; `GENERATED ALWAYS` neleidžia netyčia įrašyti savo ID ir išderinti sekos. „Kodėl `orders.id` bus UUID?" – jis matomas URL'e: neatspėjamas ir neparodo, kiek užsakymų yra.
 
 ## Lentelės `platforms` ir `regions`
 - **Ką daro:** filtrų reikšmių sąrašai (PC, PlayStation 5 … / Global, Europe …): `slug` (URL'ui, unikalus), `name` (rodymui), `sort_order` (tvarka filtre).
@@ -135,13 +135,14 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 
 ## Lentelė `sellers`
 - **Ką daro:** pardavėjai: `name`, `slug`, `positive_feedback_pct` (pvz., 99,4 %), `reviews_count`.
-- **Kodėl taip:** `numeric(4,1)` – tiksli dešimtainė reikšmė rodymui, daugiausia `100.0`; CHECK 0–100. Tai ne pinigai, todėl `numeric` čia tinka. `reviews_count` CHECK ≥ 0.
-- **Gali paklausti:** „Kodėl ne `float`?" – `float` gali rodyti 99.40000001; `numeric` saugo tiksliai tai, ką įrašėme.
+- **Kodėl taip:** `numeric(4,1)` – tiksli dešimtainė reikšmė rodymui, daugiausia `100.0`; CHECK 0–100. Tai ne pinigai, todėl `numeric` čia tinka. `positive_feedback_pct` gali būti **NULL** – naujas pardavėjas dar neturi įvertinimo, UI rodo „New seller" (0 % būtų melas). `reviews_count` CHECK ≥ 0.
+- **Gali paklausti:** „Kodėl ne `float`?" – `float` gali rodyti 99.40000001; `numeric` saugo tiksliai tai, ką įrašėme. „Ar CHECK 0–100 praleidžia NULL?" – taip: CHECK atmeta tik kai sąlyga `false`, o su NULL ji yra `NULL` (nežinoma), todėl eilutė priimama.
 
 ## Lentelė `offers`
 - **Ką daro:** vieno pardavėjo kaina vienam produktui (`price_cents`), `is_active` (pardavėjas gali pristabdyti pasiūlymą), `created_at`/`updated_at`.
-- **Kodėl taip:** `price_cents` CHECK > 0 – nemokama ar neigiama kaina visada yra klaida. UNIQUE `(product_id, seller_id)` – pardavėjas keičia kainą, o ne kuria antrą pasiūlymą. Dalinis indeksas `(product_id, price_cents) WHERE is_active` tiksliai atitinka produkto puslapio užklausą „aktyvūs pasiūlymai, pigiausias pirmas" – patikrinta, kad Postgres grąžina eilutes iš indekso jau surikiuotas (be atskiro Sort). Neaktyvių pasiūlymų parduotuvė neskaito, todėl jų indekse nėra. `updated_at` nustato pati `UPDATE` užklausa (be trigerio – paprasčiau).
-- **Gali paklausti:** „Kodėl pasiūlymo neištrinate?" – vėliau į jį rodys užsakymai (RESTRICT), todėl išjungiame `is_active = false`.
+- **Kodėl taip:** `price_cents` CHECK > 0 – nemokama ar neigiama kaina visada yra klaida. UNIQUE `(product_id, seller_id)` – pardavėjas keičia kainą, o ne kuria antrą pasiūlymą. Dalinis indeksas `(product_id, price_cents) WHERE is_active` tiksliai atitinka produkto puslapio užklausą „aktyvūs pasiūlymai, pigiausias pirmas" – patikrinta, kad Postgres grąžina eilutes iš indekso jau surikiuotas (be atskiro Sort). Neaktyvių pasiūlymų parduotuvė neskaito, todėl jų indekse nėra. `seller_id` atskiro indekso sąmoningai neturi (nėra „pardavėjo pasiūlymų" puslapio).
+- **Trigeris `offers_set_updated_at`:** `BEFORE UPDATE ... FOR EACH ROW` kviečia funkciją `set_updated_at()`, kuri prieš įrašant eilutę nustato `NEW.updated_at := now()`. Taip `updated_at` visada teisingas, net jei kuri nors užklausa ar rankinis SQL to „pamirštų". Funkcija bendra – vėliau ją naudos ir `orders`. Patikrinta: po `UPDATE` senas `updated_at` (2000-01-01) pasikeitė į `now()`.
+- **Gali paklausti:** „Kodėl pasiūlymo neištrinate?" – vėliau į jį rodys užsakymai (RESTRICT), todėl išjungiame `is_active = false`. „Kodėl `BEFORE`, o ne `AFTER` trigeris?" – tik `BEFORE` trigeris gali pakeisti įrašomą eilutę (`NEW`). „Kodėl migracijoje `-- +goose StatementBegin/End`?" – funkcijos kūne yra `;`, o goose kitaip skaldytų SQL per kabliataškius.
 
 ## Lentelė `keys`
 - **Ką daro:** vienas aktyvacijos kodas. `status`: `available` / `reserved` / `sold`; `reserved_until` – iki kada rezervuotas; `sold_at` – kada parduotas. Vėliau bus `order_item_id`.
@@ -155,12 +156,12 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Gali paklausti:** „Ar enum nebūtų greitesnis?" – keliasdešimties eilučių lentelės JOIN kainuoja praktiškai nieko; lankstumas svarbesnis.
 
 ## P2 – atsargos ir pigiausia kaina skaičiuojamos, ne saugomos
-- **Ką daro:** atsargos = parduodamų raktų skaičius (`count`), pigiausia kaina = `MIN(price_cents)` tarp aktyvių pasiūlymų. Jokių `stock` ar `min_price` stulpelių.
+- **Ką daro:** atsargos = parduodamų raktų skaičius (`count`). Kaina parduotuvės sąraše = `MIN(price_cents)` tarp aktyvių pasiūlymų, **kurie turi atsargų** (`min(...) FILTER (WHERE has_stock)`). Jei tokių nėra – kaina `NULL`, produktas rodomas kaip „Out of stock", rikiuojant pagal kainą eina paskutinis (`NULLS LAST`) ir neįtraukiamas, kai nustatytas kainos filtras (`NULL >= 1000` nėra `true`). Jokių `stock` ar `min_price` stulpelių.
 - **Kodėl taip:** saugoma išvestinė reikšmė gali išsiderinti (pamiršome atnaujinti, dvi transakcijos vienu metu) – tada parduotuvė meluoja. Skaičiuojant visada teisinga. Mūsų mastu tai pigu, nes yra tinkami indeksai.
-- **Gali paklausti:** „O kai bus milijonai prekių?" – tada cache'intume (`product_stats` lentelė ar materialized view, atnaujinama įvykiais, arba paieškos variklis) – aprašyta DATA_MODEL production skyriuje.
+- **Gali paklausti:** „Kodėl kainai neskaičiuoti pasiūlymo be atsargų?" – kortelė rodytų kainą, už kurią nupirkti neįmanoma. „O kai bus milijonai prekių?" – tada cache'intume (`product_stats` lentelė ar materialized view, atnaujinama įvykiais, arba paieškos variklis) – aprašyta DATA_MODEL production skyriuje.
 
 ## P3 – rezervacija su galiojimo laiku, be cron
-- **Ką daro:** rezervuojant raktą `reserved_until = now() + 15 min`. Visos „parduodamų raktų" užklausos sąlygą rašo kaip `status <> 'sold' AND (reserved_until IS NULL OR reserved_until < now())` – pasibaigusi rezervacija automatiškai laikoma laisva.
+- **Ką daro:** rezervuojant raktą `reserved_until = now() + 15 min` (15 minučių – nuspręsta). Visos „parduodamų raktų" užklausos sąlygą rašo kaip `status <> 'sold' AND (reserved_until IS NULL OR reserved_until < now())` – pasibaigusi rezervacija automatiškai laikoma laisva.
 - **Kodėl taip:** nereikia foninio darbo (Vercel serverless jo patogiai nepaleistų), ir nėra lango, kai raktas „užstrigęs", nes cron dar nesuveikė. Kitas pirkėjas tiesiog paima pasibaigusį raktą ir perrašo `reserved_until`.
 - **Kas apsaugo seną užsakymą?** Raktas priklauso užsakymo eilutei (`order_item_id`, checkout užduotyje). Mokėjimas priimamas tik iki `expires_at`, o raktai parduodami su `WHERE order_item_id = ... AND status = 'reserved'`; jei kažkas spėjo raktą perimti – eilučių mažiau, transakcija atšaukiama, užsakymas `expired`.
 - **Gali paklausti:** „Kas, jei pirkėjas sumoka po 15 min?" – mokėjimas atmetamas, užsakymas `expired`, svetimas raktas niekada neparduodamas.
@@ -169,6 +170,11 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Ką daro (planuojama):** slapukas turi atsitiktinį 32 baitų token'ą, o `sessions.token_hash` – tik jo SHA-256. Užklausos metu serveris suskaičiuoja hash'ą ir ieško `WHERE token_hash = $1`.
 - **Kodėl taip:** jei nutekėtų DB ar atsarginė kopija, užpuolikas gautų tik hash'us, kurių negalima naudoti kaip slapuko. SHA-256 (ne bcrypt), nes token'as yra atsitiktinis, ne spėjamas slaptažodis – greitas hash'as saugus; be to, reikia ieškoti pagal tikslią reikšmę, o „sūdytas" bcrypt to neleidžia.
 - **Gali paklausti:** „Kodėl ne JWT?" – serverio sesiją galima iš karto atšaukti (logout ištrina eilutę), JWT – ne iki galiojimo pabaigos.
+
+## Planuojami užsakymai: snapshot'ai ir krepšelis naršyklėje
+- **Ką daro (planuojama, checkout užduotis):** `order_items` saugo pirkimo momento kopiją: `product_title`, `seller_name` ir `unit_price_cents`. Krepšelio lentelės DB nėra – krepšelis gyvena naršyklėje, o checkout metu frontend'as siunčia `(offer_id, quantity)` sąrašą.
+- **Kodėl taip:** užsakymas yra istorinis/finansinis įrašas – jis turi atrodyti taip pat ir po to, kai pardavėjas pakeičia kainą, pervadinamas ar katalogo pavadinimas pasikeičia. Krepšelis naršyklėje – mažiau lentelių ir endpoint'ų; serveris vis tiek iš naujo nuskaito kainas iš `offers` (klientu nepasitikime).
+- **Gali paklausti:** „Kodėl ne tiesiog JOIN į `offers`/`sellers`?" – JOIN rodytų **dabartinę** kainą ir vardą, ne tą, už kurią sumokėta. „Kas, jei vartotojas pakeičia kainą naršyklėje?" – nesvarbu: kaina imama iš DB checkout metu.
 
 ## Trigram indeksas (`games_title_trgm_idx`)
 - **Ką daro:** `CREATE INDEX ... ON games USING gin (title gin_trgm_ops)`. `pg_trgm` skaido tekstą į 3 raidžių gabalus; panašūs tekstai turi daug bendrų gabalų, todėl „witchr" randa „Witcher".
@@ -182,10 +188,10 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 
 ## Kodėl `ON DELETE RESTRICT`, o ne `CASCADE`
 - **Ką daro:** visi FK yra `RESTRICT`: negalima ištrinti žaidimo, kuris turi produktų, pasiūlymo, kuris turi raktų, ir t. t. (patikrinta: `DELETE FROM games` atmetamas su klaida `23001 restrict_violation`).
-- **Kodėl taip:** `CASCADE` vieną klaidingą `DELETE` paverstų tyliu produktų, pasiūlymų, raktų, o vėliau ir užsakymų istorijos praradimu. Naudojamus duomenis „išimame" aiškiai (pvz., `is_active = false`). Vienintelė išimtis (planuojama) – `sessions → users` su `CASCADE`, nes sesijos yra vienkartinė prisijungimo būsena, ne istorija.
+- **Kodėl taip:** `CASCADE` vieną klaidingą `DELETE` paverstų tyliu produktų, pasiūlymų, raktų, o vėliau ir užsakymų istorijos praradimu. Naudojamus duomenis „išimame" aiškiai (pvz., `is_active = false`). Vienintelė išimtis (nuspręsta, bus auth užduotyje) – `sessions → users` su `CASCADE`, nes sesijos yra vienkartinė prisijungimo būsena, ne istorija.
 - **Gali paklausti:** „Kuo `RESTRICT` skiriasi nuo numatyto `NO ACTION`?" – `RESTRICT` tikrina iš karto, `NO ACTION` patikrinimą galima atidėti iki transakcijos pabaigos (`DEFERRABLE`); mums reikia griežto varianto.
 
 ## Kodėl CHECK apribojimai duomenų bazėje, o ne tik Go kode
-- **Ką daro:** taisyklės (`price_cents > 0`, leistinos `status` reikšmės, `reserved_until` tik kai `reserved`, slug formatas, 0–100 %) aprašytos pačioje schemoje.
-- **Kodėl taip:** Go validacija bus (draugiškoms klaidų žinutėms), bet DB yra paskutinė apsaugos linija: ji saugo ir nuo seed skriptų, rankinio SQL Neon konsolėje, būsimų endpoint'ų ir klaidų kode. Netinkama eilutė tiesiog negali egzistuoti, todėl kiekvienas skaitytojas gali pasitikėti duomenimis. Patikrinta testu: 12 netinkamų įrašų atmesti su tiksliu apribojimo pavadinimu.
+- **Ką daro:** taisyklės (`price_cents > 0`, leistinos `status` reikšmės, `reserved_until` tik kai `reserved`, slug formatas visuose slug'uose, ne tušti pavadinimai/kodai, 0–100 %) aprašytos pačioje schemoje.
+- **Kodėl taip:** Go validacija bus (draugiškoms klaidų žinutėms), bet DB yra paskutinė apsaugos linija: ji saugo ir nuo seed skriptų, rankinio SQL Neon konsolėje, būsimų endpoint'ų ir klaidų kode. Netinkama eilutė tiesiog negali egzistuoti, todėl kiekvienas skaitytojas gali pasitikėti duomenimis. Patikrinta testu: 21 netinkamas įrašas atmestas su tiksliu apribojimo pavadinimu.
 - **Gali paklausti:** „Ar tai nedubliuoja logikos?" – iš dalies taip, bet tikslai skirtingi: Go – patogi žinutė vartotojui, DB – garantija. „Kodėl apribojimai turi vardus?" – klaidoje matosi, kuri taisyklė pažeista (`offers_price_positive`), lengviau derinti.
