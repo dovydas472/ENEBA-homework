@@ -1,0 +1,139 @@
+# Continuous integration: checks every pull request (and every push to main).
+# Three independent jobs; their names are the "required checks" of the protect-main ruleset:
+#   go          - formatting, vet, build and unit tests of the Go code
+#   migrations  - every migration (Up AND Down) on a clean Postgres + DB integration tests
+#   frontend    - lint, unit tests and production build of the React app
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A newer push to the same branch/PR makes the older, still running run pointless: cancel it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# The jobs only read the repository.
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: go
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod # same Go version as Vercel and local development
+
+      - name: Check formatting (gofmt)
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-formatted (run: gofmt -w <file>):"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test (with the race detector)
+        run: go test -race ./...
+
+  migrations:
+    name: migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      # A throw-away, empty Postgres. Major version 18 = what the Neon dev branch runs
+      # (checked with `show server_version`). Update both together when Neon upgrades.
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eneba_ci
+        ports:
+          - 5432:5432
+        # The job starts only when the database accepts connections.
+        options: >-
+          --health-cmd "pg_isready -U postgres -d eneba_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Not a secret: this database exists only for the duration of this job.
+      # The same container serves cmd/migrate (direct URL) and the integration tests.
+      DATABASE_URL_DIRECT: postgres://postgres:postgres@localhost:5432/eneba_ci?sslmode=disable
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/eneba_ci?sslmode=disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+
+      - name: Migrate up (clean database)
+        run: go run ./cmd/migrate up
+
+      # `down` rolls back ONE migration, so run it once per migration file.
+      # Together with the check below this proves that every Down script works.
+      - name: Roll every migration back, one by one, to version 0
+        run: |
+          count="$(ls migrations/*.sql | wc -l)"
+          echo "Rolling back $count migration(s)"
+          for i in $(seq 1 "$count"); do
+            go run ./cmd/migrate down
+          done
+          version="$(go run ./cmd/migrate version)"
+          echo "$version"
+          if [ "$version" != "current version: 0" ]; then
+            echo "::error::Expected version 0 after rolling everything back"
+            exit 1
+          fi
+
+      - name: Migrate up again (Down left a clean state)
+        run: go run ./cmd/migrate up
+
+      - name: Migration status
+        run: go run ./cmd/migrate status
+
+      # Same command as in the `go` job, but now TEST_DATABASE_URL points to the migrated
+      # database, so database integration tests (added in later tasks) run here instead of being skipped.
+      - name: go test (with the database)
+        run: go test ./...
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc # same Node version as local development
+          cache: npm # caches ~/.npm, keyed by package-lock.json
+
+      # `npm ci` installs exactly what package-lock.json says (fails if it is out of sync).
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      - name: Build (tsc + Vite)
+        run: npm run build
