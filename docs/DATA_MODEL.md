@@ -1,0 +1,499 @@
+# Data model
+
+The whole schema of the marketplace, designed once. Only the **catalog** tables exist today
+(migration `00002_catalog.sql`). The **auth** and **commerce** tables are *planned*: they are
+created in their own tasks and must follow this document (or update it in the same PR).
+
+| Group | Tables | Status |
+|---|---|---|
+| Catalog | `platforms`, `regions`, `games`, `products`, `sellers`, `offers`, `keys` | **created** – migration `00002` |
+| Auth | `users`, `sessions` | planned – auth task |
+| Commerce | `orders`, `order_items`, `payments` + column `keys.order_item_id` | planned – checkout task |
+
+Ground rules used everywhere:
+- **Money is integer cents, EUR only** (`price_cents integer`). Never `float`/`numeric` for money.
+- **IDs:** `bigint GENERATED ALWAYS AS IDENTITY` (the database owns the numbers; a manual `INSERT` of an id fails, so seeds refer to rows by slug). Exception: `orders.id` is a **UUID** – it appears in URLs and must not reveal how many orders exist.
+- **Slugs** (`the-witcher-3-pc-global`) are the public, URL-friendly identifiers; numeric ids stay internal.
+- **All timestamps are `timestamptz`, default `now()`**, so time zones are never ambiguous.
+- **Foreign keys are `ON DELETE RESTRICT`** (one deliberate exception: `sessions`). See [Why RESTRICT](#why-restrict-and-not-cascade).
+- **Rules live in the database** (`NOT NULL`, `UNIQUE`, `CHECK`, FKs), not only in Go. See [Why CHECK in the DB](#why-check-constraints-in-the-database).
+- **Derived values are not stored** (P2): stock and cheapest price are computed by queries.
+- Data access is hand-written `pgx` SQL (no ORM, no sqlc, P8). The sketches below are that SQL.
+
+## ER diagram
+
+Planned tables are marked **(planned)**; the planned column `keys.order_item_id` is marked in its comment.
+
+```mermaid
+erDiagram
+    platforms {
+        bigint id PK
+        text slug UK
+        text name
+        integer sort_order
+    }
+    regions {
+        bigint id PK
+        text slug UK
+        text name
+        integer sort_order
+    }
+    games {
+        bigint id PK
+        text slug UK
+        text title "trigram index"
+        text description
+        text[] genres "display only"
+        date release_date "nullable"
+        text developer "nullable"
+        text publisher "nullable"
+        text cover_url "nullable"
+        timestamptz created_at
+    }
+    products {
+        bigint id PK
+        bigint game_id FK
+        bigint platform_id FK
+        bigint region_id FK
+        text edition "default Standard"
+        text slug UK
+        timestamptz created_at
+    }
+    sellers {
+        bigint id PK
+        text slug UK
+        text name
+        numeric positive_feedback_pct "0-100"
+        integer reviews_count
+        timestamptz created_at
+    }
+    offers {
+        bigint id PK
+        bigint product_id FK
+        bigint seller_id FK
+        integer price_cents "> 0"
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    keys {
+        bigint id PK
+        bigint offer_id FK
+        text code
+        text status "available | reserved | sold"
+        timestamptz reserved_until "nullable"
+        timestamptz sold_at "nullable"
+        bigint order_item_id FK "PLANNED column, nullable"
+        timestamptz created_at
+    }
+    users["users (planned)"] {
+        bigint id PK
+        citext email UK
+        text password_hash
+        timestamptz created_at
+    }
+    sessions["sessions (planned)"] {
+        bigint id PK
+        bigint user_id FK
+        bytea token_hash UK "SHA-256 of the token"
+        timestamptz expires_at
+        timestamptz created_at
+    }
+    orders["orders (planned)"] {
+        uuid id PK
+        bigint user_id FK
+        text status "pending | paid | failed | expired"
+        integer total_cents
+        uuid idempotency_key
+        timestamptz expires_at
+        timestamptz paid_at "nullable"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    order_items["order_items (planned)"] {
+        bigint id PK
+        uuid order_id FK
+        bigint offer_id FK
+        text product_title "snapshot"
+        integer unit_price_cents "snapshot"
+        integer quantity
+        timestamptz created_at
+    }
+    payments["payments (planned)"] {
+        bigint id PK
+        uuid order_id FK
+        integer amount_cents
+        text status "succeeded | declined"
+        text failure_reason "nullable"
+        timestamptz created_at
+    }
+
+    platforms ||--o{ products : "platform of"
+    regions   ||--o{ products : "region of"
+    games     ||--o{ products : "sold as"
+    products  ||--o{ offers   : "offered by sellers"
+    sellers   ||--o{ offers   : "sells"
+    offers    ||--o{ keys     : "stock"
+
+    users       ||--o{ sessions    : "logged in as"
+    users       ||--o{ orders      : "places"
+    orders      ||--|{ order_items : "contains"
+    orders      ||--o{ payments    : "paid by attempts"
+    offers      ||--o{ order_items : "bought from"
+    order_items |o--o{ keys        : "reserves / sells"
+```
+
+How to read it: a **game** (The Witcher 3) is sold as several **products** (PC / Global / Standard,
+Xbox / Europe / GOTY …). Many **sellers** make an **offer** (their price) for a product. Each offer
+has its own **keys** – one row per activation code; the number of sellable keys *is* the stock.
+
+## Catalog tables (created – migration `00002`)
+
+Notation: *NN* = `NOT NULL`. Every column without "null" is NOT NULL.
+
+### `platforms` and `regions`
+Lookup tables for the store filters (PC, PlayStation 5 … / Global, Europe …). Same shape (P1).
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | internal key used by `products` |
+| `slug` | `text` NN, **UNIQUE**, CHECK `^[a-z0-9]+(-[a-z0-9]+)*$` | filter value in the URL (`?platform=ps5`); the CHECK keeps it URL-safe |
+| `name` | `text` NN | display name ("PlayStation 5") |
+| `sort_order` | `integer` NN, default `0` | the order in the filter list is a business choice, not alphabetical |
+
+- **Why a table, not a Postgres `enum`:** adding a platform is an `INSERT`, not a migration; an enum value cannot be removed easily; the table also carries `name` and `sort_order`.
+- Indexes: only the PK and the UNIQUE on `slug` (a few dozen rows).
+
+### `games`
+The game itself – everything that is the same on every platform.
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | |
+| `slug` | `text` NN, **UNIQUE** | game URL |
+| `title` | `text` NN | shown everywhere, searched with trigrams |
+| `description` | `text` NN, default `''` | empty string instead of NULL: one "no description" value, no NULL checks in Go |
+| `genres` | `text[]` NN, default `'{}'` | display only (P6): an array is enough, no join table because we never filter by genre |
+| `release_date` | `date`, null | NULL = unknown; `date` (not timestamp) because a day is the real precision |
+| `developer`, `publisher` | `text`, null | not always known |
+| `cover_url` | `text`, null | image source not decided; NULL **or** a broken URL → the frontend shows a generated placeholder |
+| `created_at` | `timestamptz` NN, default `now()` | |
+
+**Search index:** `CREATE INDEX games_title_trgm_idx ON games USING gin (title gin_trgm_ops);`
+- `pg_trgm` splits text into 3-letter pieces ("wit", "itc", "tch" …). Two strings that share many trigrams are similar, so "witchr" still finds "Witcher".
+- **`gin_trgm_ops` (GIN)** supports *both* `ILIKE '%witcher%'` (substring) *and* the similarity operators `%` / `<%` (typos) – one index for both kinds of search. GIN is faster to read than GiST; GiST's only extra (`ORDER BY title <-> 'x'`, nearest-neighbour) is not needed: we order the few matching rows by `word_similarity()` after filtering.
+- **Plain `title`, not `lower(title)`:** pg_trgm lowercases trigrams itself and `ILIKE` is case-insensitive, so an expression index would add nothing (and every query would have to repeat the exact expression to use it).
+- Note: the function `similarity(a, b)` alone cannot use an index; queries must filter with the *operators* (`%`, `<%`) and may sort by the function.
+
+### `products`
+The thing a buyer chooses: **one game on one platform for one region in one edition**.
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | |
+| `game_id` | `bigint` NN, FK → `games`, RESTRICT | |
+| `platform_id` | `bigint` NN, FK → `platforms`, RESTRICT | |
+| `region_id` | `bigint` NN, FK → `regions`, RESTRICT | a key bought for "Europe" may not activate elsewhere, so region is part of the product |
+| `edition` | `text` NN, default `'Standard'` | Standard / Deluxe / GOTY … – free text, editions differ per game |
+| `slug` | `text` NN, **UNIQUE** | product URL, e.g. `the-witcher-3-pc-global` |
+| `created_at` | `timestamptz` NN, default `now()` | |
+
+- **UNIQUE `(game_id, platform_id, region_id, edition)`** (`products_variant_key`): the same variant cannot exist twice (otherwise offers would be split between two "identical" pages). Its first column `game_id` also serves "all products of a game" and the FK check when a game is deleted.
+- **Indexes `products_platform_id_idx`, `products_region_id_idx`:** the store filters; they also make the RESTRICT check fast when a platform/region is deleted. Two single-column indexes because each filter can be used alone (Postgres can combine them with a BitmapAnd).
+
+### `sellers`
+Marketplace sellers (a fixed list from the seed; seller accounts are out of scope).
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | |
+| `slug` | `text` NN, **UNIQUE** | |
+| `name` | `text` NN | |
+| `positive_feedback_pct` | `numeric(4,1)` NN, CHECK `0–100` | "99.4 %" – exact decimal for display (not money); `(4,1)` = max `100.0` |
+| `reviews_count` | `integer` NN, default `0`, CHECK `≥ 0` | |
+| `created_at` | `timestamptz` NN, default `now()` | |
+
+### `offers`
+One seller's price for one product.
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | |
+| `product_id` | `bigint` NN, FK → `products`, RESTRICT | |
+| `seller_id` | `bigint` NN, FK → `sellers`, RESTRICT | |
+| `price_cents` | `integer` NN, CHECK `> 0` | money in cents; a free or negative price is always a bug |
+| `is_active` | `boolean` NN, default `true` | a seller can pause an offer without deleting it (orders will reference it) |
+| `created_at`, `updated_at` | `timestamptz` NN, default `now()` | `updated_at` is set by the `UPDATE` statement itself (no trigger, keeps the schema simple) |
+
+- **UNIQUE `(product_id, seller_id)`** (`offers_product_seller_key`): one offer per seller per product – a seller changes their price, they do not add a second offer. Its first column also serves the FK from `products`.
+- **Partial index `offers_active_product_price_idx ON offers (product_id, price_cents) WHERE is_active`:** exactly the product-page query ("active offers of this product, cheapest first") – the index returns the rows already in price order (verified: index scan, no Sort step); and `MIN(price_cents)` per product for the listing. Inactive offers are never read by the store, so they are not in the index.
+- Not indexed on purpose: `seller_id` alone (there is no "offers of a seller" page; add an index when one appears).
+
+### `keys`
+One activation code. **Stock = number of sellable keys** (P2).
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | |
+| `offer_id` | `bigint` NN, FK → `offers`, RESTRICT | each key belongs to the seller's offer (the seller uploaded it) |
+| `code` | `text` NN | the secret the buyer receives (plain text here – see [production](#what-a-production-system-would-do-differently)) |
+| `status` | `text` NN, default `'available'`, CHECK `IN ('available','reserved','sold')` | the state machine below; `text + CHECK` instead of an enum for the same reasons as P1 |
+| `reserved_until` | `timestamptz`, null | set while reserved; **a past value = the reservation expired = the key is sellable again** (P3) |
+| `sold_at` | `timestamptz`, null | when it was sold |
+| `created_at` | `timestamptz` NN, default `now()` | |
+| `order_item_id` | *planned* `bigint`, null, FK → `order_items` | which order item reserved/bought it (added in the checkout task) |
+
+Constraints:
+- **UNIQUE `(offer_id, code)`** – the same code cannot be uploaded twice into one offer; first column also serves the FK from `offers`.
+- **`keys_reserved_until_only_when_reserved`:** `reserved_until` is set **if and only if** `status = 'reserved'`.
+- **`keys_sold_at_only_when_sold`:** `sold_at` is set **if and only if** `status = 'sold'`.
+  These two make impossible combinations ("available but reserved until 18:00", "sold but no sale time") unrepresentable.
+
+**Partial index `keys_unsold_offer_idx ON keys (offer_id, reserved_until) WHERE status <> 'sold'`:**
+- "Sellable" means `available` **or** `reserved` with an expired `reserved_until`. `now()` cannot be used in an index predicate (it must be immutable), so the index holds every **unsold** key and the query checks the expiry on `reserved_until`.
+- `reserved_until` is the second index column so the **stock count** can be answered from the index alone (verified: `Index Only Scan using keys_unsold_offer_idx`), without reading the table rows.
+- Sold keys are the vast majority over time and are never needed for stock, so they are left out – the index stays the size of the *current* stock.
+
+## Auth tables (planned – auth task)
+
+### `users`
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | |
+| `email` | `citext` NN, **UNIQUE** | `citext` = case-insensitive text: `Jon@x.com` and `jon@x.com` are the same account, and the UNIQUE index enforces it |
+| `password_hash` | `text` NN | argon2id/bcrypt hash; the password itself is never stored |
+| `created_at` | `timestamptz` NN, default `now()` | |
+
+### `sessions`
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | |
+| `user_id` | `bigint` NN, FK → `users` **ON DELETE CASCADE** | the one CASCADE: sessions are disposable login state, not history |
+| `token_hash` | `bytea` NN, **UNIQUE** | **SHA-256 of the session token** (P5) – the cookie holds the random token, the DB only its hash |
+| `expires_at` | `timestamptz` NN | checked on every request (`expires_at > now()`) |
+| `created_at` | `timestamptz` NN, default `now()` | |
+
+- **Why a hash (P5):** if the database (or a backup, or a log of a query) leaks, the attacker gets hashes that cannot be used as cookies.
+- **Why SHA-256 and not bcrypt:** the token is 32 random bytes (not a guessable password), so a fast hash is safe; and the lookup must be by exact value (`WHERE token_hash = $1`), which a salted bcrypt hash cannot do.
+- Index on `user_id` ("log out everywhere"). Expired rows are deleted lazily (on login) – no cron job.
+
+## Commerce tables (planned – checkout task)
+
+### `orders`
+| Column | Type | Why |
+|---|---|---|
+| `id` | `uuid` PK, default `gen_random_uuid()` | appears in URLs; not guessable, does not reveal the order count |
+| `user_id` | `bigint` NN, FK → `users`, RESTRICT | orders are financial records – a user with orders is not hard-deleted |
+| `status` | `text` NN, default `'pending'`, CHECK `IN ('pending','paid','failed','expired')` | state machine below |
+| `total_cents` | `integer` NN, CHECK `> 0` | sum of the items at checkout time |
+| `idempotency_key` | `uuid` NN | sent by the client (one per checkout attempt); **UNIQUE `(user_id, idempotency_key)`** – a double click or a network retry returns the *same* order instead of reserving keys twice |
+| `expires_at` | `timestamptz` NN | = the keys' `reserved_until`; after it the order can no longer be paid |
+| `paid_at` | `timestamptz`, null | CHECK: set **iff** `status = 'paid'` |
+| `created_at`, `updated_at` | `timestamptz` NN, default `now()` | |
+
+Index: `(user_id, created_at DESC)` for "my orders".
+
+### `order_items`
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | |
+| `order_id` | `uuid` NN, FK → `orders`, RESTRICT | |
+| `offer_id` | `bigint` NN, FK → `offers`, RESTRICT | which seller's offer was bought |
+| `product_title` | `text` NN | **snapshot** ("The Witcher 3 – PC – Global – Standard"): the order must look the same even if the catalog changes later |
+| `unit_price_cents` | `integer` NN, CHECK `> 0` | **snapshot** of the price paid; the offer's price may change tomorrow |
+| `quantity` | `integer` NN, CHECK `> 0` | number of keys |
+| `created_at` | `timestamptz` NN, default `now()` | |
+
+UNIQUE `(order_id, offer_id)` – one line per offer in an order (more keys = higher `quantity`).
+
+### `payments`
+Simulated payment attempts (P4). A separate table because one order can have **several attempts**
+("card declined" → the user retries).
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | |
+| `order_id` | `uuid` NN, FK → `orders`, RESTRICT | |
+| `amount_cents` | `integer` NN, CHECK `> 0` | |
+| `status` | `text` NN, CHECK `IN ('succeeded','declined')` | outcome of the (simulated) provider call |
+| `failure_reason` | `text`, null | e.g. "insufficient funds"; set only when declined |
+| `created_at` | `timestamptz` NN, default `now()` | |
+
+- Index `(order_id)`.
+- **Partial UNIQUE `(order_id) WHERE status = 'succeeded'`:** at most one successful payment per order – a double charge is impossible at the database level.
+
+### Planned change to `keys` (checkout task)
+`ALTER TABLE keys ADD COLUMN order_item_id bigint NULL REFERENCES order_items (id) ON DELETE RESTRICT;`
++ CHECK `(status = 'available') = (order_item_id IS NULL)` + index on `order_item_id` ("keys of my order").
+A nullable column added to an existing table → backward compatible (expand).
+
+## State machines
+
+### Key
+```mermaid
+stateDiagram-v2
+    [*] --> available : seller uploads the key
+    available --> reserved : checkout (status, reserved_until = now() + 15 min)
+    reserved --> sold : payment succeeded (sold_at = now(), reserved_until = NULL)
+    reserved --> available : order failed / cancelled (reserved_until = NULL)
+    reserved --> reserved : reservation EXPIRED and another checkout takes it
+    sold --> [*]
+```
+- **Expiry needs no job (P3):** an expired reservation stays `status = 'reserved'` with a past `reserved_until`. Every "sellable" query treats `reserved_until < now()` as available, so the next checkout simply takes it (and overwrites `reserved_until` and, later, `order_item_id`).
+- **Who owns a reserved key?** The order item in `order_item_id`. A payment is accepted only before the order's `expires_at`; as a second safety, keys are sold with `WHERE order_item_id = $item AND status = 'reserved'`. If another checkout already took one of the keys (its reservation had expired), fewer rows match, the transaction is rolled back and the order is marked `expired` – someone else's key is never sold.
+
+### Order
+```mermaid
+stateDiagram-v2
+    [*] --> pending : checkout (keys reserved)
+    pending --> pending : payment declined (user may retry)
+    pending --> paid : payment succeeded (keys sold)
+    pending --> failed : cancelled / unrecoverable error (keys released)
+    pending --> expired : expires_at passed (noticed on next read or payment attempt)
+    paid --> [*]
+    failed --> [*]
+    expired --> [*]
+```
+`paid`, `failed`, `expired` are final. `expired` is set lazily (when the order is read or paid after `expires_at`); until then the order is "pending but past expiry", which the code treats the same way.
+
+## Query sketches
+
+SQL that the Go code (hand-written `pgx`) will run. `$n` are query parameters – user input is never
+concatenated into SQL. All four sketches were executed on sample data on the Neon `dev` branch
+(in a rolled-back transaction; results in the Task 05 report). The "sellable key" condition appears in all of them:
+
+```sql
+k.status <> 'sold' AND (k.reserved_until IS NULL OR k.reserved_until < now())
+-- = available, or reserved but expired. "status <> 'sold'" is written exactly like the
+--   predicate of keys_unsold_offer_idx, so the planner can use that partial index.
+```
+
+### 1. Store listing
+Products with game, platform, region, cheapest active offer, offer count and in-stock flag;
+optional filters; one of three sort orders; paging.
+
+```sql
+-- $1 platform slug | NULL, $2 region slug | NULL, $3 min price cents | NULL, $4 max price cents | NULL,
+-- $5 page size, $6 offset
+WITH offer_stats AS (                 -- one row per product with at least one ACTIVE offer
+    SELECT o.product_id,
+           min(o.price_cents) AS min_price_cents,
+           count(*)           AS offer_count
+    FROM offers o
+    WHERE o.is_active
+    GROUP BY o.product_id
+)
+SELECT p.slug, g.title, p.edition, g.cover_url, g.release_date,
+       pl.name AS platform, r.name AS region,
+       os.min_price_cents, os.offer_count,
+       EXISTS (                       -- at least one sellable key in any active offer
+           SELECT 1
+           FROM offers o
+           JOIN keys k ON k.offer_id = o.id
+           WHERE o.product_id = p.id AND o.is_active
+             AND k.status <> 'sold'
+             AND (k.reserved_until IS NULL OR k.reserved_until < now())
+       ) AS in_stock,
+       count(*) OVER () AS total_count  -- for "page 2 of 7", before LIMIT
+FROM products p
+JOIN offer_stats os ON os.product_id = p.id
+JOIN games     g  ON g.id  = p.game_id
+JOIN platforms pl ON pl.id = p.platform_id
+JOIN regions   r  ON r.id  = p.region_id
+WHERE ($1::text IS NULL OR pl.slug = $1)
+  AND ($2::text IS NULL OR r.slug  = $2)
+  AND ($3::int  IS NULL OR os.min_price_cents >= $3)
+  AND ($4::int  IS NULL OR os.min_price_cents <= $4)
+ORDER BY os.min_price_cents ASC, p.id      -- sort=price   (Go picks ONE of these
+-- ORDER BY g.title ASC, p.id                 sort=title    three fixed lines from a
+-- ORDER BY g.release_date DESC NULLS LAST, p.id  sort=newest  whitelist; never user text)
+LIMIT $5 OFFSET $6;
+```
+- Price filter and sort use the **cheapest active offer** (that is the price shown on the card).
+- Products without any active offer are not listed (inner join on `offer_stats`).
+- `p.id` as the last sort key makes paging stable when two products have the same price.
+- `$1::text IS NULL OR …` = "filter only if given", so one SQL string serves every filter combination.
+
+### 2. Product page – offers
+All active offers of one product with seller info and stock per offer, cheapest first.
+
+```sql
+-- $1 product slug
+SELECT o.id AS offer_id, o.price_cents,
+       s.slug AS seller_slug, s.name AS seller_name,
+       s.positive_feedback_pct, s.reviews_count,
+       (SELECT count(*)
+        FROM keys k
+        WHERE k.offer_id = o.id
+          AND k.status <> 'sold'
+          AND (k.reserved_until IS NULL OR k.reserved_until < now())) AS stock
+FROM products p
+JOIN offers  o ON o.product_id = p.id AND o.is_active
+JOIN sellers s ON s.id = o.seller_id
+WHERE p.slug = $1
+ORDER BY o.price_cents, o.id;
+```
+- `offers_active_product_price_idx` returns the offers already in price order; each `stock` count is an index-only scan of `keys_unsold_offer_idx`.
+- Offers with `stock = 0` are still returned (shown as "out of stock"); the product header (title, cover, platform …) is a separate one-row query.
+
+### 3. Reserve N keys of one offer (checkout)
+```sql
+-- inside the checkout transaction (BEGIN … COMMIT); $1 offer id, $2 quantity
+WITH picked AS (
+    SELECT id
+    FROM keys
+    WHERE offer_id = $1
+      AND status <> 'sold'
+      AND (reserved_until IS NULL OR reserved_until < now())  -- expired = available (P3)
+    ORDER BY id                       -- oldest keys first
+    LIMIT $2
+    FOR UPDATE SKIP LOCKED            -- lock the picked rows; skip rows another checkout holds
+)
+UPDATE keys k
+SET status         = 'reserved',
+    reserved_until = now() + interval '15 minutes'
+    -- checkout task adds: , order_item_id = $3
+FROM picked
+WHERE k.id = picked.id
+RETURNING k.id;
+```
+- If fewer than `$2` rows come back → `ROLLBACK` and answer "not enough stock". Nothing half-reserved remains.
+- **`FOR UPDATE`** locks the chosen rows until the transaction ends, so two buyers can never get the same key.
+- **`SKIP LOCKED`**: a second buyer at the same moment does not *wait* for the first one's locks – they skip those rows and take the next free keys. Without it, all concurrent checkouts of a popular offer would queue on the same rows.
+- After locking, Postgres re-checks the `WHERE` on the newest row version, so a key that someone else reserved and committed in the meantime is not taken.
+
+### 4. Title search (why the trigram index exists)
+```sql
+-- $1 what the user typed, e.g. 'witchr'; % and _ in it are escaped in Go before use in ILIKE
+SELECT g.slug, g.title, word_similarity($1, g.title) AS score
+FROM games g
+WHERE g.title ILIKE '%' || $1 || '%'   -- substring: 'witcher' in 'The Witcher 3'
+   OR $1 <% g.title                     -- typo-tolerant word match: 'witchr' ~ 'Witcher'
+ORDER BY score DESC, g.title
+LIMIT 10;
+```
+Both conditions are served by `games_title_trgm_idx`. `<%` uses the default
+`pg_trgm.word_similarity_threshold` (0.6); changing it would need `SET`, which PgBouncer transaction
+mode does not keep – it would have to be `SET LOCAL` inside the query's transaction.
+
+## Why RESTRICT and not CASCADE
+`ON DELETE CASCADE` would turn one mistaken `DELETE FROM games` into the silent loss of its products,
+offers, keys – and later order history. `RESTRICT` makes such a delete fail with an error; data that
+is referenced must be retired explicitly (e.g. `offers.is_active = false`). The only CASCADE is
+`sessions → users`: sessions are throw-away login state.
+
+## Why CHECK constraints in the database
+The Go code will validate input too (for friendly error messages), but the database is the last line
+of defence: it also protects against seed scripts, manual SQL in the Neon console, future endpoints and
+bugs. A row that breaks a rule (price 0, "sold" without `sold_at`) simply cannot exist, so every reader
+can trust the data without re-checking it.
+
+## What a production system would do differently
+- **Encrypt key codes at rest** (application-level envelope encryption with a KMS key) and reveal a code only to its buyer; today `keys.code` is plain text.
+- **Multi-currency:** a `currency char(3)` next to every amount, prices per currency or FX rates with the rate snapshot on the order; today everything is EUR cents.
+- **Cache the cheapest price / stock** at scale: a `product_stats` table or materialized view refreshed by triggers/events, or a search engine (Elasticsearch/Meilisearch) for listing, filtering and search; today they are computed per request (P2) – correct and simple at this size.
+- **Keyset pagination** (`WHERE (price, id) > ($last_price, $last_id)`) instead of `OFFSET`, which gets slower on deep pages.
+- **Background job** to mark expired orders and release reservations eagerly (for reporting), instead of only lazy expiry.
+- **Real payment provider** with webhooks, idempotent payment intents and refunds; seller payouts, fees, VAT.
+- **Audit/history** tables (price history, key status changes), soft deletes, and partitioning or archiving of sold keys.
+- **Seller accounts** with their own auth, key upload API and per-seller stock limits.
