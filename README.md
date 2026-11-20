@@ -31,9 +31,26 @@ Tests: `go test ./...`
 | Variable | Used by | Notes |
 |---|---|---|
 | `DATABASE_URL` | API (local `.env`, Vercel project settings) | Neon **pooled** string. Local + Vercel Preview: `dev` branch. Vercel Production: `main` branch. |
-| `DATABASE_URL_DIRECT` | migrations only (later task) | Neon direct string. **Never set on Vercel.** |
+| `DATABASE_URL_DIRECT` | migrations only (`cmd/migrate`; local `.env` = `dev` branch, GitHub secret `PROD_DATABASE_URL_DIRECT` = `production`) | Neon **direct** string (no `-pooler`). **Never set on Vercel.** |
 
 `.env` is git-ignored; only `.env.example` is committed.
+
+## Database migrations
+Migrations are SQL files in `migrations/` (numbered, [goose](https://github.com/pressly/goose) format) embedded into the `cmd/migrate` binary.
+
+```bash
+# local: runs against the Neon `dev` branch (DATABASE_URL_DIRECT from .env), from the repo root
+go run ./cmd/migrate status            # which migrations are applied / pending
+go run ./cmd/migrate up                # apply all pending
+go run ./cmd/migrate down              # roll back ONE step
+go run ./cmd/migrate version           # current version
+go run ./cmd/migrate create add_games  # new numbered file in migrations/ (no DB needed)
+```
+
+**Production** is migrated only by GitHub Actions (`.github/workflows/migrate-production.yml`):
+automatically after a merge to `main` that touches `migrations/` or `cmd/migrate/`, or manually via
+*Actions → Migrate production → Run workflow*. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
+(Neon `production` branch, **direct** connection string). Never run migrations against production from a laptop.
 
 ## How this project was built
 Planning chat → task file → Claude Code works on a `task/NN-name` branch → PR with a report → review → merge.
@@ -48,6 +65,8 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - `pkg/server/` – router and handlers (health check depends on a `DBPinger` interface)
 - `pkg/db/` – lazy, shared pgx connection pool
 - `cmd/local/` – local dev server using the same router (loads `.env`)
+- `cmd/migrate/` – goose migration runner (`up`/`down`/`status`/`version`/`create`)
+- `migrations/` – numbered SQL migrations, embedded with `go:embed`
 - `src/api/` – `apiFetch` client and `useApi` hook (timeout, typed errors, "waking up" signal)
 - `src/` – React app
 - `docs/PAAISKINIMAI_LT.md` – explanations in Lithuanian
