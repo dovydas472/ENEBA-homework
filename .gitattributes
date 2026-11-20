@@ -1,0 +1,7 @@
+# Normalize line endings: text files are stored with LF in the repo AND checked out with LF,
+# even on Windows. Without this, CRLF files reach gofmt / CI and break `gofmt -l`.
+* text=auto eol=lf
+
+# Binary files: never touched by line-ending conversion.
+*.png binary
+*.woff2 binary
