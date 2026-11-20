@@ -1,6 +1,11 @@
 -- +goose Up
 -- Catalog tables. Design and reasons: docs/DATA_MODEL.md.
 -- Only NEW tables -> backward compatible with the deployed code (expand/contract).
+--
+-- Repeated rules:
+--   slug format: lowercase letters/digits in groups separated by single "-" (e.g. "ps5", "the-witcher-3"),
+--                so every slug is URL-safe.
+--   not blank:   btrim(x) <> '' - NOT NULL alone still allows '' or '   '.
 
 -- Lookup tables instead of Postgres enums (P1): a new platform/region is an INSERT,
 -- not a migration, and the display name + sort order live next to the slug.
@@ -9,8 +14,8 @@ CREATE TABLE platforms (
     slug       text    NOT NULL UNIQUE,
     name       text    NOT NULL,
     sort_order integer NOT NULL DEFAULT 0,
-    -- URL-safe slug: lowercase letters/digits in groups separated by single "-" (e.g. "ps5", "xbox-series-x").
-    CONSTRAINT platforms_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$')
+    CONSTRAINT platforms_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+    CONSTRAINT platforms_name_not_blank CHECK (btrim(name) <> '')
 );
 
 CREATE TABLE regions (
@@ -18,7 +23,8 @@ CREATE TABLE regions (
     slug       text    NOT NULL UNIQUE,
     name       text    NOT NULL,
     sort_order integer NOT NULL DEFAULT 0,
-    CONSTRAINT regions_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$')
+    CONSTRAINT regions_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+    CONSTRAINT regions_name_not_blank CHECK (btrim(name) <> '')
 );
 
 -- A game is the "title" (The Witcher 3). What is sold is a product (game + platform + region + edition).
@@ -26,13 +32,15 @@ CREATE TABLE games (
     id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     slug         text   NOT NULL UNIQUE,
     title        text   NOT NULL,
-    description  text   NOT NULL DEFAULT '',
+    description  text   NOT NULL DEFAULT '',   -- '' = no description (allowed on purpose)
     genres       text[] NOT NULL DEFAULT '{}', -- display only, no genre filter (P6)
     release_date date,                          -- NULL = unknown / not announced
     developer    text,
     publisher    text,
     cover_url    text,                          -- NULL = frontend shows a generated placeholder
-    created_at   timestamptz NOT NULL DEFAULT now()
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT games_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+    CONSTRAINT games_title_not_blank CHECK (btrim(title) <> '')
 );
 
 -- Trigram index for the search box. GIN + gin_trgm_ops on the plain column serves
@@ -50,6 +58,8 @@ CREATE TABLE products (
     edition     text   NOT NULL DEFAULT 'Standard',
     slug        text   NOT NULL UNIQUE,
     created_at  timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT products_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+    CONSTRAINT products_edition_not_blank CHECK (btrim(edition) <> ''),
     -- The same variant must not exist twice. Its leading game_id also serves "products of a game".
     CONSTRAINT products_variant_key UNIQUE (game_id, platform_id, region_id, edition)
 );
@@ -62,9 +72,11 @@ CREATE TABLE sellers (
     id                    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     slug                  text         NOT NULL UNIQUE,
     name                  text         NOT NULL,
-    positive_feedback_pct numeric(4,1) NOT NULL, -- e.g. 99.4 (display only, not money)
+    positive_feedback_pct numeric(4,1),          -- e.g. 99.4; NULL = no rating yet ("New seller")
     reviews_count         integer      NOT NULL DEFAULT 0,
     created_at            timestamptz  NOT NULL DEFAULT now(),
+    CONSTRAINT sellers_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+    CONSTRAINT sellers_name_not_blank CHECK (btrim(name) <> ''),
     CONSTRAINT sellers_feedback_pct_range CHECK (positive_feedback_pct BETWEEN 0 AND 100),
     CONSTRAINT sellers_reviews_count_non_negative CHECK (reviews_count >= 0)
 );
@@ -77,15 +89,30 @@ CREATE TABLE offers (
     price_cents integer NOT NULL,
     is_active   boolean NOT NULL DEFAULT true,
     created_at  timestamptz NOT NULL DEFAULT now(),
-    updated_at  timestamptz NOT NULL DEFAULT now(), -- set by the UPDATE statement (no trigger)
+    updated_at  timestamptz NOT NULL DEFAULT now(), -- kept current by the trigger below
     CONSTRAINT offers_price_positive CHECK (price_cents > 0),
     -- A seller has at most one offer per product (they change the price, not add a second offer).
     CONSTRAINT offers_product_seller_key UNIQUE (product_id, seller_id)
 );
 
--- "Active offers of a product, cheapest first" (product page) and MIN(price) per product
+-- "Active offers of a product, cheapest first" (product page) and the cheapest price per product
 -- (store listing). Partial: inactive offers are never read by the store, so they are not indexed.
 CREATE INDEX offers_active_product_price_idx ON offers (product_id, price_cents) WHERE is_active;
+
+-- Sets updated_at on every UPDATE, so no query can forget it. Generic: other tables can reuse it.
+-- +goose StatementBegin
+CREATE FUNCTION set_updated_at() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.updated_at := now();
+    RETURN NEW;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE TRIGGER offers_set_updated_at
+    BEFORE UPDATE ON offers
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- One activation key. Stock is derived from this table (P2), never stored.
 CREATE TABLE keys (
@@ -96,6 +123,7 @@ CREATE TABLE keys (
     reserved_until timestamptz, -- only while reserved; a past value = expired = available again (P3)
     sold_at        timestamptz, -- only when sold
     created_at     timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT keys_code_not_blank CHECK (btrim(code) <> ''),
     CONSTRAINT keys_status_valid CHECK (status IN ('available', 'reserved', 'sold')),
     -- reserved  <=> reserved_until is set
     CONSTRAINT keys_reserved_until_only_when_reserved CHECK (
@@ -118,9 +146,10 @@ CREATE TABLE keys (
 CREATE INDEX keys_unsold_offer_idx ON keys (offer_id, reserved_until) WHERE status <> 'sold';
 
 -- +goose Down
--- Reverse dependency order: children first.
+-- Reverse dependency order: children first. Dropping offers also drops its trigger.
 DROP TABLE IF EXISTS keys;
 DROP TABLE IF EXISTS offers;
+DROP FUNCTION IF EXISTS set_updated_at();
 DROP TABLE IF EXISTS sellers;
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS games;
