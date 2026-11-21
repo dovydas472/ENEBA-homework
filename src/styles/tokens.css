@@ -142,7 +142,7 @@
   --badge-count-size: 1rem; /* 16px: minimum width/height of the cart count badge */
   --toast-max-width: 25rem; /* 400px: toast / notice box */
   /* Added in Task 11 (Store page): */
-  --opacity-dimmed: 0.7; /* out-of-stock card, and the results while a new filter result loads */
+  --opacity-dimmed: 0.8; /* out-of-stock card, and the results while a new filter result loads. 0.8 keeps the mint platform text at 5.0:1 (0.7 gave 4.0:1) */
   --cover-aspect-ratio: 5 / 7; /* portrait game cover (DESIGN.md 4.3); a fixed ratio = no layout shift when the image loads */
   --checkbox-size: 1.25rem; /* 20px: filter checkbox (DESIGN.md 4.8) */
   --price-input-width: 4.8125rem; /* 77px: the two price boxes (DESIGN.md 4.2) */

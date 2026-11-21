@@ -66,6 +66,7 @@
 }
 
 .filtersIcon {
+  flex-shrink: 0; /* an icon next to text must not be squeezed when the row is tight */
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
 }

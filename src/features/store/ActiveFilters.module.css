@@ -29,6 +29,7 @@
 }
 
 .icon {
+  flex-shrink: 0;
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
 }
