@@ -71,7 +71,7 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
   CI provides it from a Postgres service container (job `migrations`); locally it stays empty unless the owner sets it. Never point it at a Neon branch.
 - Frontend logic that is not visual (api client, hooks, helpers) gets Vitest tests (`*.test.ts(x)` next to the code).
 - No lint rule is disabled without a comment that explains why.
-- Windows: run `npm test` / Vitest from PowerShell (canonical upper-case drive letter, `C:\...`). From Git Bash (lower-case `c:`) Vitest fails with "Cannot read properties of undefined (reading 'config')".
+- Windows: run `npm test` / Vitest from PowerShell (canonical upper-case drive letter, `C:\...`). From Git Bash (lower-case `c:`) Vitest fails with "Cannot read properties of undefined (reading 'config')" / "failed to find the current suite". No config fix exists (tried in Task 09: canonical `root` via `realpathSync.native`, `process.chdir` to the canonical path - the cause is the lower-case `node_modules` path npm/npx put on the CLI, not the config). From Git Bash only, `npx vitest run --pool=vmThreads` works as a one-off workaround; do not commit it to the config.
 
 ## Reporting rules
 - Full report goes to `docs/reports/TASK_NN_name.md`, committed in the same PR. Sections:

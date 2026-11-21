@@ -38,6 +38,62 @@ Tests: `go test ./...`
 
 `.env` is git-ignored; only `.env.example` is committed.
 
+## API
+JSON, `camelCase` field names. Money is **integer cents** (formatting is the frontend's job). Errors are always
+`{"error":"..."}`; a database problem gives `503` with a generic message (never SQL or driver text).
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/health` | API + DB status (see above) |
+| `GET /api/products` | Store listing: `items`, `total`, `page`, `pageSize` and `facets` (filter options with counts) |
+| `GET /api/products/{slug}` | Product page: `product`, `game`, `offers` (buyable, cheapest first), `variants` (other versions of the game). Unknown slug → `404` |
+
+**`GET /api/products` query parameters** (all optional; an empty value = not given; unknown names are ignored):
+
+| Parameter | Meaning |
+|---|---|
+| `platform`, `region` | Comma-separated slugs, several allowed: `platform=steam,psn`. Unknown slugs match nothing |
+| `minPrice`, `maxPrice` | Integer cents ≥ 0, `minPrice ≤ maxPrice`. Uses the cheapest *in-stock* price, so out-of-stock products are excluded when a price filter is set |
+| `sort` | `popularity` (default) · `price_asc` · `price_desc` · `discount` · `newest` · `title`. Out-of-stock products come last on the price and discount sorts |
+| `page`, `pageSize` | `page` ≥ 1 (default 1); `pageSize` 1–48 (default 24) |
+
+An invalid value (`sort=cheapest`, `pageSize=100`, `minPrice=-1` …) is answered with `400` and a clear message, never
+silently ignored. A `price` of `null` means *out of stock*.
+
+**Facets** come in the same response and follow the current filters: each group (`platforms`, `regions`) is counted
+with all *other* active filters applied but not its own, so the other options of a group keep their counts. Entries with
+count 0 are left out unless they are currently selected. `priceRange` (`minCents`/`maxCents`, or `null`) covers the
+in-stock products that match the platform/region filters (the price filter itself is ignored).
+
+```bash
+curl "localhost:8080/api/products?platform=steam&region=global&sort=price_asc&pageSize=2"
+```
+```json
+{
+  "items": [{"slug": "portal-steam-global", "title": "Portal", "edition": "Standard",
+             "platform": {"slug": "steam", "name": "Steam"}, "region": {"slug": "global", "name": "GLOBAL"},
+             "coverUrl": "https://images.igdb.com/…", "priceCents": 549, "msrpCents": 1999, "discountPercent": 72,
+             "offerCount": 2, "inStock": true}, "…"],
+  "total": 43, "page": 1, "pageSize": 2,
+  "facets": {
+    "platforms": [{"slug": "steam", "name": "Steam", "count": 43}, {"slug": "xbox-live", "name": "Xbox Live", "count": 1},
+                  {"slug": "psn", "name": "PSN", "count": 8}, "…"],
+    "regions":   [{"slug": "global", "name": "GLOBAL", "count": 43}, {"slug": "europe", "name": "EUROPE", "count": 6}, "…"],
+    "priceRange": {"minCents": 549, "maxCents": 5099}
+  }
+}
+```
+*(shortened; real output from the seeded `dev` database.)* Note how the `platforms` counts describe the *region* filter
+(`global`) but not the platform filter: Steam is selected, yet PSN still shows its 8 products. The `regions` counts
+describe the platform filter (all Steam products: 43 + 6 + 1 + 4 = 54).
+
+**Caching.** Successful responses carry `Cache-Control` so the Vercel CDN can answer without calling the function:
+listing `public, s-maxage=60, stale-while-revalidate=300`, product page `public, s-maxage=15, stale-while-revalidate=60`;
+errors are `no-store`. Short staleness is safe because browsing never decides money: checkout re-checks stock and price
+in the database before it charges anything.
+
+Typed frontend functions: `src/api/catalog.ts` (`getProducts`, `getProduct`), types in `src/api/types.ts`.
+
 ## Database migrations
 Migrations are SQL files in `migrations/` (numbered, [goose](https://github.com/pressly/goose) format) embedded into the `cmd/migrate` binary.
 
@@ -83,8 +139,10 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 
 ## Layout
 - `api/index.go` – the only Vercel function; forwards to the router
-- `pkg/server/` – router and handlers (health check depends on a `DBPinger` interface)
+- `pkg/server/` – router and handlers (they depend on small interfaces: `DBPinger`, `CatalogReader`); query-string validation
 - `pkg/db/` – lazy, shared pgx connection pool
+- `pkg/catalog/` – catalog queries (listing + facets, product page), seller rating label; pure Go + pgx, no HTTP
+- `pkg/testdb/` – test helper: migrated + seeded Postgres from `TEST_DATABASE_URL` (tests skip when it is empty)
 - `cmd/local/` – local dev server using the same router (loads `.env`)
 - `cmd/migrate/` – goose migration runner (`up`/`down`/`status`/`version`/`create`)
 - `cmd/igdb-snapshot/` – one-time, local IGDB download → `seed/igdb_snapshot.json`
@@ -96,7 +154,7 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - `public/robots.txt` – the demo asks search engines not to index it (plus `noindex` in `index.html`)
 - `migrations/` – numbered SQL migrations, embedded with `go:embed`
 - `docs/DATA_MODEL.md` – the data model (ER diagram, tables, state machines, query sketches)
-- `src/api/` – `apiFetch` client and `useApi` hook (timeout, typed errors, "waking up" signal)
+- `src/api/` – `apiFetch` client, `useApi` hook (timeout, typed errors, "waking up" signal), catalog functions + JSON types
 - `src/` – React app
 - `docs/PAAISKINIMAI_LT.md` – explanations in Lithuanian
 - `ai-logs/` – exported Claude Code sessions
