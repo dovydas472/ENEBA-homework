@@ -1,4 +1,5 @@
 import type { ComponentProps, MouseEvent } from "react";
+import { Link } from "react-router";
 import { cx } from "../lib/cx.ts";
 import styles from "./Button.module.css";
 
@@ -42,5 +43,22 @@ export function Button({
       <span className={styles.label}>{children}</span>
       {loading && <span className={styles.spinner} aria-hidden="true" />}
     </button>
+  );
+}
+
+export interface ButtonLinkProps extends ComponentProps<typeof Link> {
+  variant?: "primary" | "secondary";
+}
+
+/**
+ * A router link that LOOKS like a Button (e.g. "Browse the store" on the home page).
+ * Going to another page is navigation, so the right element is a link (<a>), not a <button>:
+ * it can be opened in a new tab, and screen readers announce it as a link.
+ */
+export function ButtonLink({ variant = "primary", className, children, ...rest }: ButtonLinkProps) {
+  return (
+    <Link {...rest} className={cx(styles.button, styles[variant], className)}>
+      <span className={styles.label}>{children}</span>
+    </Link>
   );
 }

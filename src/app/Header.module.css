@@ -1,46 +1,57 @@
-/* Header: see docs/DESIGN.md 3.1. Desktop = one row (wordmark | search | actions); < 600px = search on its own row. */
+/*
+ * Header: see docs/DESIGN.md 3.1 (measured on eneba.com in Task 11b).
+ * Desktop: row of 97px (20px padding + 57px search) = wordmark | search (550px, right after the wordmark) | ... | cart, Sign in;
+ * then the 50px nav strip, full width. ≤ 930px: one 56px row with ☰ and icons; the nav strip moves into the menu.
+ */
 .header {
   background: var(--color-bg);
 }
 
 .inner {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "brand search actions";
+  display: flex;
   align-items: center;
-  gap: var(--space-4);
   max-width: var(--page-max-width);
   min-height: var(--header-top-height);
   margin: 0 auto;
   padding: var(--space-4) var(--page-gutter);
 }
 
+.icon {
+  flex-shrink: 0;
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
 .wordmark {
-  grid-area: brand;
+  margin-right: var(--space-4);
   color: var(--color-text);
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-none);
+  white-space: nowrap;
 }
 
 .wordmark:hover {
   color: var(--color-text);
 }
 
+/* The search field sits right after the wordmark (not centred), 550px at most. */
 .search {
-  grid-area: search;
-  justify-self: center;
-  width: 100%;
-  max-width: var(--search-max-width);
-}
-
-.actions {
-  grid-area: actions;
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  flex: 0 1 var(--search-max-width);
+  min-width: 0;
+  margin-right: var(--space-2);
 }
 
+/* Cart and account are pushed to the right edge. */
+.actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+/* Icon links: 44px wide (24px icon + 10px padding each side), as tall as the search field on desktop. */
 .iconLink {
   position: relative;
   display: flex;
@@ -48,49 +59,142 @@
   justify-content: center;
   gap: var(--space-1);
   min-width: var(--hit-target-min);
-  min-height: var(--hit-target-min);
+  min-height: var(--search-height);
+  padding: var(--space-2);
+  border: 0;
+  background: none;
   color: var(--color-text);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-none);
+  transition: color var(--transition-fast);
 }
 
 .iconLink:hover {
   color: var(--color-accent);
 }
 
-.icon {
-  width: var(--icon-size);
-  height: var(--icon-size);
-}
-
 /* Cart count: sits on the top-right corner of the cart icon. */
 .count {
   position: absolute;
-  top: 0;
+  top: var(--space-2);
   right: 0;
 }
 
-/* The "Sign in" text has some room next to the icon on desktop. */
-.signInText {
-  padding-right: var(--space-1);
+/* Phone-only controls are hidden on desktop (after .iconLink, which would otherwise show the search icon). */
+.menuButton,
+.searchToggle,
+.searchClose {
+  display: none;
 }
 
-@media (max-width: 600px) {
+/* ---- desktop nav strip: full width, darker than the page ---- */
+.nav {
+  background: var(--color-bg-deep);
+}
+
+/* The first link's TEXT lines up with the page content: the list starts 10px left of it, each link has 10px padding. */
+.navList {
+  display: flex;
+  max-width: var(--page-max-width);
+  height: var(--nav-height);
+  margin: 0 auto;
+  padding: 0 calc(var(--page-gutter) - var(--space-2));
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 var(--space-2);
+  color: var(--color-text-nav);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-none);
+  white-space: nowrap;
+}
+
+.navLink:hover {
+  color: var(--color-accent);
+}
+
+/* ---- phone and tablet: one 56px row ---- */
+@media (max-width: 930px) {
   .inner {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "brand actions"
-      "search search";
-    gap: var(--space-2);
+    position: relative; /* the opened search row covers this row */
     min-height: 0;
-    padding: var(--space-2) var(--page-gutter);
+    height: var(--header-height);
+    padding: 0;
+    border-bottom: 1px solid var(--color-border-dark);
+  }
+
+  .nav {
+    display: none;
+  }
+
+  /* ☰: the icon lines up with the page gutter (20px from the edge), as on Eneba. */
+  .menuButton {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: 100%;
+    padding: 0 var(--space-3) 0 var(--page-gutter);
+    border: 0;
+    background: none;
+    color: var(--color-text);
+    transition: color var(--transition-fast);
+  }
+
+  .menuButton:hover {
+    color: var(--color-accent);
   }
 
   .wordmark {
-    font-size: var(--font-size-2xl);
+    margin-right: var(--space-2);
+    font-size: var(--font-size-lg);
   }
 
-  /* Icons only on a phone; the link keeps its name through aria-label. */
+  .iconLink {
+    min-height: var(--hit-target-min);
+  }
+
+  .searchToggle {
+    display: flex;
+  }
+
+  /* The search field is hidden until the search icon opens it... */
+  .search {
+    display: none;
+  }
+
+  /* ...then it covers the whole row: field + a close button. */
+  .searchOpen .search {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-raised);
+    display: flex;
+    margin: 0;
+    padding-left: var(--page-gutter);
+    background: var(--color-bg);
+  }
+
+  .searchOpen .searchClose {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: var(--header-height);
+    height: 100%;
+    border: 0;
+    background: none;
+    color: var(--color-text);
+  }
+
+  .searchClose:hover {
+    color: var(--color-accent);
+  }
+
+  /* Icons only; the links keep their names through aria-label. */
   .signInText {
     display: none;
   }

@@ -18,6 +18,11 @@
   --color-surface-hover: rgba(255, 255, 255, 0.1); /* hover on menu items / list rows (derived) */
   --color-overlay: rgba(0, 0, 0, 0.55); /* dim layer / label over cover images */
   --color-footer-bg: rgba(0, 0, 0, 0.7);
+  /* Added in Task 11b (measured on eneba.com, see DESIGN.md 2.1): */
+  --color-surface-chip: #2c0e6c; /* active-filter chips and the "Sort and filter" pill */
+  --color-backdrop: rgba(0, 0, 0, 0.4); /* dims the page behind the filter drawer */
+  --color-border-dark: #1f0a4d; /* bottom line of the compact (phone) header */
+  --color-text-on-overlay: rgba(255, 255, 255, 0.85); /* platform name on the dark strip over a cover */
   --color-skeleton: rgba(255, 255, 255, 0.1); /* loading placeholder (derived, no Eneba source) */
   --color-skeleton-shine: rgba(255, 255, 255, 0.2);
 
@@ -80,6 +85,7 @@
   --line-height-base: 1.5; /* body text */
 
   /* ---------- Spacing (Eneba spaces things in 5px steps) ---------- */
+  --space-half: 0.1875rem; /* 3px  small gaps: "€59.99 -67%" on a card, footer link rows (added in Task 11b) */
   --space-1: 0.3125rem; /* 5px */
   --space-2: 0.625rem; /* 10px */
   --space-3: 0.9375rem; /* 15px */
@@ -131,7 +137,7 @@
   --nav-height: 3.125rem; /* 50px: desktop category nav strip */
   --sidebar-width: 13.75rem; /* 220px: filter sidebar */
   --card-min-width: 10.3125rem; /* 165px: narrowest product card seen (768px viewport) */
-  --grid-gap: 1.375rem; /* 22px: measured gap between cards */
+  --grid-gap: 1.25rem; /* 20px: gap between cards (Task 11b: re-measured at 1440px, was 22px) */
   --control-height: 2.5rem; /* 40px: text inputs, selects */
   --button-height: 2.1875rem; /* 35px desktop; raised to 40px on mobile below */
   --hit-target-min: 2.5rem; /* 40px: smallest allowed tap target on mobile */
@@ -144,12 +150,18 @@
   --toast-max-width: 25rem; /* 400px: toast / notice box */
   /* Added in Task 11 (Store page): */
   --opacity-dimmed: 0.8; /* out-of-stock card, and the results while a new filter result loads. 0.8 keeps the mint platform text at 5.0:1 (0.7 gave 4.0:1) */
-  --cover-aspect-ratio: 5 / 7; /* portrait game cover (DESIGN.md 4.3); a fixed ratio = no layout shift when the image loads */
+  --cover-aspect-ratio: 223 / 303; /* portrait game cover, measured on Eneba in Task 11b (was 5 / 7); a fixed ratio = no layout shift when the image loads */
   --checkbox-size: 1.25rem; /* 20px: filter checkbox (DESIGN.md 4.8) */
   --price-input-width: 4.8125rem; /* 77px: the two price boxes (DESIGN.md 4.2) */
   --slider-thumb-size: 1.25rem; /* 20px: the visible circle of a price slider thumb */
   --slider-thumb-hit: var(--icon-size); /* 24px: the clickable area of a thumb (40px on touch screens, see below) */
   --slider-track-height: 0.25rem; /* 4px: price slider track */
+  /* Added in Task 11b (visual parity, measured on eneba.com): */
+  --chip-height: 1.875rem; /* 30px: active-filter chip */
+  --drawer-width: 18.75rem; /* 300px: "Sort and filter" drawer */
+  --platform-strip-height: 1.375rem; /* 22px: dark platform strip at the bottom of a cover (18px on phones) */
+  --list-cover-width: 4.375rem; /* 70px: cover thumbnail of the phone list card */
+  --radio-dot-size: 0.625rem; /* 10px: the dot of a checked radio button */
 }
 
 /*
@@ -171,5 +183,6 @@
 @media (max-width: 600px) {
   :root {
     --button-height: 2.5rem; /* 40px */
+    --platform-strip-height: 1.125rem; /* 18px on the small list-card cover */
   }
 }

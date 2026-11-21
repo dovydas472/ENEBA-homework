@@ -4,8 +4,8 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { afterEach, describe, expect, it } from "vitest";
-import { render } from "../test-utils.tsx";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { polyfillDialog, render } from "../test-utils.tsx";
 import { createQueryClient } from "./queryClient.ts";
 import { routes } from "./routes.ts";
 
@@ -52,12 +52,32 @@ describe("app shell", () => {
     expect($(`${banner} button`)).toBeNull();
   });
 
-  it("shows the wordmark linking home, the cart with a count, and a Sign in link", () => {
+  it("shows the wordmark linking home, the cart (no badge while empty, like Eneba), and a Sign in link", () => {
     renderApp("/store");
     expect($("header a[href='/']")?.textContent).toBe("EneHomeworkBa");
     expect($("header a[href='/cart']")?.getAttribute("aria-label")).toBe("Cart, 0 items");
-    expect($("header a[href='/cart']")?.textContent).toContain("0");
+    expect($("header a[href='/cart']")?.textContent).toBe("");
     expect($("header a[href='/login']")?.getAttribute("aria-label")).toBe("Sign in");
+  });
+
+  it("has a main nav strip with the Store and the platform shortcuts", () => {
+    renderApp("/");
+    const links = [...document.querySelectorAll("header nav[aria-label=Main] a")];
+    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+      ["Store", "/store"],
+      ["Steam", "/store?platform=steam"],
+      ["PSN", "/store?platform=psn"],
+      ["Xbox Live", "/store?platform=xbox-live"],
+      ["Nintendo eShop", "/store?platform=nintendo-eshop"],
+    ]);
+  });
+
+  it("the home page has a 'Browse the store' link to /store", () => {
+    const { router } = renderApp("/");
+    const link = [...document.querySelectorAll("main a")].find((a) => a.textContent === "Browse the store") as HTMLElement;
+    expect(link.getAttribute("href")).toBe("/store");
+    act(() => link.click());
+    expect(urlOf(router)).toBe("/store");
   });
 
   it("shows the footer with the IGDB credit and the GitHub link", () => {
@@ -160,5 +180,83 @@ describe("keyboard shortcut", () => {
     renderApp("/");
     press(document.body, "a");
     expect(document.activeElement).not.toBe(searchInput());
+  });
+});
+
+// The phone header (≤ 930 px). jsdom has no CSS media queries, so these tests check the behaviour, not the visibility.
+describe("phone header: ☰ menu", () => {
+  beforeEach(polyfillDialog);
+  const menu = () => $("dialog[aria-label=Menu]") as HTMLDialogElement;
+  const openMenu = () => act(() => ($("button[aria-label='Open menu']") as HTMLElement).click());
+
+  it("opens the menu with the same links as the nav strip, and the close button closes it", () => {
+    renderApp("/");
+    expect(menu().hasAttribute("open")).toBe(false);
+    expect(menu().querySelectorAll("a[href^='/store']")).toHaveLength(0); // no second "Main" nav while closed
+
+    openMenu();
+    expect(menu().hasAttribute("open")).toBe(true);
+    expect([...menu().querySelectorAll("nav a")].map((a) => a.textContent)).toEqual([
+      "Store",
+      "Steam",
+      "PSN",
+      "Xbox Live",
+      "Nintendo eShop",
+    ]);
+
+    act(() => ($("button[aria-label='Close menu']") as HTMLElement).click());
+    expect(menu().hasAttribute("open")).toBe(false);
+  });
+
+  it("a link navigates and closes the menu", () => {
+    const { router } = renderApp("/");
+    openMenu();
+    const psn = [...menu().querySelectorAll("nav a")].find((a) => a.textContent === "PSN") as HTMLElement;
+    act(() => psn.click());
+    expect(urlOf(router)).toBe("/store?platform=psn");
+    expect(menu().hasAttribute("open")).toBe(false);
+  });
+
+  it("follows the browser closing it (Esc): it can be opened again", () => {
+    renderApp("/");
+    openMenu();
+    act(() => menu().close());
+    openMenu();
+    expect(menu().hasAttribute("open")).toBe(true);
+  });
+});
+
+describe("phone header: search icon", () => {
+  const toggle = () => $("button[aria-label='Search']") as HTMLButtonElement;
+  const searchBox = () => toggle().closest("header")!.querySelector("[class*=searchOpen]");
+
+  it("opens the search row with the cursor in the field; Esc closes it and focus goes back to the icon", () => {
+    renderApp("/");
+    expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    act(() => toggle().click());
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    expect(searchBox()).not.toBeNull();
+    expect(document.activeElement).toBe(searchInput());
+
+    act(() => {
+      searchInput().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(toggle());
+  });
+
+  it("the close button closes it", () => {
+    renderApp("/");
+    act(() => toggle().click());
+    act(() => ($("button[aria-label='Close search']") as HTMLElement).click());
+    expect(searchBox()).toBeNull();
+  });
+
+  it("a search closes the row and goes to the Store", () => {
+    const { router } = renderApp("/");
+    act(() => toggle().click());
+    search("zelda");
+    expect(urlOf(router)).toBe("/store?q=zelda");
+    expect(searchBox()).toBeNull();
   });
 });
