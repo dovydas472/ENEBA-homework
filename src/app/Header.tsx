@@ -43,7 +43,7 @@ export function Header() {
             defaultValue={params.q}
             inputRef={searchInput}
             label="Search games"
-            placeholder="Search games (press / to focus)"
+            placeholder="Search games"
             onSearch={handleSearch}
           />
         </div>

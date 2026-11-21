@@ -154,7 +154,10 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - `public/robots.txt` – the demo asks search engines not to index it (plus `noindex` in `index.html`)
 - `migrations/` – numbered SQL migrations, embedded with `go:embed`
 - `docs/DATA_MODEL.md` – the data model (ER diagram, tables, state machines, query sketches)
-- `src/api/` – `apiFetch` client, `useApi` hook (timeout, typed errors, "waking up" signal), catalog functions + JSON types
-- `src/` – React app
+- `src/api/` – `apiFetch` client (timeout, typed errors), catalog functions + JSON types
+- `src/app/` – app frame: routes, layout, header, demo banner, footer, TanStack Query client, "waking up" notice
+- `src/components/` – base UI components (Button, Badge, Price, Skeleton, EmptyState, ErrorState, SearchField)
+- `src/pages/` – one file per route (placeholders until the page tasks)
+- `src/lib/` – helpers and hooks (`formatPrice`, Store filters in the URL, ...)
 - `docs/PAAISKINIMAI_LT.md` – explanations in Lithuanian
 - `ai-logs/` – exported Claude Code sessions

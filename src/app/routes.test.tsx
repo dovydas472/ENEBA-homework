@@ -23,6 +23,7 @@ function renderApp(url: string) {
   return { router, container: view.container };
 }
 
+const banner = "aside[aria-label='Demo notice']";
 const $ = (selector: string) => document.querySelector(selector);
 const searchInput = () => $("input[type=search]") as HTMLInputElement;
 
@@ -40,15 +41,15 @@ describe("app shell", () => {
   it("shows the demo banner with the exact text, on every page", () => {
     const text = "Internship demo – not affiliated with Eneba. Sign-in and checkout are simulated.";
     renderApp("/");
-    expect($("[role=note]")?.textContent).toBe(text);
+    expect($(banner)?.textContent).toBe(text);
     cleanup?.();
     renderApp("/store");
-    expect($("[role=note]")?.textContent).toBe(text);
+    expect($(banner)?.textContent).toBe(text);
   });
 
   it("banner cannot be dismissed (no button inside it)", () => {
     renderApp("/");
-    expect($("[role=note] button")).toBeNull();
+    expect($(`${banner} button`)).toBeNull();
   });
 
   it("shows the wordmark linking home, the cart with a count, and a Sign in link", () => {
@@ -95,7 +96,7 @@ describe("routes and document titles", () => {
     renderApp("/definitely/unknown");
     expect($("main h1")?.textContent).toBe("Page not found");
     expect($("header")).not.toBeNull();
-    expect($("[role=note]")).not.toBeNull();
+    expect($(banner)).not.toBeNull();
     expect($("footer")).not.toBeNull();
   });
 });

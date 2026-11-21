@@ -8,9 +8,12 @@ import styles from "./DemoBanner.module.css";
  */
 export function DemoBanner() {
   return (
-    <div className={styles.banner} role="note">
+    <aside className={styles.banner} aria-label="Demo notice">
       <Info className={styles.icon} />
-      <p>Internship demo – not affiliated with Eneba. Sign-in and checkout are simulated.</p>
-    </div>
+      <p className={styles.text}>
+        Internship demo – not affiliated with Eneba. <span className={styles.nowrap}>Sign-in</span> and checkout are
+        simulated.
+      </p>
+    </aside>
   );
 }

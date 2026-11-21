@@ -13,6 +13,15 @@
   text-align: center;
 }
 
+/* Balanced lines on phones, and "Sign-in" is never split at its hyphen. */
+.text {
+  text-wrap: balance;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
 .icon {
   flex: none;
   width: var(--icon-size-sm);
