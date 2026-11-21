@@ -8,25 +8,30 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/dovydas472/ENEBA-homework/pkg/db"
 )
 
-// PoolSource hands the Store its connection pool. *db.Lazy (pkg/db) implements
-// it: the pool is created on first use, so a missing DATABASE_URL does not
-// crash the function at start-up.
-type PoolSource interface {
-	Pool() (*pgxpool.Pool, error)
+// ConnSource hands the Store a database connection (the caller releases it).
+// *db.Lazy (pkg/db) implements it: the pool is created on first use, so a
+// missing DATABASE_URL does not crash the function at start-up, and acquiring
+// the connection retries once on a connection error (cold start).
+type ConnSource interface {
+	Acquire(ctx context.Context) (*pgxpool.Conn, error)
 }
 
-// fixedPool adapts an already built pool (used by tests) to PoolSource.
+// fixedPool adapts an already built pool (used by tests) to ConnSource.
 type fixedPool struct{ p *pgxpool.Pool }
 
-func (f fixedPool) Pool() (*pgxpool.Pool, error) { return f.p, nil }
+func (f fixedPool) Acquire(ctx context.Context) (*pgxpool.Conn, error) {
+	return db.Acquire(ctx, f.p)
+}
 
-// Store runs the catalog queries. It has no state besides the pool source.
-type Store struct{ src PoolSource }
+// Store runs the catalog queries. It has no state besides the connection source.
+type Store struct{ src ConnSource }
 
-// NewStore builds a Store on a (lazy) pool source.
-func NewStore(src PoolSource) *Store { return &Store{src: src} }
+// NewStore builds a Store on a (lazy) connection source.
+func NewStore(src ConnSource) *Store { return &Store{src: src} }
 
 // NewStoreFromPool builds a Store on a ready pool.
 func NewStoreFromPool(p *pgxpool.Pool) *Store { return &Store{src: fixedPool{p}} }
@@ -170,10 +175,13 @@ func (s *Store) ListProducts(ctx context.Context, f Filter) (Page, error) {
 	if f.PageSize < 1 || f.PageSize > MaxPageSize {
 		f.PageSize = DefaultPageSize
 	}
-	pool, err := s.src.Pool()
+	// Acquire (with its one cold-start retry) happens BEFORE any SQL is sent;
+	// from here on nothing is retried.
+	conn, err := s.src.Acquire(ctx)
 	if err != nil {
 		return Page{}, err
 	}
+	defer conn.Release()
 
 	// A nil slice would be sent as SQL NULL, and cardinality(NULL) is NULL: use empty slices.
 	platforms, regions := f.Platforms, f.Regions
@@ -196,7 +204,7 @@ func (s *Store) ListProducts(ctx context.Context, f Filter) (Page, error) {
 	batch.Queue(platformFacetSQL, filterArgs())
 	batch.Queue(regionFacetSQL, filterArgs())
 	batch.Queue(priceRangeSQL, filterArgs())
-	br := pool.SendBatch(ctx, batch)
+	br := conn.SendBatch(ctx, batch)
 	defer br.Close()
 
 	page := Page{Items: []Item{}, Page: f.Page, PageSize: f.PageSize}
@@ -244,7 +252,7 @@ func (s *Store) ListProducts(ctx context.Context, f Filter) (Page, error) {
 
 	// A page after the last one has no rows, so the total must be asked separately.
 	if len(page.Items) == 0 && f.Page > 1 {
-		if err := pool.QueryRow(ctx, totalSQL, filterArgs()).Scan(&page.Total); err != nil {
+		if err := conn.QueryRow(ctx, totalSQL, filterArgs()).Scan(&page.Total); err != nil {
 			return Page{}, fmt.Errorf("catalog: count: %w", err)
 		}
 	}
@@ -312,17 +320,18 @@ ORDER BY pl.sort_order, r.sort_order, v.edition, v.id`
 // GetProduct returns the data of one product page, or ErrNotFound.
 // The three queries (product, offers, variants) go out in one batch.
 func (s *Store) GetProduct(ctx context.Context, slug string) (ProductDetail, error) {
-	pool, err := s.src.Pool()
+	conn, err := s.src.Acquire(ctx)
 	if err != nil {
 		return ProductDetail{}, err
 	}
+	defer conn.Release()
 
 	args := pgx.NamedArgs{"slug": slug}
 	batch := &pgx.Batch{}
 	batch.Queue(productSQL, args)
 	batch.Queue(offersSQL, args)
 	batch.Queue(variantsSQL, args)
-	br := pool.SendBatch(ctx, batch)
+	br := conn.SendBatch(ctx, batch)
 	defer br.Close()
 
 	var d ProductDetail
