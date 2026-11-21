@@ -14,9 +14,39 @@ export function render(ui: ReactNode) {
   act(() => root.render(ui));
   return {
     container,
+    /** Renders something else into the same root (same component = its state is kept, props change). */
+    rerender(next: ReactNode) {
+      act(() => root.render(next));
+    },
     unmount() {
       act(() => root.unmount());
       container.remove();
     },
   };
+}
+
+/**
+ * Types `value` into an <input> or picks it in a <select>, the way a user would, so React's onChange runs.
+ * React remembers the last value it set and ignores a plain `input.value = ...`, so the value is written
+ * with the browser's own setter and then the matching event is dispatched.
+ */
+export function setControlValue(element: HTMLInputElement | HTMLSelectElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), "value")!.set!;
+  act(() => {
+    setter.call(element, value);
+    element.dispatchEvent(new Event(element instanceof HTMLSelectElement ? "change" : "input", { bubbles: true }));
+  });
+}
+
+/** Dispatches an event that bubbles (pointerup, keyup...) inside act(). */
+export function fire(element: Element, event: Event) {
+  act(() => {
+    element.dispatchEvent(event);
+  });
+}
+
+/** Presses and releases a key on an element. */
+export function pressKey(element: Element, key: string) {
+  fire(element, new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+  fire(element, new KeyboardEvent("keyup", { key, bubbles: true, cancelable: true }));
 }

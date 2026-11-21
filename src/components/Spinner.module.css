@@ -1,0 +1,17 @@
+/* Same ring as the button's loading spinner (DESIGN.md 4: 2px border, transparent top, 0.8s). prefers-reduced-motion is handled in global.css. */
+.spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--spinner-size);
+  height: var(--spinner-size);
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: var(--radius-round);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

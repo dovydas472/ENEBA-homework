@@ -7,6 +7,11 @@
   line-height: var(--line-height-none);
 }
 
+.label {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+}
+
 .was {
   display: flex;
   align-items: baseline;

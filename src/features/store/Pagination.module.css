@@ -1,0 +1,51 @@
+/* Pagination (owner decision S5). Prev / Next are the secondary Button; the numbers are square buttons of the same height. */
+.nav {
+  margin-top: var(--space-5);
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.icon {
+  flex-shrink: 0;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.page {
+  min-width: var(--button-height);
+  height: var(--button-height);
+  padding: 0 var(--space-1);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.page:hover {
+  border-color: var(--color-accent);
+  background: var(--color-control-hover);
+}
+
+/* The current page: same look as the primary button. */
+.current,
+.current:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+
+.gap {
+  min-width: var(--button-height);
+  text-align: center;
+  color: var(--color-text-muted);
+}

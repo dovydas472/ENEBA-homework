@@ -1,0 +1,104 @@
+/* Product card: see docs/DESIGN.md 4.3. Square corners, dark card colour, no border. */
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* all cards of a grid row are equally tall */
+  background: var(--color-surface-card);
+  color: var(--color-text); /* a link is accent-coloured by default; the card is white text */
+  transition: box-shadow var(--transition-fast);
+}
+
+/* Links keep their colour on hover (global.css turns links amber); the card changes its shadow and title instead. */
+.card:hover {
+  color: var(--color-text);
+}
+
+/* Hover only where there is a real pointer (touch screens would "stick" the hover state). */
+@media (hover: hover) {
+  .card:hover {
+    box-shadow: var(--shadow-popup);
+  }
+
+  .card:hover .title {
+    color: var(--color-accent);
+  }
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+
+/* Title: 12px bold, at most two lines (DESIGN.md 4.3). */
+.title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+  transition: color var(--transition-fast);
+}
+
+.edition {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  line-height: var(--line-height-snug);
+}
+
+/* The price sits at the bottom of the card, so prices line up across a row even when titles differ in length. */
+.priceArea {
+  margin-top: auto;
+  padding-top: var(--space-1);
+}
+
+.outOfStock {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-none);
+}
+
+/* Out of stock: the whole card is slightly dimmed, but it stays a link (the product page lists alternatives). */
+.unavailable {
+  opacity: var(--opacity-dimmed);
+}
+
+/* ---- skeleton ---- */
+.skeletonCover {
+  aspect-ratio: var(--cover-aspect-ratio);
+  height: auto;
+}
+
+.skeletonTitle {
+  width: 90%;
+  height: var(--font-size-xs);
+}
+
+.skeletonMeta {
+  width: 60%;
+  height: var(--font-size-xs);
+}
+
+.skeletonPrice {
+  width: 40%;
+  height: var(--font-size-xl);
+  margin-top: var(--space-2);
+}
+
+/* Small screens: tighter card padding so two columns fit. */
+@media (max-width: 600px) {
+  .body {
+    padding: var(--space-2);
+  }
+}

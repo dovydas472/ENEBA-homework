@@ -1,0 +1,50 @@
+/* Sort select: see docs/DESIGN.md 4.6 (native select, styled like the text input of 4.2). */
+.sort {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.wrapper {
+  position: relative;
+}
+
+.select {
+  appearance: none;
+  height: var(--control-height);
+  padding: 0 calc(var(--space-2) + var(--icon-size-sm) + var(--space-2)) 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-none);
+  background: var(--color-surface-inset);
+  box-shadow: var(--shadow-inset);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.select:hover {
+  background: var(--color-surface-inset-hover);
+}
+
+.select:focus {
+  background: var(--color-surface-inset-focus);
+}
+
+.chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  transform: translateY(-50%);
+  pointer-events: none; /* clicks go to the select underneath */
+}

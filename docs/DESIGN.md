@@ -159,6 +159,10 @@ Layout tokens: `--page-max-width` 1240px (1200 + 2×20 gutter), `--page-max-widt
 Added in Task 10 (values from 3.1, 4.1, 4.5 and 4.11): `--search-height` 57px (header search, desktop), `--search-max-width` 550px,
 `--icon-size` 24px (header icons), `--icon-size-sm` 20px (icon inside the search field), `--spinner-size` 16px (button spinner),
 `--badge-count-size` 16px (cart count badge minimum size), `--toast-max-width` 400px (toast / "waking up" notice).
+Added in Task 11 (Store page): `--opacity-dimmed` 0.8 (out-of-stock card and the results while a new result loads; 0.7 failed the contrast check of the mint platform text, 0.8 gives 5.0:1),
+`--cover-aspect-ratio` 5 / 7 (cover box, 4.3), `--checkbox-size` 20px (4.8), `--price-input-width` 77px (4.2 / 4.8),
+`--font-family-tabular` (Arial stack: Metropolis has no tabular figures, and digits of unequal width make a number that changes every frame jitter; used by the two price boxes),
+`--slider-thumb-size` 20px (the painted thumb), `--slider-thumb-hit` 24px (the clickable thumb; 40px = `--hit-target-min` at ≤930px) and `--slider-track-height` 4px (4.8, price slider).
 
 ---
 
@@ -219,6 +223,12 @@ Desktop ≥931                                       Mobile ≤600
   The exact 801–930 tier is approximate (header and sidebar breakpoints differ in Eneba's CSS) — compare with a screenshot when the page is built.
 - **Mobile filters:** a "Sort and filter (N)" button opens a 300px drawer from the left (`--color-surface`, `--z-drawer`, `--shadow-modal`);
   N = number of active filters.
+
+  **As built in Task 11 (owner decisions S1–S9, they replace the measured Eneba details above where they differ):** the page title is "Store"; the results bar shows "N results"
+  (announced with `aria-live`), the sort select, a "Filters (n)" button (≤930px only) and, on its own row, the active-filter chips with "Clear all".
+  The sidebar (Platform, Region, Price range) shows at ≥931px; below that the same groups open in a **full-screen** native `<dialog>` drawer with a "Show N results" button.
+  Grid: **4 columns above 1200px, 3 from 601 to 1200px, 2 on phones** (cards stay vertical on phones; the horizontal list card of 4.3 is not used), gap `--grid-gap`, `--space-2` on phones.
+  Pagination (Prev, 1 2 3 … 5, Next; 24 per page) sits under the grid.
 
 ### 3.3 Product page
 
@@ -311,6 +321,11 @@ Square-cornered block, bg `--color-surface-card`, no border, no shadow (S1). Who
 
 Optional corner promo tag: bg `--color-accent`, text `#2c0e6c`, `--font-size-2xs` bold, radius `--radius-sm`, at `top:-5px; left:-5px` (C).
 
+**As built in Task 11:** cover (`--cover-aspect-ratio`, with a generated gradient placeholder showing the title when there is no cover or it fails to load), title (2 lines), the edition only when it is not "Standard",
+platform and region as mint uppercase text (4.5, "Region / platform text"), then "From" + struck-through MSRP + discount (4.4) and the price, pinned to the bottom of the card.
+Out of stock: no price, "Out of stock" in `--color-text-muted`, the card at `--opacity-dimmed` (still a link). No cashback badge, cart button or wishlist yet; the card has no action buttons (the whole card is the link).
+Hover (only where `(hover: hover)`): `--shadow-popup` and an accent title.
+
 **Mobile (≤600px)** — horizontal list item (S3): 348×132 on a 390px screen, padding 8px, 2-column grid: cover thumbnail **70×98** + info.
 Title 12/15.6 bold, regions as above; price block; a **cart icon button** (≥40×40) bottom-right; a wishlist heart top-right;
 cashback badge shrinks to a 26×26 mint square on the cover's right edge. The info column leaves 50px at the right for the cart button.
@@ -342,7 +357,8 @@ Format: currency symbol first for EUR (`€19.92`), amounts from integer cents v
 
 ### 4.6 Select (sort)
 
-- **Desktop sort:** a ghost button in the results bar: sort icon + "Popularity: Most popular" (`--font-size-base` bold, white) + chevron; opens a menu.
+- **As built in Task 11:** a native `<select>` styled like the text input (4.2) with a "Sort by" label and a chevron, on desktop and phones alike (not the custom menu and not radio items in the drawer).
+- **Desktop sort (not built):** a ghost button in the results bar: sort icon + "Popularity: Most popular" (`--font-size-base` bold, white) + chevron; opens a menu.
 - **Menu (D):** bg `--color-bg-deep`, `--shadow-dropdown`, `--z-dropdown`, items 40px tall, `--font-size-sm` medium; hover bg `--color-surface-hover`; selected item has a left check and `--color-accent` text.
 - **Form select** (e.g. "Country" in filters): same as the text input (4.2) with a chevron on the right; the native `<select>` is acceptable and preferred (keyboard and screen-reader support for free).
 - Mobile: the sort list lives inside the "Sort and filter" drawer as radio items.
@@ -371,6 +387,12 @@ Format: currency symbol first for EUR (`€19.92`), amounts from integer cents v
 - **Checkbox:** 20×20, `2px solid --color-border-control`, `--radius-sm`; **checked** → border and fill `--color-accent`, tick `--color-bg-deep`; hover: border → `--color-accent` (**D**); focus-visible: global ring; disabled: `opacity: .3`. The real `<input>` stays in the DOM (visually hidden), so keyboard and screen readers work. The hit area is the whole label row (≥40px tall on mobile).
 - **"N more"** toggle: ghost button, `--font-size-sm`, bold, `--color-accent`, with chevron.
 - **Price range:** header "Price range (EUR)", two number inputs (4.2, 77px wide) with "–" between, applies on blur/Enter (no apply button).
+  **As built in Task 11 (owner amendment):** above the two boxes sits a **dual-thumb slider** (two native `<input type="range">` over one track, step €0.50, range = `facets.priceRange` rounded out to the step).
+  The boxes and the thumbs always show the same numbers; dragging updates the boxes live and the URL only on release. The thumbs cannot cross. A thumb released at the end of the slider means "no limit" (the box is emptied then, not while dragging).
+  A box always shows two decimals ("12.00"), right-aligned in the tabular stack, so only the digits change during a drag (measured: before, the text width jumped by up to 30 px between frames).
+  The boxes are text inputs with `inputmode="decimal"` (so "12,50" works and invalid text can be reported); an error message ("min > max", "not an amount") sits on `--color-surface-card` under the boxes (5.1: error text is not allowed directly on a panel), and no request is made.
+  The painted thumb is `--slider-thumb-size`; its clickable area is `--slider-thumb-hit` (40px on touch-sized screens). With no price range (nothing in stock) the slider is disabled.
+  Checkbox groups can be folded with their header button (`aria-expanded`); the "N more" toggle is not needed yet (8 platforms at most).
 - **Search inside a group** ("Product type"): input with magnifier button on the right.
 - **Loading:** checkbox rows replaced by 3–5 skeleton lines. **Empty:** hide the group.
 

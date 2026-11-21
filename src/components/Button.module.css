@@ -18,6 +18,13 @@
     color var(--transition-fast);
 }
 
+/* The label wraps the children, so an icon next to the text sits on one line. */
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .primary {
   background: var(--color-accent);
   color: var(--color-text-on-accent);

@@ -1,0 +1,69 @@
+/* Mobile filter drawer (owner decision S3): a full-screen native <dialog>. */
+.drawer {
+  /* Reset the browser's default dialog box (centred, bordered, size-limited). */
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Only while open: a plain `display: flex` here would also show the closed dialog (the browser hides it with display: none). */
+.drawer[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The page behind must not scroll while the drawer is open. */
+:global(body):has(.drawer[open]) {
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-deep);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hit-target-min);
+  height: var(--hit-target-min);
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  transition: color var(--transition-fast);
+}
+
+.close:hover {
+  color: var(--color-accent);
+}
+
+/* The groups scroll; the header and the footer button stay in place. */
+.content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.footer {
+  padding: var(--space-3);
+  background: var(--color-bg-deep);
+}
+
+.footer > * {
+  width: 100%;
+}

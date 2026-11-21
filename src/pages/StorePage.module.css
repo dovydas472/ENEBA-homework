@@ -1,0 +1,97 @@
+/* Store page layout: see docs/DESIGN.md 3.2. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.title {
+  margin: var(--space-2) 0 var(--space-2);
+  font-size: var(--font-size-4xl);
+}
+
+/* Info line for the header search (S10). It sits on the dark card colour so the muted text has enough contrast. */
+.notice {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-card);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* sidebar | results */
+.layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* count | spinner | (Filters button) | sort ; the chips take a full row below. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  scroll-margin-top: var(--space-2); /* keeps a little air above the bar after scrollIntoView */
+}
+
+.count {
+  margin-right: auto; /* pushes the buttons and the sort to the right */
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.updating {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-muted);
+}
+
+.chips {
+  flex-basis: 100%;
+  order: 1; /* after the count, the button and the sort */
+}
+
+/* Only on tablet and phone, where the sidebar is hidden. */
+.filtersButton {
+  display: none;
+}
+
+.filtersIcon {
+  flex-shrink: 0; /* an icon next to text must not be squeezed when the row is tight */
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+@media (max-width: 930px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filtersButton {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 600px) {
+  .title {
+    font-size: var(--font-size-2xl);
+  }
+
+  /* On a phone the count takes the first row alone, then the button and the sort share the next. */
+  .count {
+    flex-basis: 100%;
+  }
+
+  .filtersButton {
+    flex: 1;
+  }
+}

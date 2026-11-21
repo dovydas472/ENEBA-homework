@@ -157,7 +157,8 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - `src/api/` – `apiFetch` client (timeout, typed errors), catalog functions + JSON types
 - `src/app/` – app frame: routes, layout, header, demo banner, footer, TanStack Query client, "waking up" notice
 - `src/components/` – base UI components (Button, Badge, Price, Skeleton, EmptyState, ErrorState, SearchField)
-- `src/pages/` – one file per route (placeholders until the page tasks)
+- `src/pages/` – one file per route (Store is real; the others are placeholders until their tasks)
+- `src/features/store/` – the parts of the Store page (product card and grid, filters, price slider, pagination, mobile drawer)
 - `src/lib/` – helpers and hooks (`formatPrice`, Store filters in the URL, ...)
 - `docs/PAAISKINIMAI_LT.md` – explanations in Lithuanian
 - `ai-logs/` – exported Claude Code sessions
