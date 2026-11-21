@@ -81,7 +81,7 @@ Facets that follow the filters (the amendment's cases), all on `dev`:
 - All six sorts run; for `price_asc`, `price_desc` and `discount` the out-of-stock products are at the very end.
 
 ## 3. What the owner must do manually
-1. Review the PR. CI must be green before merge; I put the CI and Preview results in the section below.
+1. Open the six Preview URL requests listed in the last section (the Preview is behind Vercel login, so I could not call it) and review the PR. CI is green.
 2. Merge. No migration, no seed change and no environment variable are needed: the Vercel function already has `DATABASE_URL`. `production` has the same seeded catalog (Task 08).
 3. After the production deploy, `curl "https://<production-url>/api/products?pageSize=2"` should return `total: 108`. Repeat the call and look at `Age`/`X-Vercel-Cache` to see the CDN cache (`s-maxage=60`).
 4. Optional: install PostgreSQL locally and set `TEST_DATABASE_URL` (a **local**, throw-away database, never Neon) to run the integration tests on your machine.
@@ -132,4 +132,21 @@ Verdict: **PASS** (24 requirement rows: 23 done, 1 "not yet verifiable" = this r
 | Report, curl output, CI and Preview checks missing at review time | This report; CI and Preview results below. |
 
 ## CI and Preview results
-*(added after the PR was opened, see the next commit)*
+PR: https://github.com/dovydas472/ENEBA-homework/pull/7 – first run (commit `7a212ca` + report), `gh pr checks --watch`:
+
+| Check | Result |
+|---|---|
+| `go` (gofmt, vet, build, `go test -race`) | pass (40 s) |
+| `migrations` (Up, Down one by one, Up again, then `go test ./...` **with the database**) | pass (39 s) |
+| `frontend` (lint, Vitest, build) | pass (19 s) |
+| Vercel (Preview deployment) | pass: "Deployment has completed" |
+
+**Did the integration tests really run in CI, or were they skipped?** The job log does not use `-v`, but the timings in the same `migrations` job show it: `pkg/server` (pure unit tests) finished in `0.005s`, `pkg/catalog` in `0.421s`. A skipped package would also take about 5 ms; the extra time is the migrations, the seed (COPY) and the 17 tests running against the Postgres 18 container. This was the first run of `pkg/testdb` (goose Up + seed on a real database), so that path is now proven too. If you want a hard guarantee that nobody can break the skip logic silently, a later task could add `go test -v -run TestFacets_withoutFilters ./pkg/catalog` and fail on `SKIP`; I did not widen the CI scope here.
+
+**Preview URL requests (the task's step 7): not done by me.** `https://enehomeworkba-git-task-09-catalog-api-kodmolab.vercel.app` is protected by *Vercel Authentication* (every request, including `/api/health`, is answered with a `302` to the Vercel login page), and I have no access to your Vercel login. I did not try to get around the protection. Please open these in a browser where you are logged in to Vercel (expected values are the same as the `dev` output in section 2, because the Preview uses the `dev` database):
+1. `/api/health` → `{"status":"ok","db":"ok",…}`
+2. `/api/products?pageSize=2` → `total: 108`, first item `grand-theft-auto-v-steam-global`, `facets` present, header `Cache-Control: public, s-maxage=60, stale-while-revalidate=300` (DevTools → Network)
+3. `/api/products?platform=psn&sort=price_asc&pageSize=2` → `total: 17`, `max-payne-psn-global` first
+4. `/api/products?sort=cheapest` → `400` + the "sort must be one of …" message
+5. `/api/products/the-witcher-3-wild-hunt-steam-global` → 4 offers, 1099 first, `fresh-start-keys` with `rating: null` and `isNew: true`
+6. `/api/products/no-such-product` → `404`
