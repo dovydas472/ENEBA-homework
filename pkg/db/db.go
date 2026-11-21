@@ -46,15 +46,27 @@ func (l *Lazy) Pool() (*pgxpool.Pool, error) {
 	return l.pool, l.err
 }
 
+// Acquire returns a connection from the shared pool, retrying once if opening
+// it fails (see Acquire in retry.go). The caller must Release it.
+// *Lazy satisfies catalog.ConnSource with this method.
+func (l *Lazy) Acquire(ctx context.Context) (*pgxpool.Conn, error) {
+	pool, err := l.Pool()
+	if err != nil {
+		return nil, err
+	}
+	return Acquire(ctx, pool)
+}
+
 // Ping checks that the database answers. It satisfies server.DBPinger.
 // The first call after a Neon compute suspend can be slow, so the caller
-// should pass a context with a generous timeout.
+// should pass a context with RequestTimeout (it covers the retry).
 func (l *Lazy) Ping(ctx context.Context) error {
-	pool, err := l.Pool()
+	conn, err := l.Acquire(ctx)
 	if err != nil {
 		return err
 	}
-	return pool.Ping(ctx)
+	defer conn.Release()
+	return conn.Ping(ctx)
 }
 
 // newPool reads DATABASE_URL and builds a pool with serverless-friendly settings.
@@ -83,7 +95,9 @@ func newPool() (*pgxpool.Pool, error) {
 
 	// ConnectTimeout: upper bound for opening ONE new connection (TCP + TLS +
 	// auth). A Neon cold start can take a few seconds, but we never wait forever.
-	cfg.ConnConfig.ConnectTimeout = 5 * time.Second
+	// 4 s, not more, so that two attempts + the retry pause fit into RequestTimeout
+	// (the arithmetic is in retry.go).
+	cfg.ConnConfig.ConnectTimeout = ConnectTimeout
 
 	// Query execution mode is left at pgx's default (protocol-level prepared
 	// statements), which Neon's PgBouncer (transaction mode) supports.

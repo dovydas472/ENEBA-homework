@@ -6,6 +6,10 @@
 // Postgres container (job `migrations`). It must NEVER point at a Neon
 // branch: the seed deletes and rewrites the catalog tables.
 //
+// REQUIRE_TEST_DB=1 turns the skip into a failure. The CI job that has a
+// database sets it: a test that is silently skipped looks green but proves
+// nothing, so if the database ever disappears from CI the build must go red.
+//
 // Used only from _test.go files.
 package testdb
 
@@ -29,7 +33,10 @@ import (
 	"github.com/dovydas472/ENEBA-homework/seed"
 )
 
-const envName = "TEST_DATABASE_URL"
+const (
+	envName     = "TEST_DATABASE_URL"
+	requireName = "REQUIRE_TEST_DB" // "1" = a missing database is a failure, not a skip
+)
 
 // The set-up runs once per test package (a package's tests share one process).
 var (
@@ -39,12 +46,13 @@ var (
 )
 
 // Pool returns a connection pool to the migrated and seeded test database.
-// It skips the test when TEST_DATABASE_URL is empty.
+// When TEST_DATABASE_URL is empty it skips the test - or fails it if REQUIRE_TEST_DB=1.
 func Pool(t testing.TB) *pgxpool.Pool {
 	t.Helper()
 	url := os.Getenv(envName)
 	if url == "" {
-		t.Skip(envName + " is empty: skipping database integration test")
+		missingURL(t, os.Getenv(requireName))
+		return nil // unreachable: Skip/Fatal stop the test (the line only satisfies the compiler)
 	}
 	// Safety net: the seed wipes the catalog tables, so refuse a Neon host.
 	if strings.Contains(url, "neon.tech") {
@@ -56,6 +64,17 @@ func Pool(t testing.TB) *pgxpool.Pool {
 		t.Fatalf("test database set-up failed: %v", err)
 	}
 	return pool
+}
+
+// missingURL is the "no database" decision: skip locally, fail where a
+// database is required (CI job `migrations`). Split out so it can be unit-tested.
+func missingURL(t testing.TB, require string) {
+	t.Helper()
+	if require == "1" {
+		t.Fatal(envName + " is empty but " + requireName + "=1: the database tests must run here, not be skipped")
+		return
+	}
+	t.Skip(envName + " is empty: skipping database integration test")
 }
 
 // setup applies every migration, then resets and seeds the catalog.
