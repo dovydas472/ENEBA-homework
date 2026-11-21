@@ -390,9 +390,11 @@ stateDiagram-v2
 
 ## Query sketches
 
-SQL that the Go code (hand-written `pgx`) will run. `$n` are query parameters – user input is never
-concatenated into SQL. All four sketches were executed on sample data on the Neon `dev` branch
-(in a rolled-back transaction; results in the Task 05 report). The "sellable key" condition appears in all of them:
+SQL that the Go code (hand-written `pgx`) runs. User input is never concatenated into SQL: it travels as
+query parameters (`$n`; in `pkg/catalog` written as named parameters `@name`, which pgx rewrites to `$n`).
+Sketches 1, 1b and 2 are **implemented in `pkg/catalog/store.go`** (Task 09) and tested against the
+deterministic seed (`pkg/catalog/store_integration_test.go`, run in CI); sketches 3 and 4 are still plans
+for the checkout and search tasks. The "sellable key" condition appears in all of them:
 
 ```sql
 k.status <> 'sold' AND (k.reserved_until IS NULL OR k.reserved_until < now())
@@ -402,16 +404,21 @@ k.status <> 'sold' AND (k.reserved_until IS NULL OR k.reserved_until < now())
 
 ### 1. Store listing
 Products with game, platform, region, listing price, MSRP + discount %, offer count and in-stock flag;
-optional filters; one of five sort orders (default: popularity); paging.
+optional filters (platform and region = several slugs each, price range); one of six sort orders
+(default: popularity); paging. `GET /api/products`.
 
 **Listing price (decided) = the cheapest active offer that has stock.** An active offer with no
 sellable keys does not set the price (nobody could buy at it). A product with no such offer is
-**out of stock**: it stays visible, has no price (`NULL`), sorts **last** on the price sort and is
-**excluded** whenever a price filter is used.
+**out of stock**: it stays visible, has no price (`NULL`), sorts **last** on the price and discount
+sorts and is **excluded** whenever a price filter is used.
+
+The query is built from one shared CTE, `base` ("every product with everything the listing and the
+facets need"). **The items and all facets read from `base`**, so a condition added to its `WHERE`
+applies to all of them at once - the future text search (`q`) adds exactly one line there.
 
 ```sql
--- $1 platform slug | NULL, $2 region slug | NULL, $3 min price cents | NULL, $4 max price cents | NULL,
--- $5 page size, $6 offset
+-- named parameters: @platforms text[] (empty = no filter), @regions text[], @min_price bigint | NULL,
+-- @max_price bigint | NULL, @limit, @offset
 WITH active_offers AS (               -- every ACTIVE offer + "does it have a sellable key?"
     SELECT o.product_id, o.price_cents,
            EXISTS (SELECT 1
@@ -428,43 +435,86 @@ product_stats AS (                    -- one row per product that has active off
            count(*)         FILTER (WHERE has_stock) AS offer_count       -- offers you can buy now
     FROM active_offers
     GROUP BY product_id
+),
+base AS (
+    SELECT p.id, p.slug, p.edition, p.msrp_cents,
+           g.title, g.cover_url, g.release_date, g.popularity,
+           pl.id AS platform_id, pl.slug AS platform_slug, pl.name AS platform_name,
+           r.id  AS region_id,   r.slug  AS region_slug,   r.name  AS region_name,
+           ps.min_price_cents,
+           coalesce(ps.offer_count, 0) AS offer_count,
+           CASE WHEN ps.min_price_cents < p.msrp_cents          -- only a real discount; NULL if msrp
+                THEN (p.msrp_cents - ps.min_price_cents)::bigint * 100  -- unknown, out of stock or
+                     / p.msrp_cents                                     -- price >= msrp. Integer
+           END AS discount_pct                                          -- division = rounds DOWN
+    FROM products p
+    LEFT JOIN product_stats ps ON ps.product_id = p.id   -- LEFT: products without stock stay visible
+    JOIN games     g  ON g.id  = p.game_id
+    JOIN platforms pl ON pl.id = p.platform_id
+    JOIN regions   r  ON r.id  = p.region_id
+    WHERE true                       -- the search task adds its condition HERE (items AND facets follow)
 )
-SELECT p.slug, g.title, p.edition, g.cover_url, g.release_date, g.popularity,
-       pl.name AS platform, r.name AS region,
-       ps.min_price_cents,
-       p.msrp_cents,
-       CASE WHEN ps.min_price_cents < p.msrp_cents           -- only a real discount; NULL if msrp
-            THEN (p.msrp_cents - ps.min_price_cents) * 100   -- unknown, out of stock or price >= msrp
-                 / p.msrp_cents                              -- integer division = rounds DOWN
-       END                            AS discount_pct,
-       coalesce(ps.offer_count, 0)    AS offer_count,
-       ps.min_price_cents IS NOT NULL AS in_stock,
-       count(*) OVER ()               AS total_count  -- for "page 2 of 7", before LIMIT
-FROM products p
-LEFT JOIN product_stats ps ON ps.product_id = p.id   -- LEFT: products without stock stay visible
-JOIN games     g  ON g.id  = p.game_id
-JOIN platforms pl ON pl.id = p.platform_id
-JOIN regions   r  ON r.id  = p.region_id
-WHERE ($1::text IS NULL OR pl.slug = $1)
-  AND ($2::text IS NULL OR r.slug  = $2)
-  AND ($3::int  IS NULL OR ps.min_price_cents >= $3)   -- NULL price never matches -> out of stock
-  AND ($4::int  IS NULL OR ps.min_price_cents <= $4)   -- is excluded when a price filter is set
-ORDER BY g.popularity DESC, p.id                 -- sort=popular (DEFAULT)
--- ORDER BY ps.min_price_cents ASC NULLS LAST, p.id  sort=price
--- ORDER BY discount_pct DESC NULLS LAST, p.id       sort=discount ("Best discount")
--- ORDER BY g.title ASC, p.id                        sort=title
--- ORDER BY g.release_date DESC NULLS LAST, p.id     sort=newest
---   Go picks ONE of these fixed lines from a whitelist; user text never goes into ORDER BY.
-LIMIT $5 OFFSET $6;
+SELECT b.slug, b.title, b.edition, b.platform_slug, b.platform_name, b.region_slug, b.region_name,
+       b.cover_url, b.min_price_cents, b.msrp_cents, b.discount_pct, b.offer_count,
+       b.min_price_cents IS NOT NULL AS in_stock,
+       count(*) OVER () AS total      -- all matching rows, computed before LIMIT
+FROM base b
+WHERE (cardinality(@platforms::text[]) = 0 OR b.platform_slug = ANY(@platforms::text[]))
+  AND (cardinality(@regions::text[])   = 0 OR b.region_slug   = ANY(@regions::text[]))
+  AND (@min_price::bigint IS NULL OR b.min_price_cents >= @min_price::bigint)  -- NULL price never matches,
+  AND (@max_price::bigint IS NULL OR b.min_price_cents <= @max_price::bigint)  -- so out-of-stock drops out
+ORDER BY b.popularity DESC, b.id                                   -- sort=popularity (DEFAULT)
+-- ORDER BY b.min_price_cents ASC  NULLS LAST, b.id                   sort=price_asc
+-- ORDER BY b.min_price_cents DESC NULLS LAST, b.id                   sort=price_desc
+-- ORDER BY (b.min_price_cents IS NULL), b.discount_pct DESC NULLS LAST, b.id   sort=discount
+-- ORDER BY b.release_date DESC NULLS LAST, b.id                      sort=newest
+-- ORDER BY b.title ASC, b.id                                         sort=title
+--   Go picks ONE of these fixed lines from a whitelist map; user text never goes into ORDER BY.
+LIMIT @limit OFFSET @offset;
 ```
-- **Discount % is derived (decided):** `(msrp − listing price) × 100 / msrp` in integer math, which rounds **down** – the badge never promises more than the real saving (3999 → 1799 = 55.01 % → "−55 %"). It is `NULL` (no badge) when `msrp_cents` is unknown, the product is out of stock, or the price is not below the MSRP. "Best discount" sorts NULLs last.
-- **Default sort = popularity** (from IGDB). Out-of-stock products are *not* pushed down here – only the price sort puts them last (decided).
+- **Discount % is derived (decided):** `(msrp - listing price) x 100 / msrp` in integer math, which rounds **down** - the badge never promises more than the real saving (3999 -> 1799 = 55.01 % -> "-55 %"). It is `NULL` (no badge) when `msrp_cents` is unknown, the product is out of stock, or the price is not below the MSRP. The discount sort puts "no discount" last, and out-of-stock products after those (`(b.min_price_cents IS NULL)` is the first sort key).
+- **Default sort = popularity** (from IGDB). Out-of-stock products are *not* pushed down there - only the price and discount sorts put them last (decided).
 - `min(...) FILTER (WHERE has_stock)` takes the minimum only over offers with stock; if there are none, the result is `NULL`, which *is* the out-of-stock signal (`in_stock = min_price_cents IS NOT NULL`).
 - Price filter: `NULL >= 1000` is `NULL` (not true), so out-of-stock products drop out automatically when a price bound is given, and stay when it is not.
-- A product with no active offers at all is also out of stock (no `product_stats` row → `NULL` price, `offer_count = 0`).
+- A product with no active offers at all is also out of stock (no `product_stats` row -> `NULL` price, `offer_count = 0`).
 - `EXISTS` stops at the first sellable key (cheaper than counting); it uses `keys_unsold_offer_idx`.
-- `p.id` as the last sort key makes paging stable when two products have the same price.
-- `$1::text IS NULL OR …` = "filter only if given", so one SQL string serves every filter combination.
+- `b.id` as the last sort key makes paging stable when two products have the same price.
+- `cardinality(@platforms) = 0 OR ... = ANY(@platforms)` = "filter only if given; any of the slugs may match", so one SQL string serves every filter combination. The slugs are ONE array parameter: no string-built SQL, so no SQL injection. An unknown slug matches nothing.
+- **`count(*) OVER ()`** returns the total of all matching rows on every row, *before* `LIMIT` - one query gives both the page and "page 2 of 7". Edge case: a page past the last one has no rows, so the total is read with a second, tiny `count(*)` query in that case only.
+- Go sends the items query and the three facet queries below as **one pgx batch**: one network round trip and one implicit transaction, so items and counts come from the same snapshot.
+
+### 1b. Facets (filter options with counts)
+Returned in the same response as the listing (`facets` next to `items`). **Counts follow the current
+filters** (decided, "standard multi-select faceting"): each group is counted with **all other active
+filters applied except its own**. So after picking `platform=steam` the *region* counts show only Steam
+products, but the *platform* list keeps the counts of every platform (otherwise PSN would show 0 and the
+user could never add it to the selection). All three read from the same `base` CTE as the listing.
+
+```sql
+-- platform facet: region + price filters, NOT the platform filter
+SELECT pl.slug, pl.name, count(b.id) AS cnt
+FROM platforms pl
+LEFT JOIN base b ON b.platform_id = pl.id
+                AND (cardinality(@regions::text[]) = 0 OR b.region_slug = ANY(@regions::text[]))
+                AND (@min_price::bigint IS NULL OR b.min_price_cents >= @min_price::bigint)
+                AND (@max_price::bigint IS NULL OR b.min_price_cents <= @max_price::bigint)
+GROUP BY pl.id
+HAVING count(b.id) > 0 OR pl.slug = ANY(@platforms::text[])   -- hide empty entries, keep selected ones
+ORDER BY pl.sort_order, pl.id;
+
+-- region facet: the same with platform + price filters (HAVING ... r.slug = ANY(@regions))
+
+-- price range: platform + region filters, NOT the price filter; min/max ignore NULL = in-stock only
+SELECT min(b.min_price_cents), max(b.min_price_cents)
+FROM base b
+WHERE (cardinality(@platforms::text[]) = 0 OR b.platform_slug = ANY(@platforms::text[]))
+  AND (cardinality(@regions::text[])   = 0 OR b.region_slug   = ANY(@regions::text[]));
+```
+- **Why `LEFT JOIN platforms -> base`:** it starts from the lookup table, so a platform with no matching product still gets a row (count 0). `HAVING` then decides: count > 0, or the platform is currently selected. A selected entry therefore never vanishes from the filter UI, even when the other filters leave it empty (e.g. `platform=battle-net`: no products at all, still listed with 0).
+- The entries are ordered by `sort_order` (a business decision), not by count or name.
+- **Price range:** `NULL` (JSON `null`) when no in-stock product matches the platform/region filters. It ignores the price filter on purpose: the slider keeps its full range while the user drags it.
+- An unknown selected slug is not in the lookup table, so it is not invented as an entry (the listing is simply empty).
+- Facets are not global any more (an earlier draft of Task 09 had a separate global `GET /api/catalog/facets`; the owner replaced it with this).
 
 ### 2. Product page – offers
 Only **buyable** offers of one product (active **and** stock > 0, decided), with seller info and
@@ -493,6 +543,7 @@ ORDER BY o.price_cents, o.id;
 - **Offers with `stock = 0` are not listed**, so the first row is always the cheapest offer you can actually buy (the same rule as the listing price). If no row comes back, the page shows the product as "Out of stock".
 - `CROSS JOIN LATERAL` computes the count once per offer and gives it a name (`st.stock`), so it can be both returned and filtered on. A subquery in the `SELECT` list cannot be used in `WHERE`.
 - `offers_active_product_price_idx` returns the offers already in price order; each `stock` count is an index-only scan of `keys_unsold_offer_idx`. The product header (title, cover, platform …) is a separate one-row query.
+- `GET /api/products/{slug}` sends three queries as one pgx batch: the header (no row -> `404`), these offers, and the **variants** (the other products of the same game, `JOIN products v ON v.game_id = p.game_id AND v.id <> p.id`, each with its own cheapest buyable price from the same `product_stats` CTE as the listing). The product's own `priceCents` is simply the first offer. The seller tier label and `isNew` (rating `NULL`) are made in Go.
 
 ### 3. Reserve N keys of one offer (checkout)
 ```sql

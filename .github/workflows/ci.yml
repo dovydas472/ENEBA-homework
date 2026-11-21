@@ -111,6 +111,10 @@ jobs:
 
       # Same command as in the `go` job, but now TEST_DATABASE_URL points to the migrated
       # database, so database integration tests (added in later tasks) run here instead of being skipped.
+      # Today only pkg/catalog uses the test database (via pkg/testdb, which resets and re-seeds
+      # the catalog tables). If a SECOND package ever uses it, run them one after another with
+      # `go test -p 1 ./...`: Go runs different packages in parallel, and two packages resetting
+      # the same tables at the same time would break each other's tests.
       - name: go test (with the database)
         run: go test ./...
 
