@@ -108,7 +108,7 @@ describe("PriceFilter: boxes", () => {
   it("shows the applied limits in the boxes and the facet range as placeholders", () => {
     const { minBox, maxBox } = renderFilter({ minCents: 1250, maxCents: 3000 });
     expect(minBox.value).toBe("12.50");
-    expect(maxBox.value).toBe("30");
+    expect(maxBox.value).toBe("30.00");
     cleanup?.();
 
     const empty = renderFilter();
@@ -139,7 +139,7 @@ describe("PriceFilter: slider", () => {
   it("dragging a thumb updates the box live, without a request", () => {
     const { minThumb, minBox, onApply } = renderFilter();
     setControlValue(minThumb, "1000");
-    expect(minBox.value).toBe("10");
+    expect(minBox.value).toBe("10.00");
     setControlValue(minThumb, "1050");
     expect(minBox.value).toBe("10.50");
     expect(onApply).not.toHaveBeenCalled();
@@ -165,18 +165,27 @@ describe("PriceFilter: slider", () => {
     expect(onApply).toHaveBeenCalledWith(undefined, 4900);
   });
 
-  it("a thumb at the end of the slider means 'no limit' (the box is emptied)", () => {
+  it("a thumb released at the end of the slider means 'no limit' (the box is emptied then, not while dragging)", () => {
     const { minThumb, minBox, onApply } = renderFilter({ minCents: 1000 });
     setControlValue(minThumb, "500");
-    expect(minBox.value).toBe("");
+    expect(minBox.value).toBe("5.00"); // still a number while dragging: no flash to the grey placeholder
     release(minThumb);
     expect(onApply).toHaveBeenCalledWith(undefined, undefined);
+  });
+
+  it("a thumb dragged away and back to where it started applies nothing and shows the applied limits again", () => {
+    const { minThumb, minBox, onApply } = renderFilter();
+    setControlValue(minThumb, "900");
+    setControlValue(minThumb, "500");
+    release(minThumb);
+    expect(onApply).not.toHaveBeenCalled();
+    expect(minBox.value).toBe(""); // no limit: the placeholder is back
   });
 
   it("the thumbs cannot cross: the minimum thumb stops at the maximum thumb", () => {
     const { minThumb, minBox, onApply } = renderFilter({ minCents: 1000, maxCents: 2000 });
     setControlValue(minThumb, "3000");
-    expect(minBox.value).toBe("20");
+    expect(minBox.value).toBe("20.00");
     expect(minThumb.value).toBe("2000");
     release(minThumb);
     expect(onApply).toHaveBeenCalledWith(2000, 2000);
@@ -185,7 +194,7 @@ describe("PriceFilter: slider", () => {
   it("the thumbs cannot cross: the maximum thumb stops at the minimum thumb", () => {
     const { maxThumb, maxBox } = renderFilter({ minCents: 1000, maxCents: 2000 });
     setControlValue(maxThumb, "600");
-    expect(maxBox.value).toBe("10");
+    expect(maxBox.value).toBe("10.00");
     expect(maxThumb.value).toBe("1000");
   });
 
@@ -209,8 +218,75 @@ describe("PriceFilter: slider", () => {
     const view = render(<PriceFilter range={range} minCents={1000} maxCents={2000} onApply={onApply} />);
     cleanup = view.unmount;
     const box = () => view.container.querySelector<HTMLInputElement>("[aria-label='Minimum price in euros']")!;
-    expect(box().value).toBe("10");
+    expect(box().value).toBe("10.00");
     view.rerender(<PriceFilter range={range} onApply={onApply} />);
     expect(box().value).toBe("");
   });
 });
+
+// Regression: the boxes flickered while a thumb was dragged. Measured in a real browser the cause was the TEXT: it
+// changed length on every other step ("49" -> "48.50" -> "48"), so its width jumped by up to 30 px between frames.
+// The boxes themselves were never re-mounted and showed no focus / error styles; these tests keep it that way.
+describe("PriceFilter: dragging a thumb does not make the boxes flicker", () => {
+  /** Drags a thumb through many values, one `input` event each (what the browser fires while dragging). */
+  function drag(thumb: HTMLInputElement, from: number, to: number, step = 50) {
+    const seen: string[] = [];
+    for (let v = from; v !== to; v += from < to ? step : -step) {
+      setControlValue(thumb, String(v));
+      seen.push(thumb.value);
+    }
+    return seen;
+  }
+
+  it("keeps the same <input> elements (no re-mount) for the whole drag", () => {
+    const { container, minBox, maxBox, maxThumb } = renderFilter();
+    drag(maxThumb, 5100, 1500);
+    expect(container.querySelector("[aria-label='Minimum price in euros']")).toBe(minBox);
+    expect(container.querySelector("[aria-label='Maximum price in euros']")).toBe(maxBox);
+  });
+
+  it("shows no error and no invalid state at any step of the drag", () => {
+    const { minBox, maxBox, minThumb, maxThumb, alert } = renderFilter();
+    const drags: [HTMLInputElement, number, number][] = [
+      [maxThumb, 5100, 600],
+      [minThumb, 500, 5000],
+    ];
+    for (const [thumb, from, to] of drags) {
+      for (let v = from; v !== to; v += from < to ? 50 : -50) {
+        setControlValue(thumb, String(v));
+        expect(alert()).toBeNull();
+        expect(minBox.getAttribute("aria-invalid")).toBeNull();
+        expect(maxBox.getAttribute("aria-invalid")).toBeNull();
+      }
+    }
+  });
+
+  it("the text keeps the same shape at every step (same length, always two decimals)", () => {
+    const { maxBox, maxThumb } = renderFilter();
+    const texts: string[] = [];
+    for (let v = 4900; v >= 1000; v -= 50) {
+      setControlValue(maxThumb, String(v));
+      texts.push(maxBox.value);
+    }
+    expect(texts.length).toBeGreaterThan(70);
+    for (const text of texts) expect(text).toMatch(/^\d+\.\d{2}$/);
+    expect(new Set(texts.map((t) => t.length))).toEqual(new Set([5])); // "49.00" ... "10.00"
+  });
+
+  it("does not swap the box for the placeholder when the thumb touches the end of the slider", () => {
+    const { minBox, maxBox, minThumb, maxThumb } = renderFilter({ minCents: 1000, maxCents: 2000 });
+    setControlValue(maxThumb, "5100"); // the very end
+    expect(maxBox.value).toBe("51.00");
+    setControlValue(minThumb, "500"); // the very start
+    expect(minBox.value).toBe("5.00");
+  });
+
+  it("makes no request and keeps focus out of the boxes while dragging", () => {
+    const { minBox, maxBox, maxThumb, onApply } = renderFilter();
+    drag(maxThumb, 5100, 2000);
+    expect(onApply).not.toHaveBeenCalled();
+    expect(document.activeElement).not.toBe(minBox);
+    expect(document.activeElement).not.toBe(maxBox);
+  });
+});
+

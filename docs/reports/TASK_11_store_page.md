@@ -24,6 +24,8 @@ Branch: `task/11-store-page` (from `main` at `02a11c8`, after the merge of PR #9
 - `src/test-utils.tsx`: `rerender`, `setControlValue`, `fire`, `pressKey` helpers.
 - `docs/PAAISKINIMAI_LT.md` (10 new sections: query keys + prefetch, `keepPreviousData`, filters in the URL, sanitizing vs. server 400, price filter/slider, focus trap, cover fallback, `ScrollRestoration`, pagination, accessibility), `README.md` (layout list).
 
+**Follow-up fix (price boxes flickered while dragging a thumb):** `price.ts` (`centsToEuros` always gives two decimals), `PriceFilter.tsx` (the box shows the number even at the slider's ends; "no limit" is decided on release), `PriceFilter.module.css` (tabular font stack, right-aligned), `tokens.css` (+ `--font-family-tabular`), `DESIGN.md`, `PAAISKINIMAI_LT.md`, tests (§2), and `docs/reports/assets/task11_slider-drag-frames-mobile.png`.
+
 No migration, no Go change, no new dependency (`package.json`, `package-lock.json`, `go.mod`, `go.sum` unchanged).
 
 ## 2. Verification results
@@ -32,7 +34,7 @@ No migration, no Go change, no new dependency (`package.json`, `package-lock.jso
 | `gofmt -l .` | prints nothing |
 | `go build ./...`, `go vet ./...`, `go test ./...` | pass |
 | `npm run lint` | pass (no rule disabled) |
-| `npm test` (PowerShell) | **213 tests in 18 files pass**, 3 runs in a row (the page tests wait for TanStack Query's timer, one flaky run was fixed by waiting a few ticks) |
+| `npm test` (PowerShell) | **220 tests in 18 files pass** (213 before the follow-up fix below), 3 runs in a row (the page tests wait for TanStack Query's timer, one flaky run was fixed by waiting a few ticks) |
 | `npm run build` | pass (JS 389 kB / 125 kB gzip, CSS 27 kB) |
 
 **Real browser** (headless Edge driven by `puppeteer-core`, against `vite preview` of the production build and `go run ./cmd/local` on the Neon **dev** branch; scripts and `axe-core` live in the session scratchpad, nothing was added to the repo):
@@ -40,11 +42,20 @@ No migration, no Go change, no new dependency (`package.json`, `package-lock.jso
 - **No flicker:** with the API slowed by 400 ms, a filter change never showed fewer than 24 cards (sampled every frame); the old grid stayed, dimmed and `aria-busy`.
 - **Layout shift while covers load:** CLS 0.0001 (load + scroll through all lazy covers; "good" is < 0.1).
 - **`ScrollRestoration`:** scrolled to 900 px, opened a product, Back → scrollY 900 again, same URL. A checkbox or sort change at scrollY 500 does not jump to the top (it stays at ≈ 500; the small difference is the chips row appearing); a page-2 click puts the results bar at the top of the viewport.
-- **Price slider:** dragging the max thumb: the box follows live, **0 requests during the drag, 1 after release** (`?maxPrice=2000`). Keyboard: 2 × ArrowRight on the min thumb = 2 requests, focus stays on the thumb, `aria-valuetext` "€6.00". Typed min > max: the message appears, **0 requests**. On a phone viewport the thumb's tap target measures 40 × 40 px.
+- **Price slider** (the numbers below are from the first version; the flicker fix changed the box text, see "Price-box flicker" further down): dragging the max thumb: the box follows live, **0 requests during the drag, 1 after release** (`?maxPrice=2000`). Keyboard: 2 × ArrowRight on the min thumb = 2 requests, focus stays on the thumb, `aria-valuetext` "€6.00". Typed min > max: the message appears, **0 requests**. On a phone viewport the thumb's tap target measures 40 × 40 px.
 - **Drawer:** 40 Tab presses: 39 stop inside the dialog, 1 is the browser's own UI (focus on `body` = it left the page); Esc closes it and focus returns to the "Filters" button.
 - **Hover prefetch:** hovering a card requests `/api/products/<slug>` once; hovering it again (cache fresh) requests nothing.
 - **Image fallback:** with the cover host blocked, every loaded card shows the gradient + title placeholder (no broken-image icon).
 - **Hand-typed URL** `?sort=foo&minPrice=abc&page=0&maxPrice=700&platform=steam,,steam`: renders 5 cards, no error, request is `?platform=steam&maxPrice=700`.
+
+**Price-box flicker while dragging (owner bug report, fixed in a follow-up commit).**
+*Reproduction* (headless Edge, `dragflicker.mjs`: a recorder samples both boxes on every animation frame during a 60-step drag, desktop with the mouse and a 390 px phone viewport with touch, each for the min and the max thumb). I checked, per frame: is it the same DOM node (re-mount), size and position, outline / background / shadow, `aria-invalid`, focus, an error message, scroll offsets, and the rendered text width.
+- **Not the cause (all constant in all four runs):** no re-mount (same node every frame), box size 75.4 × 40 px (phone 160.4 × 40), no change of outline / background / `aria-invalid` / focus, no error message, no scroll or vertical movement, the page behind is not re-rendered (the checkboxes are only touched once, at release). The extra `name` / `type` attribute writes seen by a `MutationObserver` are React's no-op updates of controlled inputs.
+- **The cause:** the **text** changed shape on every step. The slider moves in €0.50 steps and `centsToEuros` printed whole euros without decimals, so the box alternated `49` → `48.50` → `48` → `47.50`. Rendered width jumped between 15 px and 45 px: **up to 29.6 px between consecutive frames, in about one frame out of three** (55/155, 49/151, 52/146, 45/149 frames in the four runs). Metropolis (the subset we ship) has no tabular figures (`font-variant-numeric: tabular-nums` changed no width – measured), so digits also differ in width. A second, smaller flash: at the very end of the slider the box swapped between the number and the grey placeholder.
+*Fix:* (1) a box always shows two decimals (`48.00`, `48.50`), so only digits change; (2) `font-family: var(--font-family-tabular)` (Arial stack, new token) + `tabular-nums` + right alignment on the two boxes, so every digit is equally wide and the text does not move; (3) a thumb at the end of the slider keeps showing its number, and "no limit" (empty box) is decided on release; a thumb dragged away and back applies nothing and restores the applied text. The URL still changes only on release.
+*After* (same recorder, production build): text width **40.0 px in every frame** (0 changes in 160 / 147 frames for the max thumb; the min-thumb runs have exactly **one** change in ~150 frames, the single `9.50` → `10.00` step that adds a digit); no re-mount, size 75.4 × 40 / 160.4 × 40, styles, focus and alert unchanged, as before. Strip of 6 moments of a touch drag: `task11_slider-drag-frames-mobile.png`.
+*Regression tests* (`PriceFilter.test.tsx`, 5 new + `price.test.ts`, 2 new): the two `<input>` elements are the same nodes after a drag; no `role="alert"` and no `aria-invalid` at any step of a 90-step drag; the text of every step matches `^\d+\.\d{2}$` and has the same length; the box does not turn into the placeholder at the ends while dragging; no request and no focus in the boxes while dragging; every `centsToEuros` step of €0.50 has the same length. I confirmed they catch the cause: with the old formatting temporarily restored, 10 tests fail.
+*Limit of this verification:* headless Edge with touch emulation, not a physical phone. The owner's report did not say which device ("phone / desktop" was left open), so the first thing to look at on the Preview is the same drag on the device where it was seen.
 
 **Screenshots** (`docs/reports/assets/`): `task11_store-desktop.png`, `task11_store-mobile.png`, `task11_drawer-mobile.png`, `task11_drawer-price-mobile.png` (slider with 40 px thumbs), `task11_psn-price-asc-desktop.png` / `-mobile.png`, `task11_no-results-desktop.png` / `-mobile.png`, `task11_page2-desktop.png` / `-mobile.png`, `task11_out-of-stock-desktop.png`, `task11_cover-fallback-desktop.png`, `task11_price-slider-desktop.png`, `task11_price-error-desktop.png`.
 
@@ -76,6 +87,7 @@ No migration, no Go change, no new dependency (`package.json`, `package-lock.jso
 - **Phones get vertical cards in 2 columns** (S7), not the horizontal list card of DESIGN.md 4.3 / 3.2. DESIGN.md now says so ("As built").
 - **Out-of-stock dim is `.8`, not DESIGN.md's `.5`** (and not my first `.7`): see the axe finding in §2. New token `--opacity-dimmed`, also used for the dimmed grid while loading.
 - **No sticky sidebar and no "N more" toggle** (8 platforms at most). The groups can be folded (DESIGN.md 4.8).
+- **Price boxes use the Arial stack, not Metropolis** (new token `--font-family-tabular`): the shipped Metropolis subset has no tabular figures, and digits of unequal width make a number that changes every frame jitter (§2, "Price-box flicker"). The boxes show **two decimals always** (`12.00`) and are right-aligned. Changed meaning: a thumb at the end of the slider now keeps showing its number while dragging; the box is emptied (no limit) when the thumb is released.
 - **Coincident thumbs:** when both thumbs sit on the same spot, the one that can still move away from the other is on top (min in the upper half of the range, max in the lower half). I did not add "click the track to move the nearest thumb".
 - **Hover/focus on the card** is a shadow + accent title; the "Add to cart" / "View offers" buttons of DESIGN.md 4.3 are not built (no cart yet; the whole card is the link, S6).
 - **The amendment is stored as a separate file** (`TASK_11_amendment_price_slider.md`), like Task 09's amendment, so the task file stays verbatim.

@@ -23,7 +23,12 @@
   background: var(--color-surface-inset);
   box-shadow: var(--shadow-inset);
   color: var(--color-text);
+  /* Numbers in the boxes change on every step of a slider drag. Digits of equal width (the "tabular" stack;
+     Metropolis has no tabular figures) and right alignment keep the text from moving; the box size is fixed anyway. */
+  font-family: var(--font-family-tabular);
+  font-variant-numeric: tabular-nums;
   font-weight: var(--font-weight-medium);
+  text-align: right;
   transition: background-color var(--transition-fast);
 }
 

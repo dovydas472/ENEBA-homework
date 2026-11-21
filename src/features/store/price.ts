@@ -23,11 +23,15 @@ export function parseEuros(text: string): PriceInput {
   return { kind: "ok", cents: euros * 100 + cents };
 }
 
-/** 1200 -> "12", 1250 -> "12.50", 1199 -> "11.99": the text that goes into a price box (no currency sign). */
+/**
+ * 1200 -> "12.00", 1250 -> "12.50", 1199 -> "11.99": the text that goes into a price box (no currency sign).
+ * ALWAYS two decimals. While a slider thumb is dragged the number changes every step (€0.50), and if whole euros
+ * lost their decimals ("49" -> "48.50" -> "48") the text would change length and width on every other frame,
+ * which looks like flicker. With a fixed shape only the digits change.
+ */
 export function centsToEuros(cents: number): string {
   const euros = Math.floor(cents / 100);
-  const rest = cents % 100;
-  return rest === 0 ? String(euros) : `${euros}.${String(rest).padStart(2, "0")}`;
+  return `${euros}.${String(cents % 100).padStart(2, "0")}`;
 }
 
 /** The slider range: the facet range rounded OUTWARDS to a whole step, so the extreme products fit inside it. */

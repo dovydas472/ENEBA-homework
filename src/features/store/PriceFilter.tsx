@@ -49,22 +49,37 @@ export function PriceFilter({ range, minCents, maxCents, onApply }: PriceFilterP
   const thumbMax = typedMax.kind === "ok" ? clamp(typedMax.cents) : hi;
   const thumbMin = Math.min(typedMin.kind === "ok" ? clamp(typedMin.cents) : lo, thumbMax);
 
-  /** Validates both boxes; if they are fine and different from what is applied, asks the parent to apply them. */
-  function commit() {
+  /**
+   * Validates both boxes; if they are fine and different from what is applied, asks the parent to apply them.
+   * `fromSlider`: a thumb was released. A thumb at the very end of the slider then means "no limit".
+   */
+  function commit(fromSlider = false) {
     const draft = resolvePriceDraft(minText, maxText);
     if (!draft.ok) {
       setError(draft.message); // shown under the boxes, no request
       return;
     }
     setError(null);
-    if (draft.min !== minCents || draft.max !== maxCents) onApply(draft.min, draft.max);
+    const min = fromSlider && draft.min !== undefined && draft.min <= lo ? undefined : draft.min;
+    const max = fromSlider && draft.max !== undefined && draft.max >= hi ? undefined : draft.max;
+    if (min !== minCents || max !== maxCents) {
+      onApply(min, max);
+    } else {
+      // Nothing to apply (e.g. a thumb was dragged away and back): show the applied limits again.
+      setMinText(toText(minCents));
+      setMaxText(toText(maxCents));
+    }
   }
 
-  /** A thumb moved: the box follows. A thumb at the very end of the slider means "no limit" = an empty box. */
+  /**
+   * A thumb moved: its box follows, always with the same text shape ("12.00"). Even at the very end of the
+   * slider the box shows the number: swapping it for the grey placeholder there would flash. "No limit" is
+   * decided when the thumb is released (see commit).
+   */
   function handleMove(which: "min" | "max", cents: number) {
     const next = moveThumb(which, cents, thumbMin, thumbMax); // the thumbs cannot cross
-    if (which === "min") setMinText(next <= lo ? "" : centsToEuros(next));
-    else setMaxText(next >= hi ? "" : centsToEuros(next));
+    if (which === "min") setMinText(centsToEuros(next));
+    else setMaxText(centsToEuros(next));
     setError(null);
   }
 
@@ -80,7 +95,7 @@ export function PriceFilter({ range, minCents, maxCents, onApply }: PriceFilterP
         max={thumbMax}
         disabled={range === null}
         onMove={handleMove}
-        onRelease={commit}
+        onRelease={() => commit(true)}
       />
       <div className={styles.inputs}>
         <input
@@ -96,7 +111,7 @@ export function PriceFilter({ range, minCents, maxCents, onApply }: PriceFilterP
             setMinText(event.target.value);
             setError(null);
           }}
-          onBlur={commit}
+          onBlur={() => commit()}
           onKeyDown={(event) => event.key === "Enter" && commit()}
         />
         <span className={styles.dash} aria-hidden="true">
@@ -115,7 +130,7 @@ export function PriceFilter({ range, minCents, maxCents, onApply }: PriceFilterP
             setMaxText(event.target.value);
             setError(null);
           }}
-          onBlur={commit}
+          onBlur={() => commit()}
           onKeyDown={(event) => event.key === "Enter" && commit()}
         />
       </div>

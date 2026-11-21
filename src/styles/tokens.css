@@ -57,6 +57,7 @@
 
   /* ---------- Typography ---------- */
   --font-family: "Metropolis", Arial, Helvetica, sans-serif;
+  --font-family-tabular: Arial, Helvetica, sans-serif; /* numbers that change quickly (price boxes): every digit is equally wide. Added in Task 11 fix */
 
   --font-size-2xs: 0.625rem; /* 10px  micro labels: "FEATURED OFFER", platform name on cover */
   --font-size-xs: 0.75rem; /* 12px  card title, regions, "From", old price, footer links */

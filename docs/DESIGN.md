@@ -161,6 +161,7 @@ Added in Task 10 (values from 3.1, 4.1, 4.5 and 4.11): `--search-height` 57px (h
 `--badge-count-size` 16px (cart count badge minimum size), `--toast-max-width` 400px (toast / "waking up" notice).
 Added in Task 11 (Store page): `--opacity-dimmed` 0.8 (out-of-stock card and the results while a new result loads; 0.7 failed the contrast check of the mint platform text, 0.8 gives 5.0:1),
 `--cover-aspect-ratio` 5 / 7 (cover box, 4.3), `--checkbox-size` 20px (4.8), `--price-input-width` 77px (4.2 / 4.8),
+`--font-family-tabular` (Arial stack: Metropolis has no tabular figures, and digits of unequal width make a number that changes every frame jitter; used by the two price boxes),
 `--slider-thumb-size` 20px (the painted thumb), `--slider-thumb-hit` 24px (the clickable thumb; 40px = `--hit-target-min` at ≤930px) and `--slider-track-height` 4px (4.8, price slider).
 
 ---
@@ -387,7 +388,8 @@ Format: currency symbol first for EUR (`€19.92`), amounts from integer cents v
 - **"N more"** toggle: ghost button, `--font-size-sm`, bold, `--color-accent`, with chevron.
 - **Price range:** header "Price range (EUR)", two number inputs (4.2, 77px wide) with "–" between, applies on blur/Enter (no apply button).
   **As built in Task 11 (owner amendment):** above the two boxes sits a **dual-thumb slider** (two native `<input type="range">` over one track, step €0.50, range = `facets.priceRange` rounded out to the step).
-  The boxes and the thumbs always show the same numbers; dragging updates the boxes live and the URL only on release. The thumbs cannot cross. A thumb at the end of the slider means "no limit".
+  The boxes and the thumbs always show the same numbers; dragging updates the boxes live and the URL only on release. The thumbs cannot cross. A thumb released at the end of the slider means "no limit" (the box is emptied then, not while dragging).
+  A box always shows two decimals ("12.00"), right-aligned in the tabular stack, so only the digits change during a drag (measured: before, the text width jumped by up to 30 px between frames).
   The boxes are text inputs with `inputmode="decimal"` (so "12,50" works and invalid text can be reported); an error message ("min > max", "not an amount") sits on `--color-surface-card` under the boxes (5.1: error text is not allowed directly on a panel), and no request is made.
   The painted thumb is `--slider-thumb-size`; its clickable area is `--slider-thumb-hit` (40px on touch-sized screens). With no price range (nothing in stock) the slider is disabled.
   Checkbox groups can be folded with their header button (`aria-expanded`); the "N more" toggle is not needed yet (8 platforms at most).

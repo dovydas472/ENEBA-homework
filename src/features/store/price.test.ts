@@ -31,12 +31,18 @@ describe("parseEuros (euros typed by the user -> integer cents)", () => {
 });
 
 describe("centsToEuros", () => {
-  it("shows whole euros without decimals and others with two", () => {
-    expect(centsToEuros(1200)).toBe("12");
+  it("always shows two decimals, so the text keeps its shape while a slider moves", () => {
+    expect(centsToEuros(1200)).toBe("12.00");
     expect(centsToEuros(1250)).toBe("12.50");
     expect(centsToEuros(1199)).toBe("11.99");
     expect(centsToEuros(705)).toBe("7.05");
-    expect(centsToEuros(0)).toBe("0");
+    expect(centsToEuros(0)).toBe("0.00");
+  });
+
+  it("every step of the slider gives text of the same length (no jumping width)", () => {
+    const lengths = new Set<number>();
+    for (let cents = 1000; cents <= 9950; cents += 50) lengths.add(centsToEuros(cents).length);
+    expect(lengths).toEqual(new Set([5]));
   });
 
   it("is the inverse of parseEuros", () => {
