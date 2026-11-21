@@ -1,0 +1,28 @@
+import { Outlet } from "react-router";
+import { DemoBanner } from "./DemoBanner.tsx";
+import { Footer } from "./Footer.tsx";
+import { Header } from "./Header.tsx";
+import styles from "./Layout.module.css";
+import { SlowServerNotice } from "./SlowServerNotice.tsx";
+
+/**
+ * The frame around every page. It is a "layout route": routes.ts nests all pages inside it, and
+ * React Router puts the page of the current URL where <Outlet /> is. So the banner, header and footer
+ * stay mounted while the pages change (the search text and focus are not lost on navigation).
+ */
+export function Layout() {
+  return (
+    <div className={styles.layout}>
+      <a href="#main" className={styles.skipLink}>
+        Skip to content
+      </a>
+      <DemoBanner />
+      <Header />
+      <main id="main" tabIndex={-1} className={styles.main}>
+        <Outlet />
+      </main>
+      <Footer />
+      <SlowServerNotice />
+    </div>
+  );
+}

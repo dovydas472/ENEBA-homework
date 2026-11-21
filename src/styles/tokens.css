@@ -52,6 +52,8 @@
   --color-border: rgba(255, 255, 255, 0.25); /* subtle dividers, popup outline */
   --color-border-control: rgba(255, 255, 255, 0.7); /* checkbox / radio outline */
   --color-border-strong: #ffffff; /* secondary button, search field outline */
+  --color-control-hover: rgba(0, 0, 0, 0.3); /* secondary button hover (Eneba: rgba(0,0,0,.3)) */
+  --color-control-active: rgba(0, 0, 0, 0.4); /* secondary button pressed */
 
   /* ---------- Typography ---------- */
   --font-family: "Metropolis", Arial, Helvetica, sans-serif;
@@ -132,6 +134,13 @@
   --control-height: 2.5rem; /* 40px: text inputs, selects */
   --button-height: 2.1875rem; /* 35px desktop; raised to 40px on mobile below */
   --hit-target-min: 2.5rem; /* 40px: smallest allowed tap target on mobile */
+  --search-height: 3.5625rem; /* 57px: header search field on desktop (40px / --control-height on phones) */
+  --search-max-width: 34.375rem; /* 550px: header search field */
+  --icon-size: 1.5rem; /* 24px: header icons */
+  --icon-size-sm: 1.25rem; /* 20px: icon inside the search field, small icons */
+  --spinner-size: 1rem; /* 16px: loading spinner inside a button */
+  --badge-count-size: 1rem; /* 16px: minimum width/height of the cart count badge */
+  --toast-max-width: 25rem; /* 400px: toast / notice box */
 }
 
 /*

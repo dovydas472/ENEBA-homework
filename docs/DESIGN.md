@@ -96,6 +96,7 @@ Eneba's "dark theme" is **deep purple**, not neutral black. Page `#4618ac`, pane
 | `--color-border` | `rgba(255,255,255,.25)` | subtle outline, popup edge | C |
 | `--color-border-control` | `rgba(255,255,255,.7)` | checkbox / radio outline | S1 checkbox |
 | `--color-border-strong` | `#fff` | secondary button, search field | S1 |
+| `--color-control-hover` / `-active` | `rgba(0,0,0,.3)` / `rgba(0,0,0,.4)` | secondary button hover / pressed background | C secondary button rule (4.1); added in Task 10 |
 
 ### 2.2 Typography
 
@@ -153,6 +154,9 @@ Layout tokens: `--page-max-width` 1240px (1200 + 2×20 gutter), `--page-max-widt
 `--header-height` 56px (mobile), `--header-top-height` 97px, `--nav-height` 50px (desktop), `--sidebar-width` 220px,
 `--card-min-width` 165px, `--grid-gap` 22px, `--control-height` 40px (inputs), `--button-height` 35px (40px ≤600px),
 `--hit-target-min` 40px.
+Added in Task 10 (values from 3.1, 4.1, 4.5 and 4.11): `--search-height` 57px (header search, desktop), `--search-max-width` 550px,
+`--icon-size` 24px (header icons), `--icon-size-sm` 20px (icon inside the search field), `--spinner-size` 16px (button spinner),
+`--badge-count-size` 16px (cart count badge minimum size), `--toast-max-width` 400px (toast / "waking up" notice).
 
 ---
 
