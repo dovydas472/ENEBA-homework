@@ -82,9 +82,12 @@ No migration, no Go change, no new dependency (`package.json`, `package-lock.jso
 - **Small changes in shared components** (`Badge`, `Price`, `Button.module.css`, `test-utils`) were needed for the card and the icon buttons; they are additive.
 
 ## 6. Open questions
-1. When the **first** filter is applied, the chips row appears and pushes the grid down by ≈ 35 px for a moment (page height 3436 → 3471 → 3425 px in my sampling). The grid itself does not flicker. Do you want the row's height reserved (an empty 35 px band under the results bar when no filter is active), or is this fine?
-2. "Clear all" / "Clear filters" keep the **sort** and the search text. Should they reset the sort too?
-3. The five-column desktop layout of S7 would need a wider container (`--page-max-width` 1240 px). OK to stay at 4?
+All three questions of the first version of this report were answered by the owner; no change to the code:
+1. The chips row pushing the grid down by ≈ 35 px when the first filter is applied: **keep as is** (a shift caused by the user's own action; CLS ignores shifts right after user input).
+2. "Clear all" / "Clear filters" keep the sort and the search text `q`: **correct, keep**.
+3. 4 columns on desktop (never 5): **fine, keep**.
+
+No open questions remain.
 
 ## 7. Self-review (output of the `task-reviewer` subagent)
 The reviewer ran when the report and the AI log did not exist yet (given only "Task 11"). Verdict: **CHANGES NEEDED**, but it found no requirement missing (S1–S13, the slider amendment, tests, LT docs all "done") and no hard CLAUDE.md violation.
