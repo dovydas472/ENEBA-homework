@@ -1,4 +1,4 @@
-import { Outlet } from "react-router";
+import { Outlet, ScrollRestoration } from "react-router";
 import { DemoBanner } from "./DemoBanner.tsx";
 import { Footer } from "./Footer.tsx";
 import { Header } from "./Header.tsx";
@@ -23,6 +23,9 @@ export function Layout() {
       </main>
       <Footer />
       <SlowServerNotice />
+      {/* Remembers the scroll position of every history entry: Back from a product returns to the same place in
+          the Store. A new page opens at the top (filter changes opt out, see useStoreParams). */}
+      <ScrollRestoration />
     </div>
   );
 }
