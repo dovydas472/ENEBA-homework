@@ -57,6 +57,11 @@
   color: var(--color-accent);
 }
 
+/* The button touches the screen edge, where an outside ring would be cut off: draw the ring inside it. */
+.close:focus-visible {
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
 .icon {
   width: var(--icon-size);
   height: var(--icon-size);

@@ -77,6 +77,11 @@
   color: var(--color-accent);
 }
 
+/* The button touches the panel edge, where an outside ring would be cut off: draw the ring inside it. */
+.close:focus-visible {
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
 .closeIcon {
   width: var(--icon-size);
   height: var(--icon-size);
