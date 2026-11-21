@@ -1,4 +1,5 @@
-/* Grid of product cards (owner decision S7): 2 columns on phones, 3 on tablets and small desktops, 4 on desktop.
+/* Grid of product cards: 4 columns on desktop, 3 on tablets and small desktops (owner decision S7), and on phones
+   ONE column of horizontal list cards like Eneba (Task 11b owner decision, replaces the 2 columns of S7).
    minmax(0, 1fr) lets a column shrink below its content (long titles must not widen the page). */
 .grid {
   display: grid;
@@ -24,7 +25,7 @@
 
 @media (max-width: 600px) {
   .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
   }
 }

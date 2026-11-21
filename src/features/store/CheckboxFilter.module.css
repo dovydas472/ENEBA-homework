@@ -1,8 +1,8 @@
-/* Checkbox list: see docs/DESIGN.md 4.8. */
+/* Checkbox list: see docs/DESIGN.md 4.8. Eneba: 25px rows, 10px apart (35px from row to row). */
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 /* box + name | count */
@@ -11,9 +11,11 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--space-3);
+  min-height: calc(var(--checkbox-size) + var(--space-1));
   cursor: pointer;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
 }
 
 /* The real <input> is the box (appearance: none), so keyboard and screen readers get a real checkbox. */
@@ -55,6 +57,10 @@
 
 /* Tap targets: the whole row is at least 40px tall on touch-sized screens. */
 @media (max-width: 930px) {
+  .list {
+    gap: 0; /* the 40px rows already keep them apart */
+  }
+
   .row {
     min-height: var(--hit-target-min);
   }

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, apiFetch } from "../api/client.ts";
 import type { ProductsResponse } from "../api/types.ts";
 import { facets, makeItem, makeResponse } from "../features/store/fixtures.ts";
-import { fire, render, setControlValue } from "../test-utils.tsx";
+import { fire, polyfillDialog, render, setControlValue } from "../test-utils.tsx";
 import { StorePage } from "./StorePage.tsx";
 
 vi.mock("../api/client.ts", async (importOriginal) => ({
@@ -29,14 +29,7 @@ beforeEach(() => {
   // jsdom has no layout: scrollIntoView does not exist, and <dialog> has no showModal/close.
   scrollIntoView = vi.fn();
   Element.prototype.scrollIntoView = scrollIntoView as never;
-  HTMLDialogElement.prototype.showModal = function () {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function () {
-    if (!this.hasAttribute("open")) return;
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close")); // the browser fires `close` after closing
-  };
+  polyfillDialog();
 });
 afterEach(() => cleanup?.());
 
@@ -270,7 +263,12 @@ describe("StorePage: pagination", () => {
   it("shows the pages and a click on a number changes the URL and scrolls to the results", async () => {
     fakeApi.mockImplementation(async () => manyResults() as never);
     const { router } = await mount();
-    expect($$("nav[aria-label=Pagination] li").map((li) => li.textContent?.trim())).toEqual(["Prev", "1", "2", "3", "4", "5", "Next"]);
+    // The arrows have no text; their accessible name is used instead.
+    expect(
+      $$("nav[aria-label=Pagination] li").map(
+        (li) => li.textContent?.trim() || li.querySelector("button")?.getAttribute("aria-label"),
+      ),
+    ).toEqual(["Previous page", "1", "2", "3", "4", "5", "Next page"]);
 
     click($("button[aria-label='Page 2']"));
     await flush();
@@ -281,7 +279,7 @@ describe("StorePage: pagination", () => {
   it("page 1 is not written to the URL", async () => {
     fakeApi.mockImplementation(async () => ({ ...manyResults(), page: 2 }) as never);
     const { router } = await mount("/store?page=2");
-    click(button("Prev"));
+    click($("button[aria-label='Previous page']"));
     await flush();
     expect(urlOf(router)).toBe("/store");
   });
@@ -355,9 +353,9 @@ describe("StorePage: empty and error states", () => {
 describe("StorePage: mobile filter drawer", () => {
   const dialog = () => $<HTMLDialogElement>("dialog");
 
-  it("'Filters (n)' counts the active filters and opens the drawer with the same filters", async () => {
+  it("'Sort and filter (n)' counts the active filters and opens the drawer with the same filters", async () => {
     await mount("/store?platform=steam,psn&minPrice=500");
-    const opener = button("Filters (3)");
+    const opener = button("Sort and filter (3)");
     expect(dialog().hasAttribute("open")).toBe(false);
     click(opener);
     expect(dialog().hasAttribute("open")).toBe(true);
@@ -367,7 +365,7 @@ describe("StorePage: mobile filter drawer", () => {
 
   it("filters change instantly while the drawer is open, and 'Show N results' closes it", async () => {
     const { router } = await mount("/store");
-    click(button("Filters"));
+    click(button("Sort and filter"));
     click(checkbox("Europe", dialog()));
     await flush();
     expect(urlOf(router)).toBe("/store?region=europe"); // applied at once
@@ -379,22 +377,62 @@ describe("StorePage: mobile filter drawer", () => {
 
   it("the close button closes it", async () => {
     await mount();
-    click(button("Filters"));
+    click(button("Sort and filter"));
     click($("button[aria-label='Close filters']"));
     expect(dialog().hasAttribute("open")).toBe(false);
   });
 
   it("closes when the browser closes it (Esc), and the button works again", async () => {
     await mount();
-    click(button("Filters"));
+    click(button("Sort and filter"));
     act(() => dialog().close()); // what the browser does on Esc: closes the dialog and fires `close`
     // State followed the DOM: opening again works (it would not if `open` were still true).
-    click(button("Filters"));
+    click(button("Sort and filter"));
     expect(dialog().hasAttribute("open")).toBe(true);
+  });
+
+  it("has the sort as radios: the URL's sort is checked and a click changes the URL at once", async () => {
+    const { router } = await mount("/store?sort=newest");
+    click(button("Sort and filter"));
+    const radios = [...dialog().querySelectorAll<HTMLInputElement>("input[type=radio]")];
+    expect(radios.filter((r) => r.checked).map((r) => r.value)).toEqual(["newest"]);
+
+    click(radios.find((r) => r.value === "price_asc")!);
+    await flush();
+    expect(urlOf(router)).toBe("/store?sort=price_asc");
+    expect(dialog().hasAttribute("open")).toBe(true); // like the filters: applied at once, the drawer stays open
+  });
+
+  it("closes on a click on the dimmed page behind it, but not on a click inside the panel", async () => {
+    await mount();
+    click(button("Sort and filter"));
+    click(dialog().querySelector("h2")!); // inside the panel
+    expect(dialog().hasAttribute("open")).toBe(true);
+    click(dialog()); // the backdrop: a click there lands on the <dialog> element itself
+    expect(dialog().hasAttribute("open")).toBe(false);
   });
 
   it("has no filter controls inside while closed (the sidebar is the only copy)", async () => {
     await mount();
     expect(dialog().querySelectorAll("input[type=checkbox]")).toHaveLength(0);
+  });
+});
+
+describe("StorePage: filter groups", () => {
+  const toggle = (title: string) => $$("aside button[aria-expanded]").find((b) => b.textContent?.startsWith(title))!;
+
+  it("shows Price range first, then Platform and Region (Eneba's order)", async () => {
+    await mount();
+    expect($$("aside h3 span:first-child").map((title) => title.textContent)).toEqual([
+      "Price range (EUR)",
+      "Platform",
+      "Region",
+    ]);
+  });
+
+  it("a group with ticked options shows how many are ticked; none ticked = no badge", async () => {
+    await mount("/store?platform=steam,psn");
+    expect(toggle("Platform").textContent).toBe("Platform2 selected");
+    expect(toggle("Region").textContent).toBe("Region");
   });
 });

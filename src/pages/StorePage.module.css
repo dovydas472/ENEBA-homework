@@ -1,24 +1,21 @@
-/* Store page layout: see docs/DESIGN.md 3.2. */
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
+/* Store page layout: see docs/DESIGN.md 3.2 (measured on eneba.com at 1440px and 390px in Task 11b). */
 
+/* h1: 30px bold, margin 10px 0 30px (24px on phones). */
 .title {
-  margin: var(--space-2) 0 var(--space-2);
+  margin: var(--space-2) 0 var(--space-5);
   font-size: var(--font-size-4xl);
 }
 
 /* Info line for the header search (S10). It sits on the dark card colour so the muted text has enough contrast. */
 .notice {
+  margin-bottom: var(--space-4);
   padding: var(--space-2) var(--space-3);
   background: var(--color-surface-card);
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
 
-/* sidebar | results */
+/* sidebar (220px) | results (960px at 1440px), 20px apart */
 .layout {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
@@ -27,24 +24,48 @@
 }
 
 .results {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
   min-width: 0;
 }
 
-/* count | spinner | (Filters button) | sort ; the chips take a full row below. */
-.bar {
+/* Chips row, then the count + sort bar; 10px above the grid. */
+.head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  scroll-margin-top: var(--space-2); /* keeps a little air above the bar after scrollIntoView */
+  flex-direction: column;
+  margin-bottom: var(--space-2);
+  scroll-margin-top: var(--space-2); /* keeps a little air above it after scrollIntoView */
 }
 
+/* ---- desktop: the chips row (only when a filter is active), 30px above the bar ---- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-5);
+}
+
+.toolbarEmpty {
+  display: none;
+}
+
+.chips {
+  min-width: 0;
+}
+
+/* The "Sort and filter" pill is for phones and tablets only. */
+.filtersButton {
+  display: none;
+}
+
+/* ---- count | spinner | sort ---- */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control-height);
+}
+
+/* Desktop: "N results" is white 14px medium (Eneba: "Results found: N"). */
 .count {
-  margin-right: auto; /* pushes the buttons and the sort to the right */
-  color: var(--color-text-muted);
+  margin-right: auto; /* pushes the sort to the right */
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
 }
@@ -55,43 +76,80 @@
   color: var(--color-text-muted);
 }
 
-.chips {
-  flex-basis: 100%;
-  order: 1; /* after the count, the button and the sort */
-}
-
-/* Only on tablet and phone, where the sidebar is hidden. */
-.filtersButton {
-  display: none;
-}
-
-.filtersIcon {
-  flex-shrink: 0; /* an icon next to text must not be squeezed when the row is tight */
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
-}
-
+/* ---- phones and tablets (≤ 930px): no sidebar; count, then the pill + chips row, then the list ---- */
 @media (max-width: 930px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .head {
+    margin-bottom: var(--space-4);
+  }
+
+  .bar {
+    order: -1; /* the count comes first on phones */
+    min-height: 0;
+    margin-bottom: var(--space-4);
+  }
+
+  /* Eneba: 14px regular, muted. */
+  .count {
+    color: var(--color-text-muted);
+    font-weight: var(--font-weight-regular);
+  }
+
+  .sort {
+    display: none; /* the sort is inside the drawer */
+  }
+
+  /* One row: pill | divider | chips; it scrolls sideways when the chips do not fit. */
+  .toolbar,
+  .toolbarEmpty {
+    display: flex;
+    margin-bottom: 0;
+    overflow-x: auto;
+    scrollbar-width: none; /* the row is swiped; a scrollbar would only add noise */
+  }
+
   .filtersButton {
     display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: var(--space-1);
+    min-height: var(--hit-target-min);
+    padding: 0 var(--space-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-chip);
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-none);
+    white-space: nowrap;
+    transition: border-color var(--transition-fast);
+  }
+
+  .filtersButton:hover {
+    border-color: var(--color-accent);
+  }
+
+  .filtersIcon {
+    flex-shrink: 0;
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+  }
+
+  /* A thin white line between the pill and the chips, 20px on each side (Eneba). */
+  .chips {
+    flex-shrink: 0;
+    margin-left: var(--space-4);
+    padding-left: var(--space-4);
+    border-left: 1px solid var(--color-border-strong);
   }
 }
 
 @media (max-width: 600px) {
   .title {
     font-size: var(--font-size-2xl);
-  }
-
-  /* On a phone the count takes the first row alone, then the button and the sort share the next. */
-  .count {
-    flex-basis: 100%;
-  }
-
-  .filtersButton {
-    flex: 1;
   }
 }

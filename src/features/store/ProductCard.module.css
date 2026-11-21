@@ -1,46 +1,72 @@
-/* Product card: see docs/DESIGN.md 4.3. Square corners, dark card colour, no border. */
+/*
+ * Product card: see docs/DESIGN.md 4.3 (measured on eneba.com in Task 11b). Square corners, dark card colour.
+ * Eneba draws a mint border only on cashback cards; we have no cashback, so no border.
+ */
 .card {
-  display: flex;
-  flex-direction: column;
+  display: block;
   height: 100%; /* all cards of a grid row are equally tall */
+  overflow: hidden; /* hides "View offers" until the hover slide brings it up */
   background: var(--color-surface-card);
   color: var(--color-text); /* a link is accent-coloured by default; the card is white text */
-  transition: box-shadow var(--transition-fast);
 }
 
-/* Links keep their colour on hover (global.css turns links amber); the card changes its shadow and title instead. */
+/* Links keep their colour on hover (global.css turns links amber). */
 .card:hover {
   color: var(--color-text);
 }
 
-/* Hover only where there is a real pointer (touch screens would "stick" the hover state). */
-@media (hover: hover) {
-  .card:hover {
-    box-shadow: var(--shadow-popup);
-  }
-
-  .card:hover .title {
-    color: var(--color-accent);
-  }
+/* Everything inside the card; it is what moves up on hover. */
+.slide {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: transform var(--transition-fast);
 }
 
+/* ---- cover + platform strip ---- */
+.cover {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.platformStrip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--platform-strip-height);
+  padding: 0 var(--space-1);
+  overflow: hidden;
+  background: var(--color-overlay);
+  color: var(--color-text-on-overlay);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-none);
+  text-transform: uppercase; /* DESIGN.md 5.2: 10px only for uppercase micro labels */
+  white-space: nowrap;
+}
+
+/* ---- text ---- */
 .body {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-1);
   padding: var(--space-3) var(--space-3) var(--space-2);
 }
 
-/* Title: 12px bold, at most two lines (DESIGN.md 4.3). */
+/* Title: 12px/18px bold, at most two lines. */
 .title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  margin-bottom: var(--space-2);
   font-size: var(--font-size-xs);
   line-height: var(--line-height-snug);
-  transition: color var(--transition-fast);
 }
 
 .edition {
@@ -56,10 +82,15 @@
   line-height: var(--line-height-snug);
 }
 
+/* Desktop shows the platform on the cover strip, so the mint line has only the region. */
+.meta .metaPlatform {
+  display: none; /* two classes: must beat Badge's own display regardless of CSS load order */
+}
+
 /* The price sits at the bottom of the card, so prices line up across a row even when titles differ in length. */
 .priceArea {
   margin-top: auto;
-  padding-top: var(--space-1);
+  padding-top: var(--space-2);
 }
 
 .outOfStock {
@@ -72,6 +103,47 @@
 /* Out of stock: the whole card is slightly dimmed, but it stays a link (the product page lists alternatives). */
 .unavailable {
   opacity: var(--opacity-dimmed);
+}
+
+/* ---- hover: the content slides up by the height of the action row and reveals it ---- */
+.action {
+  position: absolute;
+  top: 100%; /* just below the card's visible area */
+  right: 0;
+  left: 0;
+  padding: 0 var(--space-3) var(--space-3);
+  background: var(--color-surface-card);
+}
+
+/* Looks like the secondary button (DESIGN.md 4.1); it is not a separate control. */
+.actionLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--button-height);
+  border: 1px solid var(--color-border-strong);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-none);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+/* Only where there is a real pointer (touch screens would "stick" the hover) - and for keyboard focus. */
+@media (hover: hover) {
+  .card:hover .slide {
+    transform: translateY(calc(-1 * (var(--button-height) + var(--space-3))));
+  }
+
+  .actionLabel:hover {
+    border-color: var(--color-accent);
+    background: var(--color-control-hover);
+  }
+}
+
+.card:focus-visible .slide {
+  transform: translateY(calc(-1 * (var(--button-height) + var(--space-3))));
 }
 
 /* ---- skeleton ---- */
@@ -88,17 +160,43 @@
 .skeletonMeta {
   width: 60%;
   height: var(--font-size-xs);
+  margin-top: var(--space-2);
 }
 
 .skeletonPrice {
   width: 40%;
   height: var(--font-size-xl);
-  margin-top: var(--space-2);
+  margin-top: var(--space-4);
 }
 
-/* Small screens: tighter card padding so two columns fit. */
+/* ---- phone: horizontal list card (Eneba at 390px: 10px padding, 70px cover on the left, text on the right) ---- */
 @media (max-width: 600px) {
-  .body {
+  .slide {
+    flex-direction: row;
+    gap: var(--space-2);
     padding: var(--space-2);
+  }
+
+  .cover {
+    width: var(--list-cover-width);
+    align-self: flex-start;
+  }
+
+  .platformStrip,
+  .action {
+    display: none;
+  }
+
+  .meta .metaPlatform {
+    display: inline-flex;
+  }
+
+  .body {
+    min-width: 0;
+    padding: 0;
+  }
+
+  .card:focus-visible .slide {
+    transform: none;
   }
 }

@@ -1,6 +1,5 @@
 import { X } from "lucide-react";
 import type { Facets, FacetOption } from "../../api/types.ts";
-import { Button } from "../../components/Button.tsx";
 import { formatPrice } from "../../lib/formatPrice.ts";
 import type { StoreParams } from "../../lib/storeParams.ts";
 import styles from "./ActiveFilters.module.css";
@@ -36,6 +35,7 @@ function priceLabel(minPrice?: number, maxPrice?: number): string {
 /**
  * The chips above the results (owner decision S1): one per active filter, each with an × that removes just
  * that filter, plus "Clear all". Renders nothing when no filter is active.
+ * Looks like Eneba's filter pills (Task 11b); Eneba's pills open a dropdown, ours remove the one filter.
  */
 export function ActiveFilters({ params, facets, onChange, onClearAll }: ActiveFiltersProps) {
   const { platform = [], region = [], minPrice, maxPrice } = params;
@@ -82,9 +82,9 @@ export function ActiveFilters({ params, facets, onChange, onClearAll }: ActiveFi
         </li>
       ))}
       <li>
-        <Button variant="ghost" onClick={onClearAll}>
+        <button type="button" className={styles.clearAll} onClick={onClearAll}>
           Clear all
-        </Button>
+        </button>
       </li>
     </ul>
   );

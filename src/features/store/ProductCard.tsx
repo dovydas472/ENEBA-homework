@@ -9,7 +9,13 @@ import { cx } from "../../lib/cx.ts";
 import { CoverImage } from "./CoverImage.tsx";
 import styles from "./ProductCard.module.css";
 
-/** One product in the grid (DESIGN.md 4.3). The WHOLE card is one link to the product page. */
+/**
+ * One product in the grid (DESIGN.md 4.3), laid out like Eneba's card. The WHOLE card is one link to the product page.
+ *  - desktop/tablet: cover with a dark platform strip at the bottom, then title, region (mint), price.
+ *    On hover the content slides up and shows "View offers" (Eneba also shows "Add to cart"; we have no cart yet).
+ *  - phone (≤ 600 px): a horizontal list card, small cover on the left; the platform moves into the mint line,
+ *    because a 70 px strip is too narrow for names like "Nintendo eShop" (Eneba shows a logo there).
+ */
 export function ProductCard({ item }: { item: ProductItem }) {
   const queryClient = useQueryClient();
   const buyable = item.inStock && item.priceCents !== null;
@@ -30,28 +36,42 @@ export function ProductCard({ item }: { item: ProductItem }) {
       onMouseEnter={prefetch}
       onFocus={prefetch}
     >
-      <CoverImage url={item.coverUrl} title={item.title} />
-      <div className={styles.body}>
-        <h3 className={styles.title}>{item.title}</h3>
-        {/* "Standard" is the normal edition: only special editions are worth a line. */}
-        {item.edition !== "Standard" && <p className={styles.edition}>{item.edition}</p>}
-        <p className={styles.meta}>
-          <Badge variant="text">{item.platform.name}</Badge>
-          <Badge variant="text">{item.region.name}</Badge>
-        </p>
-        <div className={styles.priceArea}>
-          {buyable ? (
-            <Price
-              label="From"
-              cents={item.priceCents}
-              oldCents={item.msrpCents}
-              // The API sends null or 0 when there is no real discount; Price shows the badge only for > 0.
-              discountPercent={item.discountPercent}
-            />
-          ) : (
-            <p className={styles.outOfStock}>Out of stock</p>
-          )}
+      <div className={styles.slide}>
+        <div className={styles.cover}>
+          <CoverImage url={item.coverUrl} title={item.title} />
+          {/* Desktop: the platform on a dark strip over the bottom of the cover (hidden on phones, see the CSS). */}
+          <span className={styles.platformStrip}>{item.platform.name}</span>
         </div>
+        <div className={styles.body}>
+          <h3 className={styles.title}>{item.title}</h3>
+          {/* "Standard" is the normal edition: only special editions are worth a line. */}
+          {item.edition !== "Standard" && <p className={styles.edition}>{item.edition}</p>}
+          <p className={styles.meta}>
+            {/* Phones only: the platform joins the mint line (desktop shows it on the cover strip instead). */}
+            <Badge variant="text" className={styles.metaPlatform}>
+              {item.platform.name}
+            </Badge>
+            <Badge variant="text">{item.region.name}</Badge>
+          </p>
+          <div className={styles.priceArea}>
+            {buyable ? (
+              <Price
+                label="From"
+                cents={item.priceCents}
+                oldCents={item.msrpCents}
+                // The API sends null or 0 when there is no real discount; Price shows the badge only for > 0.
+                discountPercent={item.discountPercent}
+              />
+            ) : (
+              <p className={styles.outOfStock}>Out of stock</p>
+            )}
+          </div>
+        </div>
+        {/* Revealed by the hover slide. Part of the link's look only: the link already says where it goes,
+            so screen readers skip it (aria-hidden) instead of reading "View offers" in every card name. */}
+        <span className={styles.action} aria-hidden="true">
+          <span className={styles.actionLabel}>View offers</span>
+        </span>
       </div>
     </Link>
   );
@@ -61,11 +81,15 @@ export function ProductCard({ item }: { item: ProductItem }) {
 export function ProductCardSkeleton() {
   return (
     <div className={styles.card} aria-hidden="true">
-      <Skeleton variant="block" className={styles.skeletonCover} />
-      <div className={styles.body}>
-        <Skeleton className={styles.skeletonTitle} />
-        <Skeleton className={styles.skeletonMeta} />
-        <Skeleton className={styles.skeletonPrice} />
+      <div className={styles.slide}>
+        <div className={styles.cover}>
+          <Skeleton variant="block" className={styles.skeletonCover} />
+        </div>
+        <div className={styles.body}>
+          <Skeleton className={styles.skeletonTitle} />
+          <Skeleton className={styles.skeletonMeta} />
+          <Skeleton className={styles.skeletonPrice} />
+        </div>
       </div>
     </div>
   );

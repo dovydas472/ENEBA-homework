@@ -1,5 +1,4 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "../../components/Button.tsx";
 import { cx } from "../../lib/cx.ts";
 import { pageList } from "./pageList.ts";
 import styles from "./Pagination.module.css";
@@ -12,8 +11,9 @@ interface PaginationProps {
 }
 
 /**
- * "‹ Prev  1 2 3 … 10  Next ›" (owner decision S5). Which numbers to show is decided by pageList();
- * Prev / Next are disabled at the first / last page. The current page is marked with aria-current="page".
+ * "‹  1 2 3 … 10  ›" (owner decision S5, drawn like Eneba's since Task 11b: the previous / next buttons are
+ * square arrow buttons, named "Previous page" / "Next page" for screen readers). Which numbers to show is decided
+ * by pageList(); the arrows are disabled at the first / last page. The current page is marked with aria-current="page".
  * With one page (or none) there is nothing to page through, so nothing is drawn.
  */
 export function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
@@ -23,10 +23,15 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
     <nav className={styles.nav} aria-label="Pagination">
       <ul className={styles.list}>
         <li>
-          <Button variant="secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          <button
+            type="button"
+            className={styles.arrow}
+            aria-label="Previous page"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          >
             <ChevronLeft className={styles.icon} aria-hidden="true" />
-            Prev
-          </Button>
+          </button>
         </li>
         {pageList(page, totalPages).map((item, index) =>
           item === "…" ? (
@@ -49,10 +54,15 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
           ),
         )}
         <li>
-          <Button variant="secondary" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
-            Next
+          <button
+            type="button"
+            className={styles.arrow}
+            aria-label="Next page"
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+          >
             <ChevronRight className={styles.icon} aria-hidden="true" />
-          </Button>
+          </button>
         </li>
       </ul>
     </nav>

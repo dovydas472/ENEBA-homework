@@ -1,0 +1,43 @@
+/* Sort radios in the drawer: see docs/DESIGN.md 4.6 (Eneba: 20px circle, 2px border; checked = yellow ring + 10px yellow dot; 14px text). */
+.list {
+  display: flex;
+  flex-direction: column; /* no gap: every row is already a 40px tap target (Eneba: 35px from row to row) */
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--hit-target-min); /* the drawer is only used on touch-sized screens */
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
+}
+
+/* The real <input> is the circle (appearance: none), so keyboard and screen readers get a real radio. */
+.radio {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
+  margin: 0;
+  border: 2px solid var(--color-border-control);
+  border-radius: var(--radius-round);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.row:hover .radio,
+.radio:checked {
+  border-color: var(--color-accent);
+}
+
+.radio:checked::after {
+  content: "";
+  width: var(--radio-dot-size);
+  height: var(--radio-dot-size);
+  border-radius: var(--radius-round);
+  background: var(--color-accent);
+}
