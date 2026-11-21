@@ -1,0 +1,85 @@
+// @vitest-environment jsdom
+import { act } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { render } from "../../test-utils.tsx";
+import { Pagination } from "./Pagination.tsx";
+
+let cleanup: (() => void) | undefined;
+afterEach(() => cleanup?.());
+
+function renderPagination(page: number, totalPages: number, onPageChange = vi.fn()) {
+  const view = render(<Pagination page={page} totalPages={totalPages} onPageChange={onPageChange} />);
+  cleanup = view.unmount;
+  const buttons = [...view.container.querySelectorAll("button")];
+  return {
+    ...view,
+    onPageChange,
+    /** The visible items in order: "Prev", "1", "2", "…", "Next". */
+    items: [...view.container.querySelectorAll("li")].map((li) => li.textContent?.trim()),
+    prev: buttons.find((b) => b.textContent?.includes("Prev"))!,
+    next: buttons.find((b) => b.textContent?.includes("Next"))!,
+    pageButton: (n: number) => buttons.find((b) => b.getAttribute("aria-label") === `Page ${n}`)!,
+  };
+}
+
+describe("Pagination", () => {
+  it("draws nothing for a single page", () => {
+    const { container } = renderPagination(1, 1);
+    expect(container.querySelector("nav")).toBeNull();
+  });
+
+  it("shows every page number when there are few pages", () => {
+    const { items } = renderPagination(1, 5);
+    expect(items).toEqual(["Prev", "1", "2", "3", "4", "5", "Next"]);
+  });
+
+  it("first page of many: first pages, ellipsis, last page", () => {
+    expect(renderPagination(1, 10).items).toEqual(["Prev", "1", "2", "3", "4", "5", "…", "10", "Next"]);
+  });
+
+  it("middle page: ellipsis on both sides", () => {
+    expect(renderPagination(5, 10).items).toEqual(["Prev", "1", "…", "4", "5", "6", "…", "10", "Next"]);
+  });
+
+  it("last page of many: first page, ellipsis, last pages", () => {
+    expect(renderPagination(10, 10).items).toEqual(["Prev", "1", "…", "6", "7", "8", "9", "10", "Next"]);
+  });
+
+  it("disables Prev on the first page and Next on the last page", () => {
+    const first = renderPagination(1, 5);
+    expect(first.prev.disabled).toBe(true);
+    expect(first.next.disabled).toBe(false);
+    cleanup?.();
+
+    const last = renderPagination(5, 5);
+    expect(last.prev.disabled).toBe(false);
+    expect(last.next.disabled).toBe(true);
+    cleanup?.();
+
+    const middle = renderPagination(3, 5);
+    expect(middle.prev.disabled).toBe(false);
+    expect(middle.next.disabled).toBe(false);
+  });
+
+  it("marks the current page with aria-current and no other", () => {
+    const { container } = renderPagination(3, 5);
+    const current = container.querySelectorAll("[aria-current=page]");
+    expect(current).toHaveLength(1);
+    expect(current[0].textContent).toBe("3");
+  });
+
+  it("asks for the right page when a number, Prev or Next is clicked", () => {
+    const { onPageChange, prev, next, pageButton } = renderPagination(3, 5);
+    act(() => pageButton(5).click());
+    act(() => prev.click());
+    act(() => next.click());
+    expect(onPageChange.mock.calls).toEqual([[5], [2], [4]]);
+  });
+
+  it("hides the ellipsis from screen readers", () => {
+    const { container } = renderPagination(5, 10);
+    const gaps = [...container.querySelectorAll("li")].filter((li) => li.textContent === "…");
+    expect(gaps).toHaveLength(2);
+    for (const gap of gaps) expect(gap.getAttribute("aria-hidden")).toBe("true");
+  });
+});

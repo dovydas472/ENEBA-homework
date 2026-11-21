@@ -10,17 +10,20 @@ interface PriceProps {
   oldCents?: number | null;
   /** Whole percent as sent by the API (it is not recomputed here). Shown next to the old price. */
   discountPercent?: number | null;
+  /** Small text above the price, e.g. "From" on a product card. */
+  label?: string;
   /** card = product card / offer row, large = buy box on the product page. */
   size?: "card" | "large";
   className?: string;
 }
 
 /** A price block (DESIGN.md 4.4): optional "old price -66%" line above the current price. */
-export function Price({ cents, oldCents = null, discountPercent = null, size = "card", className }: PriceProps) {
+export function Price({ cents, oldCents = null, discountPercent = null, label, size = "card", className }: PriceProps) {
   const showOld = oldCents !== null && cents !== null && oldCents > cents;
 
   return (
     <div className={cx(styles.price, styles[size], className)}>
+      {label && <div className={styles.label}>{label}</div>}
       {showOld && (
         <div className={styles.was}>
           <s className={styles.old}>

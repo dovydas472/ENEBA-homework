@@ -1,0 +1,61 @@
+/* Checkbox list: see docs/DESIGN.md 4.8. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* box + name | count */
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+/* The real <input> is the box (appearance: none), so keyboard and screen readers get a real checkbox. */
+.checkbox {
+  appearance: none;
+  position: relative;
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
+  margin: 0;
+  border: 2px solid var(--color-border-control);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.row:hover .checkbox {
+  border-color: var(--color-accent);
+}
+
+.checkbox:checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+/* The tick: a shape cut out of a square (clip-path), painted in a token colour. */
+.checkbox:checked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-deep);
+  clip-path: polygon(20% 52%, 30% 42%, 44% 56%, 72% 24%, 82% 34%, 44% 76%);
+}
+
+.count {
+  color: var(--color-text-muted);
+}
+
+/* Tap targets: the whole row is at least 40px tall on touch-sized screens. */
+@media (max-width: 930px) {
+  .row {
+    min-height: var(--hit-target-min);
+  }
+}

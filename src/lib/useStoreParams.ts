@@ -16,6 +16,10 @@ export interface SetParamsOptions {
  *
  * Reading uses useSearchParams. Writing goes through navigate() with a string we build ourselves
  * (buildStoreSearch), because setSearchParams would turn the commas into %2C.
+ *
+ * Every write passes `preventScrollReset: true`: <ScrollRestoration /> (in Layout) would otherwise jump to the top
+ * of the page whenever the URL changes, e.g. while the user ticks several platforms. The Store page scrolls
+ * to the results itself when the PAGE changes. Back/Forward still restore the saved scroll position.
  */
 export function useStoreParams() {
   const [searchParams] = useSearchParams();
@@ -29,12 +33,15 @@ export function useStoreParams() {
   const setParams = useCallback(
     (patch: Partial<StoreParams>, options: SetParamsOptions = {}) => {
       // Only `search` is given, so the path stays the same (we are on /store).
-      navigate({ search: buildStoreSearch(mergeStoreParams(params, patch)) }, { replace: options.replace });
+      navigate(
+        { search: buildStoreSearch(mergeStoreParams(params, patch)) },
+        { replace: options.replace, preventScrollReset: true },
+      );
     },
     [navigate, params],
   );
 
-  const resetParams = useCallback(() => navigate({ search: "" }), [navigate]);
+  const resetParams = useCallback(() => navigate({ search: "" }, { preventScrollReset: true }), [navigate]);
 
   return { params, setParams, resetParams };
 }

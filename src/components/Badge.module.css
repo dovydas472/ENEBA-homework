@@ -32,3 +32,10 @@
   color: var(--color-secondary);
   font-size: var(--font-size-base);
 }
+
+/* Region / platform text (DESIGN.md 4.5): no box, 12px bold uppercase mint. */
+.text {
+  color: var(--color-secondary);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+}

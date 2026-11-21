@@ -1,0 +1,11 @@
+/* Filter column (DESIGN.md 3.2): 220px wide. The groups draw their own surface colour. */
+.sidebar {
+  align-self: start; /* as tall as its content, not stretched to the height of the results */
+}
+
+/* Tablet / phone: the filters live in the drawer. display: none removes the sidebar from the page and from the accessibility tree. */
+@media (max-width: 930px) {
+  .sidebar {
+    display: none;
+  }
+}

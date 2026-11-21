@@ -13,17 +13,22 @@ export type StoreParams = Omit<ProductsParams, "pageSize"> & {
   q?: string;
 };
 
-/** "steam,psn" -> ["steam", "psn"]; empty items are dropped; nothing left -> undefined. */
+// The API answers 400 for these limits (pkg/server/catalog_query.go). The page must never send them,
+// so the numbers are repeated here and the parser keeps the URL inside them.
+export const MAX_PAGE = 10_000;
+export const MAX_SLUGS_PER_FILTER = 20;
+
+/** "steam,psn" -> ["steam", "psn"]; empty items and repeats are dropped, at most 20 are kept; nothing left -> undefined. */
 function parseList(value: string | null): string[] | undefined {
-  const items = (value ?? "").split(",").filter((item) => item !== "");
+  const items = [...new Set((value ?? "").split(",").filter((item) => item !== ""))].slice(0, MAX_SLUGS_PER_FILTER);
   return items.length > 0 ? items : undefined;
 }
 
-/** "500" -> 500. Anything that is not a plain non-negative integer is ignored. */
-function parseInteger(value: string | null, min: number): number | undefined {
+/** "500" -> 500. Anything that is not a plain integer inside [min, max] is ignored. */
+function parseInteger(value: string | null, min: number, max = Number.MAX_SAFE_INTEGER): number | undefined {
   if (value === null || !/^\d+$/.test(value)) return undefined;
   const n = Number(value);
-  return Number.isSafeInteger(n) && n >= min ? n : undefined;
+  return Number.isSafeInteger(n) && n >= min && n <= max ? n : undefined;
 }
 
 function parseSort(value: string | null): Sort | undefined {
@@ -31,8 +36,10 @@ function parseSort(value: string | null): Sort | undefined {
 }
 
 /**
- * Reads the URL into a typed object. The URL is user input (anyone can type anything),
- * so invalid values are dropped here and the rest of the app only sees valid ones.
+ * Reads the URL into a typed object. The URL is user input (anyone can type anything), so this is where it is
+ * SANITIZED: invalid values are dropped (they fall back to the default), and the rest of the app - and the API
+ * request - only ever sees valid ones. The user never gets a 400 page for a hand-typed URL.
+ * The server still validates everything too (the API is public; it cannot trust this code).
  */
 export function parseStoreParams(search: URLSearchParams): StoreParams {
   const candidate: StoreParams = {
@@ -42,8 +49,13 @@ export function parseStoreParams(search: URLSearchParams): StoreParams {
     minPrice: parseInteger(search.get("minPrice"), 0),
     maxPrice: parseInteger(search.get("maxPrice"), 0),
     sort: parseSort(search.get("sort")),
-    page: parseInteger(search.get("page"), 1),
+    page: parseInteger(search.get("page"), 1, MAX_PAGE),
   };
+  // A range like minPrice=2000&maxPrice=500 contradicts itself (the API would answer 400): ignore both.
+  if (candidate.minPrice !== undefined && candidate.maxPrice !== undefined && candidate.minPrice > candidate.maxPrice) {
+    delete candidate.minPrice;
+    delete candidate.maxPrice;
+  }
   // Keep only the keys that have a value (so `{}` means "no filters" and toEqual is simple).
   return Object.fromEntries(Object.entries(candidate).filter(([, v]) => v !== undefined)) as StoreParams;
 }

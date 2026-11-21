@@ -3,8 +3,9 @@ import { cx } from "../lib/cx.ts";
 import styles from "./Badge.module.css";
 
 interface BadgeProps {
-  /** count = number on the cart icon, cashback = mint label on a cover, tag = outlined pill ("Cashback deal"). */
-  variant?: "count" | "cashback" | "tag";
+  /** count = number on the cart icon, cashback = mint label on a cover, tag = outlined pill ("Cashback deal"),
+   *  text = plain mint uppercase text without a box (platform / region on a product card). */
+  variant?: "count" | "cashback" | "tag" | "text";
   children: ReactNode;
   className?: string;
 }

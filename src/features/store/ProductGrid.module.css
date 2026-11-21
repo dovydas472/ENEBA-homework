@@ -1,0 +1,30 @@
+/* Grid of product cards (owner decision S7): 2 columns on phones, 3 on tablets and small desktops, 4 on desktop.
+   minmax(0, 1fr) lets a column shrink below its content (long titles must not widen the page). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--grid-gap);
+  transition: opacity var(--transition-fast);
+}
+
+.item {
+  min-width: 0;
+}
+
+/* Waiting for a new result: the old cards stay, dimmed. */
+.dimmed {
+  opacity: var(--opacity-dimmed);
+}
+
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+}

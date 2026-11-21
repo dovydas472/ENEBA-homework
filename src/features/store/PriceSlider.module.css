@@ -1,0 +1,120 @@
+/* Dual-thumb price slider: two native range inputs over one track (owner amendment to S4). */
+.slider {
+  position: relative;
+  height: var(--slider-thumb-hit);
+}
+
+.disabled {
+  opacity: 0.5; /* DESIGN.md 4: disabled controls use .5 */
+}
+
+/* Track: inset by half a thumb on each side, because a thumb's CENTRE travels from half a thumb to (width - half a thumb). */
+.track {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--slider-thumb-hit) / 2);
+  left: calc(var(--slider-thumb-hit) / 2);
+  height: var(--slider-track-height);
+  transform: translateY(-50%);
+  border-radius: var(--radius-pill);
+  background: var(--color-border-control);
+}
+
+/* The part between the two thumbs. --slider-start / --slider-end are set from React (percent of the track). */
+.range {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--slider-start);
+  right: calc(100% - var(--slider-end));
+  background: var(--color-accent);
+}
+
+/* Both inputs fill the slider, are see-through and let clicks pass through; only the thumbs catch the pointer. */
+.thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--slider-thumb-hit);
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.onTop {
+  z-index: var(--z-raised);
+}
+
+/* The thumb is `--slider-thumb-hit` big (the tap target) but only `--slider-thumb-size` is painted:
+   a transparent border takes the difference and background-clip keeps the colour inside it. */
+.thumb::-webkit-slider-runnable-track {
+  height: var(--slider-thumb-hit);
+  background: transparent;
+}
+
+.thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: var(--slider-thumb-hit);
+  height: var(--slider-thumb-hit);
+  border: calc((var(--slider-thumb-hit) - var(--slider-thumb-size)) / 2) solid transparent;
+  border-radius: var(--radius-round);
+  background: var(--color-accent);
+  background-clip: padding-box;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+/* Firefox needs its own rules (one unknown selector would invalidate a shared rule, so they are separate). */
+.thumb::-moz-range-track {
+  height: var(--slider-thumb-hit);
+  background: transparent;
+}
+
+.thumb::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--slider-thumb-hit);
+  height: var(--slider-thumb-hit);
+  border: calc((var(--slider-thumb-hit) - var(--slider-thumb-size)) / 2) solid transparent;
+  border-radius: var(--radius-round);
+  background: var(--color-accent);
+  background-clip: padding-box;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.thumb:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+
+.thumb:active::-moz-range-thumb {
+  cursor: grabbing;
+}
+
+.thumb:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+
+.thumb:disabled::-moz-range-thumb {
+  cursor: not-allowed;
+}
+
+/* Focus ring: the global ring would surround the whole (full-width) input, so it is drawn on the thumb instead.
+   The offset is negative by the transparent border, so the ring hugs the painted circle. */
+.thumb:focus-visible {
+  outline: none;
+}
+
+.thumb:focus-visible::-webkit-slider-thumb {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: calc(var(--focus-ring-offset) - (var(--slider-thumb-hit) - var(--slider-thumb-size)) / 2);
+}
+
+.thumb:focus-visible::-moz-range-thumb {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: calc(var(--focus-ring-offset) - (var(--slider-thumb-hit) - var(--slider-thumb-size)) / 2);
+}

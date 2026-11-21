@@ -77,6 +77,12 @@ describe("useStoreParams", () => {
     expect(urlOf(router)).toBe("/"); // went past the replaced entry
   });
 
+  it("asks <ScrollRestoration /> not to jump to the top when a filter changes", () => {
+    const router = mount("/store");
+    act(() => latest.setParams({ platform: ["steam"] }));
+    expect(router.state.preventScrollReset).toBe(true);
+  });
+
   it("clears every filter with resetParams but keeps the page path", () => {
     const router = mount("/store?q=zelda&platform=steam&page=2");
     act(() => latest.resetParams());
