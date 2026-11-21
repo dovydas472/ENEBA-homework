@@ -5,11 +5,14 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/dovydas472/ENEBA-homework/pkg/db"
 )
 
 // dbPingTimeout is long enough to survive a Neon cold start (suspended
-// compute waking up), but short enough that a dead DB does not hang the request.
-const dbPingTimeout = 5 * time.Second
+// compute waking up) including the one connect retry, but short enough that a
+// dead DB does not hang the request. Same budget as the catalog (pkg/db/retry.go).
+const dbPingTimeout = db.RequestTimeout
 
 // DBPinger is the only thing the health handler needs from the database.
 // Depending on this small interface (not on pgxpool) lets tests use a fake
@@ -33,9 +36,9 @@ type healthResponse struct {
 // 503 (not 500) because the API itself is fine; a dependency is unavailable,
 // which is exactly what monitors and load balancers expect from a health check.
 // The real error goes to the server log only - never to the client.
-func healthHandler(db DBPinger) http.HandlerFunc {
+func healthHandler(pinger DBPinger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if db == nil {
+		if pinger == nil {
 			log.Printf("health: no database configured")
 			writeJSON(w, http.StatusServiceUnavailable, healthResponse{Status: "error", DB: "error"})
 			return
@@ -45,7 +48,7 @@ func healthHandler(db DBPinger) http.HandlerFunc {
 		defer cancel()
 
 		start := time.Now()
-		if err := db.Ping(ctx); err != nil {
+		if err := pinger.Ping(ctx); err != nil {
 			log.Printf("health: db ping failed: %v", err)
 			writeJSON(w, http.StatusServiceUnavailable, healthResponse{Status: "error", DB: "error"})
 			return

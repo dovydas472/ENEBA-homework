@@ -5,13 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/dovydas472/ENEBA-homework/pkg/catalog"
+	"github.com/dovydas472/ENEBA-homework/pkg/db"
 )
 
 const (
@@ -168,35 +172,79 @@ func TestProductsList_badRequest(t *testing.T) {
 	}
 }
 
-func TestProductsList_dbUnavailable(t *testing.T) {
-	const secret = "postgres://user:s3cret@host-pooler.example/db"
-	tests := []struct {
-		name string
-		c    CatalogReader
-	}{
-		{"store error", &fakeCatalog{err: errors.New("dial " + secret + ": SELECT * FROM products refused")}},
-		{"no catalog configured (nil)", nil},
+const secret = "postgres://user:s3cret@host-pooler.example/db"
+
+// Errors that mean "the database cannot be reached": infrastructure -> 503.
+func unreachableErrors() map[string]error {
+	return map[string]error{
+		"connect failed after the retry": fmt.Errorf("catalog: %w: dial %s: connection refused", db.ErrUnavailable, secret),
+		"DATABASE_URL not set":           db.ErrNotConfigured,
+		"DATABASE_URL invalid":           db.ErrBadConfig,
+		"pool could not be created":      db.ErrPoolCreate,
+		"connection dropped mid-query":   fmt.Errorf("read %s: %w", secret, pgconn.ErrConnClosed),
+		"network error":                  &net.OpError{Op: "read", Err: errors.New("connection reset " + secret)},
 	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			assertUnavailable(t, get(t, tc.c, "/api/products"))
+}
+
+// Anything else unexpected - above all a SQL error - is a bug: developer -> 500.
+func unexpectedErrors() map[string]error {
+	return map[string]error{
+		"SQL error (missing table)": fmt.Errorf("catalog: list items: %w", &pgconn.PgError{Code: "42P01", Message: `relation "products" does not exist`}),
+		"scan error":                errors.New("scan: SELECT * FROM products: unsupported type " + secret),
+		"query ran out of time":     fmt.Errorf("catalog: %w", context.DeadlineExceeded),
+	}
+}
+
+func TestProductsList_dbUnavailable(t *testing.T) {
+	for name, err := range unreachableErrors() {
+		t.Run(name, func(t *testing.T) {
+			assertUnavailable(t, get(t, &fakeCatalog{err: err}, "/api/products"))
+		})
+	}
+	t.Run("no catalog configured (nil)", func(t *testing.T) {
+		assertUnavailable(t, get(t, nil, "/api/products"))
+	})
+}
+
+func TestProductsList_unexpectedErrorIs500(t *testing.T) {
+	for name, err := range unexpectedErrors() {
+		t.Run(name, func(t *testing.T) {
+			assertInternalError(t, get(t, &fakeCatalog{err: err}, "/api/products"))
 		})
 	}
 }
 
 func assertUnavailable(t *testing.T, rec *httptest.ResponseRecorder) {
 	t.Helper()
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, want 503", rec.Code)
+	assertGenericError(t, rec, http.StatusServiceUnavailable, "service temporarily unavailable")
+}
+
+func assertInternalError(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	assertGenericError(t, rec, http.StatusInternalServerError, "internal error")
+}
+
+// assertGenericError checks status, no-store and the generic body, and that
+// nothing of the real cause reaches the client (it is only in the server log).
+func assertGenericError(t *testing.T, rec *httptest.ResponseRecorder, status int, msg string) {
+	t.Helper()
+	if rec.Code != status {
+		t.Fatalf("status = %d, want %d", rec.Code, status)
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
 		t.Errorf("Cache-Control = %q, want no-store", got)
 	}
-	if got := decode(t, rec)["error"]; got != "service temporarily unavailable" {
-		t.Errorf("error = %v, want the generic message", got)
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type = %q", ct)
 	}
-	// Neither the driver error, nor SQL, nor the connection string may reach the client.
-	for _, leak := range []string{"s3cret", "refused", "SELECT", "postgres://"} {
+	body := decode(t, rec)
+	if got := body["error"]; got != msg {
+		t.Errorf("error = %v, want %q", got, msg)
+	}
+	if len(body) != 1 {
+		t.Errorf("body = %v, want only the \"error\" key", body)
+	}
+	for _, leak := range []string{"s3cret", "refused", "SELECT", "postgres://", "relation", "42P01", "deadline"} {
 		if strings.Contains(rec.Body.String(), leak) {
 			t.Errorf("response body leaks %q: %s", leak, rec.Body.String())
 		}
@@ -278,9 +326,22 @@ func TestProductDetail_notFound(t *testing.T) {
 }
 
 func TestProductDetail_dbUnavailable(t *testing.T) {
-	const secret = "postgres://user:s3cret@host-pooler.example/db"
-	assertUnavailable(t, get(t, &fakeCatalog{err: errors.New("dial " + secret + ": SELECT refused")}, "/api/products/x"))
-	assertUnavailable(t, get(t, nil, "/api/products/x"))
+	for name, err := range unreachableErrors() {
+		t.Run(name, func(t *testing.T) {
+			assertUnavailable(t, get(t, &fakeCatalog{err: err}, "/api/products/x"))
+		})
+	}
+	t.Run("no catalog configured (nil)", func(t *testing.T) {
+		assertUnavailable(t, get(t, nil, "/api/products/x"))
+	})
+}
+
+func TestProductDetail_unexpectedErrorIs500(t *testing.T) {
+	for name, err := range unexpectedErrors() {
+		t.Run(name, func(t *testing.T) {
+			assertInternalError(t, get(t, &fakeCatalog{err: err}, "/api/products/x"))
+		})
+	}
 }
 
 func TestCatalogRoutes_methodsAndRemovedEndpoint(t *testing.T) {

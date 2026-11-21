@@ -77,6 +77,10 @@ jobs:
       # The same container serves cmd/migrate (direct URL) and the integration tests.
       DATABASE_URL_DIRECT: postgres://postgres:postgres@localhost:5432/eneba_ci?sslmode=disable
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/eneba_ci?sslmode=disable
+      # Strict mode (pkg/testdb): in THIS job a missing test database fails the tests instead of
+      # skipping them. A silently skipped integration test looks green but proves nothing.
+      # (The `go` job has no database and keeps skipping.)
+      REQUIRE_TEST_DB: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -117,6 +121,20 @@ jobs:
       # the same tables at the same time would break each other's tests.
       - name: go test (with the database)
         run: go test ./...
+
+      # Proof that the integration tests really ran: the verbose log of the catalog package is
+      # printed, and the step fails if any test was skipped or none passed.
+      - name: Catalog integration tests ran (not skipped)
+        run: |
+          set -o pipefail
+          go test -count=1 -v ./pkg/catalog | tee catalog-test.log
+          passed="$(grep -c -e '^--- PASS' catalog-test.log || true)"
+          skipped="$(grep -c -e '--- SKIP' catalog-test.log || true)"
+          echo "catalog integration tests: $passed passed, $skipped skipped"
+          if [ "$skipped" != "0" ] || [ "$passed" -eq 0 ]; then
+            echo "::error::Expected the catalog integration tests to run (0 skipped, at least 1 passed)"
+            exit 1
+          fi
 
   frontend:
     name: frontend
