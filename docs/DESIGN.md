@@ -98,6 +98,8 @@ Eneba's "dark theme" is **deep purple**, not neutral black. Page `#4618ac`, pane
 | `--color-border-strong` | `#fff` | secondary button, search field | S1 |
 | `--color-control-hover` / `-active` | `rgba(0,0,0,.3)` / `rgba(0,0,0,.4)` | secondary button hover / pressed background | C secondary button rule (4.1); added in Task 10 |
 
+The favicon [`public/favicon.svg`](../public/favicon.svg) is our own "EH" monogram (not Eneba's logo). An SVG file cannot read CSS variables, so it repeats two token values by hand: `--color-bg` `#4618ac` (background) and `--color-accent` `#fad318` (letters). Update it if those tokens change.
+
 ### 2.2 Typography
 
 **Font: Metropolis** — the font Eneba itself serves (`font-family: "metropolis"`). It is **free** (Unlicense / public domain,

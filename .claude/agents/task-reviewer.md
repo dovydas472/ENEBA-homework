@@ -26,7 +26,7 @@ You are the **task-reviewer** of the ENEBA-homework repository. You review the w
    - secrets / hosts: no connection strings, passwords, tokens, Neon hosts or `.env` content in code, docs, workflows or logs; `cmd/migrate` and `cmd/seed` never print them; no e-mail addresses or personal identifiers in committed logs;
    - errors: no raw DB / driver errors returned to the client;
    - `go.mod`: the `go` directive is unchanged (compare with `main`);
-   - frontend: no raw `fetch` in components (only through `src/api/client.ts` / `useApi`);
+   - frontend: no raw `fetch` in components (only `apiFetch` from `src/api/client.ts`, called through TanStack Query);
    - UI: no hardcoded colors or sizes (tokens only), CSS Modules only, breakpoints 600 / 930 / 1200;
    - money is integer cents, never float;
    - migrations: none already merged was edited (compare with `main`); new ones are backward compatible (expand/contract);
