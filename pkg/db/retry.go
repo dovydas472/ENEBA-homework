@@ -22,6 +22,8 @@ import (
 //	                                          -------
 //	RequestTimeout                            10 s  (deadline of the whole request's DB work)
 //
+// Vercel limit: vercel.json maxDuration = 15 s > RequestTimeout, so our own 503 always wins.
+//
 // Why a retry at all: the first request after a long idle meets a Vercel cold
 // start AND a suspended Neon compute. The first connect attempt wakes the
 // compute but can run out of time; the second one finds it awake.

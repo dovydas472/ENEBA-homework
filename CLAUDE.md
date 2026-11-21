@@ -16,7 +16,7 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
 - Router: standard `net/http` ServeMux (Go 1.22+ patterns like `GET /api/x/{id}`). No chi/gin.
   Dependencies are passed into `NewRouter(Deps{...})`; handlers depend on small interfaces, not concrete types (see `DBPinger`).
 - `godotenv` is allowed only in `cmd/*` tools (`cmd/local`, `cmd/migrate`, `cmd/seed`, `cmd/igdb-snapshot`), never in `api/` or `pkg/`.
-- Frontend API calls go through `src/api/client.ts` (`apiFetch`) and the `useApi` hook. No raw `fetch` in components.
+- Frontend API calls go through `src/api/client.ts` (`apiFetch`), called from TanStack Query (`useQuery`). No raw `fetch` in components.
 - Money is integer cents. Never float.
 
 ## Database rules

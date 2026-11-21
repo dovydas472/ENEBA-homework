@@ -1,0 +1,97 @@
+/* Header: see docs/DESIGN.md 3.1. Desktop = one row (wordmark | search | actions); < 600px = search on its own row. */
+.header {
+  background: var(--color-bg);
+}
+
+.inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "brand search actions";
+  align-items: center;
+  gap: var(--space-4);
+  max-width: var(--page-max-width);
+  min-height: var(--header-top-height);
+  margin: 0 auto;
+  padding: var(--space-4) var(--page-gutter);
+}
+
+.wordmark {
+  grid-area: brand;
+  color: var(--color-text);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-none);
+}
+
+.wordmark:hover {
+  color: var(--color-text);
+}
+
+.search {
+  grid-area: search;
+  justify-self: center;
+  width: 100%;
+  max-width: var(--search-max-width);
+}
+
+.actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.iconLink {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: var(--hit-target-min);
+  min-height: var(--hit-target-min);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.iconLink:hover {
+  color: var(--color-accent);
+}
+
+.icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+/* Cart count: sits on the top-right corner of the cart icon. */
+.count {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+/* The "Sign in" text has some room next to the icon on desktop. */
+.signInText {
+  padding-right: var(--space-1);
+}
+
+@media (max-width: 600px) {
+  .inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions"
+      "search search";
+    gap: var(--space-2);
+    min-height: 0;
+    padding: var(--space-2) var(--page-gutter);
+  }
+
+  .wordmark {
+    font-size: var(--font-size-2xl);
+  }
+
+  /* Icons only on a phone; the link keeps its name through aria-label. */
+  .signInText {
+    display: none;
+  }
+}

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Our own monogram "EH" (EneHomeworkBa), drawn from plain rectangles. Not Eneba's logo.
+  An SVG file cannot use CSS variables, so the two colors are copied from tokens.css:
+  background = color-bg (#4618ac), letters = color-accent (#fad318). See docs/DESIGN.md 2.1.
+  (No double hyphen inside an XML comment: it is not allowed, so the token names have no leading dashes here.)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>EneHomeworkBa</title>
+  <rect width="64" height="64" fill="#4618ac"/>
+  <g fill="#fad318">
+    <!-- E -->
+    <rect x="10" y="16" width="6" height="32"/>
+    <rect x="10" y="16" width="18" height="6"/>
+    <rect x="10" y="29" width="14" height="6"/>
+    <rect x="10" y="42" width="18" height="6"/>
+    <!-- H -->
+    <rect x="36" y="16" width="6" height="32"/>
+    <rect x="48" y="16" width="6" height="32"/>
+    <rect x="36" y="29" width="18" height="6"/>
+  </g>
+</svg>
