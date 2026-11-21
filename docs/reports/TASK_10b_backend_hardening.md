@@ -35,7 +35,19 @@ No migration, no schema change, no new dependency (`go.mod`, `go.sum` unchanged)
 | Catalog integration tests against Postgres | **not run locally** (no Docker/Postgres here, and `TEST_DATABASE_URL` must never be Neon). The `Store` change (one acquired connection instead of the pool) is therefore proven only by CI job `migrations` – see 2b |
 
 ### 2b. CI results
-_(filled in after the CI run)_
+PR #8, run [44929822612](https://github.com/dovydas472/ENEBA-homework/actions/runs/44929822612): `go` pass (40 s), `migrations` pass (38 s), `frontend` pass (17 s), Vercel Preview deployment completed.
+
+Proof that the integration tests ran (log of the `migrations` job, step "Catalog integration tests ran (not skipped)", with `REQUIRE_TEST_DB: 1` in the step's env):
+
+```
+--- PASS: TestListProducts_defaultSort (0.06s)
+--- PASS: TestGetProduct_witcher (0.00s)
+...
+ok  	github.com/dovydas472/ENEBA-homework/pkg/catalog	0.622s
+catalog integration tests: 18 passed, 0 skipped
+```
+
+This also proves the refactored `Store` (one acquired connection, via `db.Acquire`) works against a real Postgres, which could not be checked locally.
 
 ## 3. What the owner must do manually
 - Open the PR, review, merge (I never merge).
