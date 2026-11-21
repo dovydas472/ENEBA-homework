@@ -40,7 +40,7 @@ Tests: `go test ./...`
 
 ## API
 JSON, `camelCase` field names. Money is **integer cents** (formatting is the frontend's job). Errors are always
-`{"error":"..."}`; a database problem gives `503` with a generic message (never SQL or driver text).
+`{"error":"..."}`; an unreachable database gives `503` and any other unexpected error `500`, both with a generic message (never SQL or driver text).
 
 | Endpoint | Purpose |
 |---|---|
@@ -142,7 +142,7 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - `pkg/server/` – router and handlers (they depend on small interfaces: `DBPinger`, `CatalogReader`); query-string validation
 - `pkg/db/` – lazy, shared pgx connection pool
 - `pkg/catalog/` – catalog queries (listing + facets, product page), seller rating label; pure Go + pgx, no HTTP
-- `pkg/testdb/` – test helper: migrated + seeded Postgres from `TEST_DATABASE_URL` (tests skip when it is empty)
+- `pkg/testdb/` – test helper: migrated + seeded Postgres from `TEST_DATABASE_URL` (tests skip when it is empty; with `REQUIRE_TEST_DB=1`, as in the CI `migrations` job, they fail instead)
 - `cmd/local/` – local dev server using the same router (loads `.env`)
 - `cmd/migrate/` – goose migration runner (`up`/`down`/`status`/`version`/`create`)
 - `cmd/igdb-snapshot/` – one-time, local IGDB download → `seed/igdb_snapshot.json`
