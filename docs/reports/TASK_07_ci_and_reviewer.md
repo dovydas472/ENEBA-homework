@@ -88,14 +88,14 @@ The `useApi` tests were written **before** the refactor and passed against the o
 5. **Task file contains the addendum.** The task file is saved verbatim; the owner's addendum (chores + action updates) is appended under a marked heading in the same file, so the first commit holds all instructions.
 6. **Uncommitted task 08 log committed here** (`c82bfa0`), as `CLAUDE.md` requires for a leftover log. It is unrelated to task 07 content-wise.
 7. **Reviewer fallback during this session.** A new agent file is only registered when a session starts, so `task-reviewer` could not be called by name here. I ran a general-purpose subagent that had to follow `.claude/agents/task-reviewer.md` exactly (same prompt: "review task 07"). Its read-only rule was enforced by instruction, not by the tool list (I did not check for stray edits beyond `git status` being clean afterwards). From the next session on, the real `task-reviewer` agent is available.
-8. **`CLAUDE.md` additions beyond the task text** (small, to make the rules usable): a fallback for reading CI results from the public API when `gh` is not logged in, and the Windows note about running Vitest from PowerShell (see section 6).
-9. **No shared test helper** for `TEST_DATABASE_URL` was added (not asked for; no integration tests exist yet). The rule is in `CLAUDE.md`; the first DB task should add a tiny helper that does `t.Skip` when the variable is empty.
+8. **`cancel-in-progress` only for PRs (owner request after the first version).** The task said `cancel-in-progress: true`; it is now `${{ github.event_name == 'pull_request' }}`, so runs on `main` are never cancelled.
+9. **`CLAUDE.md` additions beyond the task text** (small, to make the rules usable): a fallback for reading CI results from the public API when `gh` is not logged in, and the Windows note about running Vitest from PowerShell (see section 6).
+10. **No shared test helper** for `TEST_DATABASE_URL` was added (not asked for; no integration tests exist yet). The rule is in `CLAUDE.md`; the first DB task should add a tiny helper that does `t.Skip` when the variable is empty.
 
 ## 6. Open questions
 
 - **Vitest and Git Bash on Windows:** from Git Bash (cwd with a lower-case `c:`) Vitest fails on any test with `Cannot read properties of undefined (reading 'config')` (two module copies because of drive-letter casing); from PowerShell with `C:\...` it works, and Linux CI is unaffected. I documented it in `CLAUDE.md`. Do you want a permanent workaround (e.g. a Vitest `resolve` setting), or is "use PowerShell" enough?
 - Should `protect-main` also require the Vercel preview check, or only `go`, `migrations`, `frontend`?
-- The `cancel-in-progress` on `push` to `main` can cancel an earlier `main` run when two merges happen quickly. This follows the task text; tell me if `main` runs should never be cancelled.
 
 ## 7. Self-review
 

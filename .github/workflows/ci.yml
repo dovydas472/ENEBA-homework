@@ -11,10 +11,11 @@ on:
   push:
     branches: [main]
 
-# A newer push to the same branch/PR makes the older, still running run pointless: cancel it.
+# A newer push to the same PR makes the older, still running run pointless: cancel it.
+# Runs on main are never cancelled: every merge keeps its own complete result.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # The jobs only read the repository.
 permissions:
