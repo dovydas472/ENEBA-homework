@@ -84,8 +84,9 @@ const searchThresholdSQL = `SELECT set_config('pg_trgm.word_similarity_threshold
 // The same GIN trigram indexes can also answer `~*` (pg_trgm extracts the
 // trigrams the pattern needs), so this condition stays index-friendly; on our
 // tiny tables the planner reads them sequentially anyway.
-// For longer queries @short_query is false: the planner sees the real value, drops
-// the word-start half and the plan is the one described above.
+// For longer queries @short_query is false: when the planner plans with the real
+// value (a custom plan) it drops the word-start half and the plan is the one
+// described above; a cached generic plan may keep both halves - same result.
 //
 // matched_alias is the alias of the best term, but only when the TITLE did not
 // match at all - so the UI can show "GTA 5 -> Grand Theft Auto V", and never an

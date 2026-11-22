@@ -49,7 +49,7 @@ func TestSearch_queryTable(t *testing.T) {
 		{"gt", "Grand Theft Auto V", "GTA 5"}, // start of the alias "GTA 5"
 		{"ac", "Assassin's Creed", "AC"},      // the alias "AC"; the title has no word starting with "ac"
 		{"re", "Red Dead Redemption 2", ""},   // start of the title
-		{"li", "Life Is Strange", ""},         // title start (more popular than the two Half-Lifes, where "Life" follows a "-")
+		{"li", "Life Is Strange", ""},         // title start = prefix tier, ranked above the two Half-Lifes where "Life" follows a "-" (contains tier)
 	}
 	for _, tc := range tests {
 		t.Run(tc.q, func(t *testing.T) {
