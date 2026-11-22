@@ -89,6 +89,7 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **`ErrorState`:** `role="alert"`, bendra žinutė (niekada neperduodame tikro serverio/DB klaidos teksto), mygtukas **Retry** (su `loading` būsena, kol kartojama). `EmptyState` – panašus blokas be mygtuko (pvz. „No results").
 - **`Skeleton`:** pilkas blokas su slenkančiu švytėjimu (tokenai `--color-skeleton*`), `aria-hidden`; dydį nustato kviečiantysis per `className`. `prefers-reduced-motion` išjungia animaciją (`global.css`).
 - **`SearchField`:** `<form role="search">` su lupos mygtuku ir `<input type="search">`; rėmelį ir fokuso žiedą piešia apvalkalas (`:focus-within`), kad žiedas apjuostų visą lauką. Lauką valdo naršyklė (uncontrolled) – tekstą perskaito `FormData` pateikiant formą.
+  - **Nuo Task 13b `SearchField` nebėra:** jį pakeitė `src/features/search/SearchBox.tsx` (tas pats laukas + pasiūlymų sąrašas, valdomas React būsena). Žr. skyrių „Task 13b“ šio failo gale.
 - **Gali paklausti:** „Kodėl ne `<button disabled>` kai kraunasi?" – nes prarastų fokusą (žr. aukščiau). „Kodėl nėra komponentų testų?" – tik logika testuojama (`Button` paspaudimų blokavimas, rėmo testas `routes.test.tsx`); išvaizda tikrinta ekrano nuotraukomis ir axe.
 
 ## `formatPrice`, `useCartCount`, dokumento pavadinimas ir `/` klavišas

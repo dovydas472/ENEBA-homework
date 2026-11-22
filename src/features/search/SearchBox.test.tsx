@@ -6,7 +6,7 @@ import { act } from "react";
 import { createMemoryRouter, RouterProvider, useLocation, useSearchParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "../../api/client.ts";
-import type { Suggestion, SuggestionsResponse } from "../../api/types.ts";
+import type { Suggestion, SuggestResponse } from "../../api/types.ts";
 import { fire, render, setControlValue } from "../../test-utils.tsx";
 import { SearchBox, SUGGEST_DEBOUNCE_MS } from "./SearchBox.tsx";
 
@@ -54,7 +54,7 @@ const suggestCalls = () =>
     .map((path) => new URL(path, "http://x").searchParams.get("q"));
 
 /** Answers by search text: "gta" -> GTA, "qwertyzz" -> nothing, anything else -> the two Witcher games. */
-function answerFor(path: string): SuggestionsResponse | object {
+function answerFor(path: string): SuggestResponse | object {
   if (!path.startsWith("/api/search/suggest")) return {}; // product prefetch
   const q = new URL(path, "http://x").searchParams.get("q");
   if (q === "gta") return { items: [gta] };
@@ -161,7 +161,7 @@ describe("SearchBox: requests", () => {
 
   it("a slow answer for an older text never replaces the rows of the newer text", async () => {
     // "wit" answers late (after "witcher"); every text has its own cache key, so its rows are never shown for "witcher".
-    let finishOld!: (value: SuggestionsResponse) => void;
+    let finishOld!: (value: SuggestResponse) => void;
     fakeApi.mockImplementation((path) => {
       if (path.endsWith("q=wit")) return new Promise((resolve) => (finishOld = resolve as never));
       return Promise.resolve(answerFor(path) as never);
@@ -180,7 +180,7 @@ describe("SearchBox: requests", () => {
   it("shows a spinner in the field while the suggestions load, and keeps the old rows meanwhile", async () => {
     mount();
     await typeAndWait("witcher");
-    let finish!: (value: SuggestionsResponse) => void;
+    let finish!: (value: SuggestResponse) => void;
     fakeApi.mockImplementation((path) =>
       path.startsWith("/api/search/suggest") ? new Promise((resolve) => (finish = resolve as never)) : Promise.resolve({} as never),
     );
