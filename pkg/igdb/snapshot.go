@@ -69,6 +69,10 @@ type Game struct {
 	CoverImageID     string   `json:"cover_image_id"`
 	TotalRatingCount int      `json:"total_rating_count"` // becomes games.popularity
 	Platforms        []int    `json:"platforms"`          // IGDB platform ids (supported ones only)
+	// Aliases are IGDB alternative_names (abbreviations such as "GTA V", other
+	// titles), already cleaned by CleanAliases. Used only by search. Added in
+	// Task 13a with `cmd/igdb-snapshot --aliases-only`, which leaves every other field as it was.
+	Aliases []string `json:"aliases"`
 }
 
 // CoverURL builds the public CDN URL of the cover. Nothing is downloaded: the
