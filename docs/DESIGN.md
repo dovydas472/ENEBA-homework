@@ -52,7 +52,7 @@ Rules for every future UI task:
 
 | Code | Meaning |
 |---|---|
-| **S** | Computed style read from the live page with a headless browser (Edge) on **2026-11-20**. S1 = `/store/all` at 1440 px, S2 = a product page, S3 = same store page at 390 px. **S4** = re-measured on **2026-11-21** for Task 11b (header, store page with and without a platform filter, drawer, menu, footer; 1440 and 390 px) |
+| **S** | Computed style read from the live page with a headless browser (Edge) on **2026-11-20**. S1 = `/store/all` at 1440 px, S2 = a product page, S3 = same store page at 390 px. **S4** = re-measured on **2026-11-21** for Task 11b (header, store page with and without a platform filter, drawer, menu, footer; 1440 and 390 px). **S5** = product pages re-measured on **2026-11-22** for Task 12 (two multi-seller pages, 1440 and 390 px) |
 | **C** | Rule found in Eneba's published CSS bundles (`static.eneba.games/main.*.css` and the page chunks). Class names are hashed, so the rule is identified by what it styles |
 | **D** | Derived by us (Eneba has no equivalent we could read). Built only from other tokens |
 | **A** | Adjusted by us for accessibility; the original is noted |
@@ -130,6 +130,8 @@ weights, 500 and 700 — the rendering is identical.
 | `--font-size-2xl` | 24px | page title on mobile (S3) |
 | `--font-size-3xl` | 28px | price on the product page, wordmark (S2) |
 | `--font-size-4xl` | 30px | page title on desktop (S1 `h1`) |
+| `--font-size-section` | 18px | section heading on the product page ("4 offers", "Other details") — S5, Task 12 |
+| `--font-size-product-title` | 26px | product page `h1` on desktop (16px = `--font-size-base` ≤930px) — S5, Task 12 |
 | `--font-weight-regular` / `-medium` / `-bold` | 400 / 500 / 700 | body / labels, nav, small UI / headings, buttons, prices |
 | `--line-height-none` | 1 | single-line labels, buttons, prices (C: most used) |
 | `--line-height-tight` | 1.25 | headings (S1 `h1` 37.5/30) |
@@ -144,8 +146,8 @@ Text is `-webkit-font-smoothing: antialiased` (S1 `body`).
 | Group | Tokens | Source |
 |---|---|---|
 | Spacing | `--space-1…7` = 5, 10, 15, 20, 30, 40, 60 px; `--space-half` 3px (Task 11b) | S1/S2 paddings are almost all multiples of 5 (card body 15, panel 20, row 20, grid gap 20). The 3px step is S4: "€59.99 -67%" on a card, footer link rows |
-| Radii | `--radius-none` 0 · `-sm` 3px · `-md` 5px · `-pill` 50px · `-round` 50% | C `border-radius` usage: buttons, cards, inputs, panels are **square**; checkbox 3px; pill tags 50px; avatars 50% |
-| Shadows | `--shadow-inset` `inset 0 1px 3px #1f0a4d` (inputs) · `-dropdown` `0 7px 15px rgba(0,0,0,.2)` · `-popup` `0 7px 17px rgba(0,0,0,.55)` · `-modal` `0 2px 27px rgba(0,0,0,.5)` · `-toast` `0 3px 9px rgba(0,0,0,.4)` | C. Mapping shadow → component is ours (**D**) |
+| Radii | `--radius-none` 0 · `-sm` 3px · `-md` 5px · `-lg` 10px (genre tags, S5) · `-pill` 50px · `-round` 50% | C `border-radius` usage: buttons, cards, inputs, panels are **square**; checkbox 3px; pill tags 50px; avatars 50% |
+| Shadows | `--shadow-inset` `inset 0 1px 3px #1f0a4d` (inputs) · `-dropdown` `0 7px 15px rgba(0,0,0,.2)` · `-popup` `0 7px 17px rgba(0,0,0,.55)` · `-modal` `0 2px 27px rgba(0,0,0,.5)` · `-toast` `0 3px 9px rgba(0,0,0,.4)` · `-card` `0 3px 9px rgba(0,0,0,.25)` (buy box, S5) | C. Mapping shadow → component is ours (**D**) |
 | z-index | `--z-base` 0 · `-raised` 1 · `-sticky` 10 · `-dropdown` 20 · `-drawer` 30 · `-modal` 40 · `-toast` 50 | **D**: Eneba uses 1, 2, 19–21, 999, 333333 ad hoc; we use a small named scale |
 | Motion | `--duration-fast` 150ms, `--ease` ease-in-out, `--transition-fast` | C: `transition: … 150ms ease-in-out` on 60+ rules |
 | Focus ring | `--focus-ring-color` `#fad318`, `-width` 2px, `-offset` 2px | **D/A** — Eneba shows almost no focus indicator (it re-uses the hover color); we need a real one |
@@ -169,6 +171,8 @@ Added in Task 11 (Store page): `--opacity-dimmed` 0.8 (out-of-stock card and the
 Added / changed in Task 11b (S4): `--chip-height` 30px (active-filter chip), `--drawer-width` 300px ("Sort and filter" drawer), `--platform-strip-height` 22px (18px ≤600px; strip on a cover),
 `--list-cover-width` 70px (cover of the phone list card), `--radio-dot-size` 10px (checked radio). **Changed:** `--grid-gap` 22px → **20px** (re-measured: 4 × 225px cards in 960px) and
 `--cover-aspect-ratio` 5 / 7 → **223 / 303** (the measured cover box, strip included).
+Added in Task 12 (S5, product page): `--product-cover-width` 224px (72px = `--product-cover-width-sm` ≤930px), `--buy-box-width` 350px, `--avatar-size` 40px (seller avatar),
+`--icon-size-lg` 40px (fact icons next to the cover).
 
 ---
 
@@ -268,6 +272,21 @@ Desktop ≥931                                       Mobile ≤600
   - Below: screenshot strip (176×99 thumbnails), then **"Offers" section** = list of offer rows (see 4.7).
 - **Mobile:** one column: cover → title → facts → buy box → offers; buy box buttons are full-width.
 
+**As built in Task 12 (S5; owner decisions P1–P6):**
+- `<main>` is widened to `--page-max-width-wide` with `--page-gutter-wide` while the product route is shown (`.main:has([data-wide-page])`; 20px gutters ≤930px). The header stays at 1200px, like Eneba.
+- Desktop grid (`ProductView.module.css`, grid areas): breadcrumb row (14px, 70% white, chevrons, 20px under it); cover `--product-cover-width` + 30px + title column; the **buy box** in a `--buy-box-width` column 30px to the right, top-aligned with the cover.
+  Title column: edition pill (`Badge` tag, only when not "Standard", where Eneba has "Cashback deal") + `h1` (`--font-size-product-title`), then the facts in 2 columns (40px mint icon, 16px bold heading, 12px muted helper):
+  region, platform ("Activate / redeem on …"), "Digital key". Under cover and facts: offers, other versions, product details, other details (sections 30–40px apart, `h2` = `--font-size-section`).
+- **Buy box:** `--color-surface`, padding `20 20 15`, `--shadow-card`; "BEST PRICE" (10px bold uppercase accent, Eneba "FEATURED OFFER"); old price + discount line and the 28px price (22px ≤600px);
+  "Sold by {seller} ★ {rating}"; one full-width **primary "Add to cart"** (Eneba: "Buy now" + a cart icon button — we have no checkout); "+N more offers" (14px accent, centred under a divider) jumps to `#offers`.
+  The struck-through price in the box is `--color-text-muted` (Eneba does the same here; `--color-price-old` fails on the panel, see 5.1).
+- **Out of stock (P6):** the same box with "Out of stock" (`h2`), one line of text and the **in-stock versions** as rows (name + price), or a secondary "Browse the store" when there are none. No offers section.
+- **Details:** genre tags (`--color-surface-row`, `--radius-lg`, 14px medium subtle); the description in a `--color-bg-deep` panel (padding 20, 14/21 `--color-text-nav`) under a static "Description" heading drawn like Eneba's active tab;
+  "Other details" = a `<dl>` in the same panel, labels `--color-text-subtle` in a `max-content` column, 20px gap (stacked ≤600px). Unknown values are left out.
+- **≤930px:** one column. `--product-cover-width-sm` cover next to the 16px title, then the buy box **edge to edge**, the facts (1 column), the rest. ≤600px the breadcrumb is hidden (Eneba) and offer rows are edge to edge.
+- **No sticky buy bar on phones.** Eneba has none (S5), so after the owner's review the P5 bar was removed (parity wins). The buy box near the top and every offer row have their own "Add to cart".
+- **Loading:** a skeleton in the same grid; the route wrapper is at least one screen tall and always wide, so neither the width nor the footer moves when the data, a 404 or an error replaces it (CLS 0.0001).
+
 ### 3.4 Home page (for reference, not part of this scope)
 
 Full-bleed banner row, category icon carousel (icon + 12px bold label), then product-card rows ("Recommended for you", `--font-size-3xl`-ish section heading 28px bold).
@@ -366,6 +385,12 @@ Body padding `15px 15px 10px`: title 12/18 bold (2 lines, 10px under it), editio
 an outlined "View offers" label at the bottom (it is part of the card link and `aria-hidden`, so the link name stays the product). Eneba also reveals a yellow
 "Add to cart" — we have no cart yet. Hover only where `(hover: hover)`; touch screens never get a stuck slide.
 
+**As built in Task 12 (the cart exists now):** the hover/keyboard slide reveals **primary "Add to cart"** above the secondary "View offers" (35 + 10 + 35px, 15px under them, like Eneba); the card slides by
+exactly that height. "Add to cart" adds the product's **cheapest offer** (`cheapestOffer` of the listing API) and is a real `<button>` next to the card link (not inside it); its name is
+"Add to cart: {title}". "View offers" is a look-alike link, `aria-hidden` and `tabIndex=-1`. The slide follows `:hover` (only `(hover: hover)`) and `:has(:focus-visible)` (keyboard only, so a mouse click does
+not leave the card raised). On touch screens wider than 600px the actions are always shown under the price. Out-of-stock cards have no cart button.
+**Phones:** a 40×40 outlined cart icon button in the bottom-right corner (Eneba); the text column keeps 50px free for it.
+
 **Mobile (≤600px)** — horizontal list item (S3): 348×132 on a 390px screen, padding 8px, 2-column grid: cover thumbnail **70×98** + info.
 Title 12/15.6 bold, regions as above; price block; a **cart icon button** (≥40×40) bottom-right; a wishlist heart top-right;
 cashback badge shrinks to a 26×26 mint square on the cover's right edge. The info column leaves 50px at the right for the cart button.
@@ -385,6 +410,9 @@ cover (Eneba shows a logo there; names like "Nintendo eShop" do not fit 70px as 
 | Cashback line | `--font-size-sm` bold `--color-discount` (card: 12px) | icon + "14% Cashback", optional "Best cashback" pill |
 
 Format: currency symbol first for EUR (`€19.92`), amounts from integer cents via `Intl.NumberFormat`. Never show a float computed in the UI.
+
+**Task 12 (S5):** offer row price = `size="row"` (20px, `--font-size-lg`); buy box `size="large"` is 28px, **22px ≤600px** (Eneba 21.5px). The per-offer "-NN%" is computed in the UI from integer cents with the
+server's rule (whole percent, rounded down; `src/lib/discount.ts`).
 
 **As built in Task 11b (S4):** the label, the old price and the discount share ONE line ("From €29.99 -60%", 12px bold, `--space-half` apart), the price is under it (5px gap).
 On the phone list card the price is 20px.
@@ -430,6 +458,15 @@ On the phone list card the price is 20px.
 - Rows are stacked with a small gap (10px). No hover change is specified by Eneba; we add `--color-surface-hover` over the row on hover (**D**) only if the whole row is clickable — otherwise none.
 - **Mobile:** columns stack: seller on top, price + full-width button below.
 
+**As built in Task 12 (S5, owner decision P2):** section heading "{N} offers" (N in mint, like Eneba's "19 other offers"). Rows `--color-surface-row`, padding 20, 10px apart (Eneba 8px; no token).
+Avatar: the seller's first letter on `--color-surface-chip` (Eneba shows the seller's logo; we have none). Seller name 14px medium; for the cheapest offer a small outlined **"BEST PRICE"** pill
+(`--color-discount`, 10px bold uppercase, as Eneba's "Best cashback"). Rating line 12px (Eneba 11px; 5.2): ★ (accent) + "Excellent 9.63" bold (only the score when the API sends no label) + "(9,875 reviews)" muted;
+a seller without a rating shows **"NEW SELLER"** in mint bold uppercase. Right: price column (old price, discount, 20px price, then **"Only N left"** in `--color-warning` 12px bold when stock ≤ 3),
+then the secondary "Add to cart" (cart icon; screen-reader name "Add to cart from {seller}"). ≤600px: rows edge to edge, price and a full-width button under the seller.
+
+**Other versions (P3, D — Eneba has no such list on the product page):** the same row look, but each row is ONE link (so it has the `--color-surface-hover` hover): platform (14px bold), region (mint 12px bold uppercase),
+edition (muted, only if not "Standard"), then "From €29.99" or "Out of stock" and a chevron. Hover/focus prefetches the version's data like a Store card.
+
 ### 4.8 Filter group (sidebar)
 
 - Group = panel bg `--color-surface`. Header button: padding `15px 20px 10px`, title 16px bold + chevron (rotates when collapsed). Body padding `0 20px 20px`. Groups stack without a gap, separated by a thin line (`--color-border`).
@@ -473,6 +510,11 @@ Small notification, bottom of the screen: desktop bottom-right (offset `--space-
 - Left 4px bar by type: success `--color-secondary`, error `--color-danger`, info `--color-accent`. Icon/label text for the type so color is not the only signal.
 - Close button ≥40×40, ghost. Auto-dismiss after 5s; paused on hover and focus; errors stay until dismissed.
 - `role="status"` + `aria-live="polite"` (errors: `role="alert"`). Enter/leave: fade + 8px slide, `--transition-fast`.
+
+**As built in Task 12:** `showToast()` (`src/lib/toast.ts`) + `<Toaster />` in the layout. ONE toast at a time (a new one replaces the old one). Types built: success (mint bar + check icon) and info (yellow bar + info icon);
+no error toast yet. Content: icon, message, optional yellow bold link ("View cart"; following it closes the toast), × button (40×40, ghost). Enter: fade + `--space-2` slide (10px, nearest token); no leave animation.
+The toast and the "waking up" notice share one fixed column in the bottom corner (`Layout.module.css`, `.notices`), so they stack and never overlap.
+The live regions stay in the DOM while empty (0px tall) — hiding them would stop announcements.
 
 ### 4.12 Pagination (Task 11b, S4)
 
@@ -518,6 +560,11 @@ Minimums for every screen: text contrast **≥ 4.5:1**, non-text UI (borders of 
 | ~~Eneba platform strip text `rgba(255,255,255,.85)` on `--color-overlay` over a **white** cover (worst case)~~ | 3.95 | **fails** (Task 11b) |
 | **`#fff` on `--color-overlay` over a white cover (worst case)** | 4.74 | pass — the strip uses full white: this is an **adjustment** |
 | Non-text: `--color-border-dark` line / chip and pill background vs page | 1.64 / 1.43 | exempt: decorative line; the chips are identified by their white text (as on Eneba) |
+| ~~`--color-price-old` `#b3aac9` on `--color-surface` (buy box struck-through price)~~ | 3.73 | **fails** (Task 12, found by axe) |
+| **`--color-text-muted` on `--color-surface` (buy box struck-through price)** | 4.79 | pass — the buy box uses it (Eneba also uses 70% white there) |
+| Offer row (`rgba(0,0,0,.3)` over page): `--color-discount` / `--color-warning` / `--color-secondary` / `--color-text-muted` / `--color-text-subtle` | 9.21 / 6.86 / 6.24 / 7.46 / 6.41 | pass (Task 12: "BEST PRICE", "Only N left", "NEW SELLER", reviews, genre tags) |
+| `--color-text-nav` / `--color-accent` on `--color-surface` (buy box seller line, "+N more offers") | 5.88 / 5.64 | pass (Task 12) |
+| `--color-text-nav` / `--color-text-subtle` on `--color-bg-deep` (description, detail labels) | 9.62 / 6.10 | pass (Task 12) |
 
 Disabled controls (`opacity: .5`) are exempt from the contrast rule (WCAG), but the disabled state must still be recognisable.
 The numbers were computed with a small script (sRGB → relative luminance → `(L1+.05)/(L2+.05)`); re-check whenever a color token changes.
@@ -558,3 +605,8 @@ exact behaviour of the card's hover-revealed actions (see 4.3). If the owner sen
 (platform filter + chips), the mobile "Sort and filter" drawer, the mobile ☰ menu, the footer and a hovered card. Cookie / location pop-ups were removed from the
 DOM before the screenshots (no consent was given). Reference screenshots are kept **outside the repo**; the comparison and the remaining differences are in
 `docs/reports/TASK_11b_visual_parity.md`. The mobile search field could not be captured opened (it is the input itself, not a button), so its open state is ours.
+
+**Task 12 product page (2026-11-22, S5):** headless Edge at 1440×900 and 390×844 on two multi-seller pages (`/steam-silent-hill-2-pc-steam-key-global`, `/gog-the-witcher-3-wild-hunt-gog-com-key-global`):
+screenshots plus computed styles of the breadcrumb, cover, title, facts, buy box, offer rows, section headings, genre tags, description panel and details table; the phone page was scrolled
+to look for a sticky buy bar (**there is none**, only the sticky header). Eneba shows **no "other versions" list** on the product page. Reference screenshots stay outside the repo; the
+comparison is in `docs/reports/TASK_12_product_page_cart_state.md`.

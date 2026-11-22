@@ -14,6 +14,19 @@
   padding: var(--space-4) var(--page-gutter) var(--space-6); /* content starts 20px under the header, as on Eneba */
 }
 
+/* The product page is wider than the store (DESIGN.md 3.3: 1440px with 40px gutters, measured on Eneba).
+   The page marks itself with data-wide-page; :has() lets the frame react without the page knowing the frame. */
+.main:has([data-wide-page]) {
+  max-width: var(--page-max-width-wide);
+  padding-inline: var(--page-gutter-wide);
+}
+
+@media (max-width: 930px) {
+  .main:has([data-wide-page]) {
+    padding-inline: var(--page-gutter);
+  }
+}
+
 .main:focus {
   outline: none; /* <main> is focused only by the skip link; ringing the whole page would be noise */
 }
@@ -33,4 +46,27 @@
 
 .skipLink:focus {
   transform: translateY(0);
+}
+
+/* Toast + "waking up" notice (DESIGN.md 4.11): bottom-right, max 400px; full width minus 10px on phones. */
+.notices {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  width: var(--toast-max-width);
+  max-width: calc(100% - 2 * var(--space-4));
+  pointer-events: none; /* the empty column never blocks clicks on the page underneath */
+}
+
+@media (max-width: 600px) {
+  .notices {
+    right: var(--space-2);
+    bottom: var(--space-2);
+    left: var(--space-2);
+    width: auto;
+    max-width: none;
+  }
 }

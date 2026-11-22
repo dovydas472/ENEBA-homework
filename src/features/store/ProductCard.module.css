@@ -10,11 +10,6 @@
   color: var(--color-text); /* a link is accent-coloured by default; the card is white text */
 }
 
-/* Links keep their colour on hover (global.css turns links amber). */
-.card:hover {
-  color: var(--color-text);
-}
-
 /* Everything inside the card; it is what moves up on hover. */
 .slide {
   position: relative;
@@ -22,6 +17,18 @@
   flex-direction: column;
   height: 100%;
   transition: transform var(--transition-fast);
+}
+
+/* The card link: cover + text. White text (a link is accent-coloured by default, and amber on hover). */
+.link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  color: var(--color-text);
+}
+
+.link:hover {
+  color: var(--color-text);
 }
 
 /* ---- cover + platform strip ---- */
@@ -106,45 +113,61 @@
   opacity: var(--opacity-dimmed);
 }
 
-/* ---- hover: the content slides up by the height of the action row and reveals it ---- */
-.action {
+/* ---- hover: the content slides up by the height of the actions and reveals them (Eneba) ---- */
+/* How far the card slides: the actions' own height. One button: 35 + 15; with "Add to cart": 35 + 10 + 35 + 15. */
+.card {
+  --card-actions-height: calc(var(--button-height) + var(--space-3));
+}
+
+.withCart {
+  --card-actions-height: calc(2 * var(--button-height) + var(--space-2) + var(--space-3));
+}
+
+.actions {
   position: absolute;
   top: 100%; /* just below the card's visible area */
   right: 0;
   left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   padding: 0 var(--space-3) var(--space-3);
   background: var(--color-surface-card);
 }
 
-/* Looks like the secondary button (DESIGN.md 4.1); it is not a separate control. */
-.actionLabel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: var(--button-height);
-  border: 1px solid var(--color-border-strong);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-none);
-  transition:
-    background-color var(--transition-fast),
-    border-color var(--transition-fast);
+.cartButton,
+.viewOffers {
+  width: 100%;
 }
 
-/* Only where there is a real pointer (touch screens would "stick" the hover) - and for keyboard focus. */
+.cartIcon {
+  display: none; /* desktop shows the words; phones show only the icon (below) */
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+/* Only where there is a real pointer (touch screens would "stick" the hover) - and for keyboard focus.
+   :has(:focus-visible) = "something in the card has KEYBOARD focus" (a mouse click does not keep it open). */
 @media (hover: hover) {
   .card:hover .slide {
-    transform: translateY(calc(-1 * (var(--button-height) + var(--space-3))));
-  }
-
-  .actionLabel:hover {
-    border-color: var(--color-accent);
-    background: var(--color-control-hover);
+    transform: translateY(calc(-1 * var(--card-actions-height)));
   }
 }
 
-.card:focus-visible .slide {
-  transform: translateY(calc(-1 * (var(--button-height) + var(--space-3))));
+.card:has(:focus-visible) .slide {
+  transform: translateY(calc(-1 * var(--card-actions-height)));
+}
+
+/* Touch screens wider than a phone have no hover: the actions are simply always shown under the price. */
+@media (hover: none) and (min-width: 601px) {
+  .actions {
+    position: static;
+    padding-top: var(--space-1);
+  }
+
+  .card:has(:focus-visible) .slide {
+    transform: none;
+  }
 }
 
 /* ---- skeleton ---- */
@@ -170,9 +193,10 @@
   margin-top: var(--space-4);
 }
 
-/* ---- phone: horizontal list card (Eneba at 390px: 10px padding, 70px cover on the left, text on the right) ---- */
+/* ---- phone: horizontal list card (Eneba at 390px: 10px padding, 70px cover on the left, text on the right,
+        a cart icon button in the bottom-right corner) ---- */
 @media (max-width: 600px) {
-  .slide {
+  .link {
     flex-direction: row;
     gap: var(--space-2);
     padding: var(--space-2);
@@ -184,7 +208,7 @@
   }
 
   .platformStrip,
-  .action {
+  .viewOffers {
     display: none;
   }
 
@@ -197,7 +221,51 @@
     padding: 0;
   }
 
-  .card:focus-visible .slide {
+  /* Leave room on the right for the cart button (Eneba keeps 50px free). */
+  .withCart .body {
+    padding-right: calc(var(--hit-target-min) + var(--space-2));
+  }
+
+  .actions {
+    top: auto;
+    right: var(--space-2);
+    bottom: var(--space-2);
+    left: auto;
+    padding: 0;
+    background: none;
+  }
+
+  /* The cart as a 40×40 outlined icon button (Eneba); the words stay for screen readers only.
+     Two classes, so these win over the Button's own .primary colours whatever order the CSS files load in. */
+  .actions .cartButton {
+    width: var(--hit-target-min);
+    padding: 0;
+    border-color: var(--color-border-strong);
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  .actions .cartButton:hover,
+  .actions .cartButton:active {
+    border-color: var(--color-accent);
+    background: var(--color-control-hover);
+  }
+
+  .cartIcon {
+    display: block;
+  }
+
+  .cartLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .card:hover .slide,
+  .card:has(:focus-visible) .slide {
     transform: none;
   }
 }

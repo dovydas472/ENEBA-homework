@@ -1,0 +1,172 @@
+/*
+ * Product page layout (DESIGN.md 3.3, measured on eneba.com in Task 12 at 1440px: content 40…1400px,
+ * cover 224px at x=40, title column from x=294 (30px gap), buy box 350px at x=1050, 30px from the left column).
+ * Grid areas place the parts; on narrow screens the same parts are re-ordered by changing the areas only.
+ */
+.page {
+  display: grid;
+  grid-template-columns: var(--product-cover-width) minmax(0, 1fr) var(--buy-box-width);
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas:
+    "crumb crumb crumb"
+    "cover head  aside"
+    "cover facts aside"
+    "main  main  aside";
+  column-gap: var(--space-5);
+}
+
+.breadcrumb {
+  grid-area: crumb;
+  min-width: 0;
+}
+
+.cover {
+  grid-area: cover;
+  margin-bottom: var(--space-5);
+}
+
+.head {
+  grid-area: head;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.edition {
+  max-width: 100%;
+}
+
+/* 26px bold (Eneba's h1 on the product page). */
+.title {
+  font-size: var(--font-size-product-title);
+  line-height: var(--line-height-tight);
+}
+
+.aside {
+  grid-area: aside;
+  align-self: start;
+}
+
+.main {
+  grid-area: main;
+  min-width: 0;
+}
+
+/* ---- facts: 2 columns, icon + heading + helper (Eneba) ---- */
+.facts {
+  grid-area: facts;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: var(--space-4) var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.fact {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.factIcon {
+  flex-shrink: 0;
+  color: var(--color-secondary);
+}
+
+.factIcon svg {
+  width: var(--icon-size-lg);
+  height: var(--icon-size-lg);
+}
+
+.factTitle {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-none);
+}
+
+/* Eneba: 12px, 60% white; ours 70% (--color-text-muted) for a safer contrast on the page colour. */
+.factText {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+}
+
+/* ---- tablets and phones: one column (Eneba at 390px: 72px cover next to the title, buy box below) ---- */
+@media (max-width: 930px) {
+  .page {
+    grid-template-columns: var(--product-cover-width-sm) minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      "crumb crumb"
+      "cover head"
+      "aside aside"
+      "facts facts"
+      "main  main";
+    column-gap: var(--space-3);
+  }
+
+  .head {
+    margin-bottom: var(--space-5);
+  }
+
+  .title {
+    font-size: var(--font-size-base);
+  }
+
+  .aside {
+    margin-bottom: var(--space-5);
+  }
+
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- skeleton (same grid, so nothing jumps when the data arrives) ---- */
+.skeletonCover {
+  aspect-ratio: var(--cover-aspect-ratio);
+  height: auto;
+}
+
+.skeletonTitle {
+  width: 70%;
+  height: var(--font-size-product-title);
+}
+
+.skeletonLine {
+  width: 50%;
+  height: var(--font-size-base);
+  margin-bottom: var(--space-2);
+}
+
+/* Skeleton buy box and offer rows: the same paddings and inner sizes as the real ones (BuyBox, OfferList). */
+.skeletonBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  background: var(--color-surface);
+}
+
+.skeletonPrice {
+  width: 40%;
+  height: var(--font-size-3xl);
+}
+
+.skeletonButton {
+  height: var(--button-height);
+}
+
+.skeletonRow {
+  margin-bottom: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface-row);
+}
+
+.skeletonAvatarLine {
+  width: 40%;
+  height: var(--avatar-size);
+}

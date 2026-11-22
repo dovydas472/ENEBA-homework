@@ -1,0 +1,48 @@
+/* Breadcrumb (measured on eneba.com, Task 12): 14px, 70% white, chevrons between, 20px under it. */
+.breadcrumb {
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+}
+
+.list {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.separator {
+  flex-shrink: 0;
+  width: var(--font-size-base);
+  height: var(--font-size-base);
+  margin: 0 var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.link {
+  color: var(--color-text-muted);
+}
+
+.link:hover {
+  color: var(--color-accent);
+}
+
+/* A long title is cut with "…" instead of wrapping (Eneba does the same). */
+.current {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .breadcrumb {
+    display: none;
+  }
+}

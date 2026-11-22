@@ -1,0 +1,83 @@
+/* Lower part of the product page, measured on eneba.com (Task 12): genre tags, description panel, details list. */
+.section {
+  margin-bottom: var(--space-6);
+}
+
+.title {
+  margin-bottom: var(--space-3);
+  font-size: var(--font-size-section);
+  line-height: var(--line-height-tight);
+}
+
+/* Genre tags: dark rounded tags, 14px medium, subtle text (Eneba links them to category pages; ours are text). */
+.genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.genre {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-row);
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-none);
+}
+
+/* Looks like Eneba's active tab: a block of the panel colour on top of the panel (Eneba: 50px tall). */
+.tab {
+  display: inline-block;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-deep);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-snug);
+}
+
+/* Dark panel, 20px padding, 14/21 light text. */
+.panel {
+  padding: var(--space-4);
+  background: var(--color-bg-deep);
+  color: var(--color-text-nav);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.description {
+  white-space: pre-line; /* keep the paragraph breaks of the description */
+}
+
+/* Label column + value column, like Eneba's table: the labels column is as wide as the longest label, 20px gap. */
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+}
+
+/* Each label/value pair is a <div> (valid inside <dl>); display: contents lets dt and dd sit in the dl's grid. */
+.fact {
+  display: contents;
+}
+
+.factLabel {
+  color: var(--color-text-subtle);
+}
+
+.factValue {
+  color: var(--color-text);
+}
+
+/* Phones: label above the value (Eneba). */
+@media (max-width: 600px) {
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .factValue {
+    margin-bottom: var(--space-2);
+  }
+}

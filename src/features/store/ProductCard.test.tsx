@@ -2,15 +2,22 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { MemoryRouter } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "../../test-utils.tsx";
 import { makeItem } from "./fixtures.ts";
 import { ProductCard } from "./ProductCard.tsx";
 import type { ProductItem } from "../../api/types.ts";
+import { showToast } from "../../lib/toast.ts";
+import { cartStore } from "../cart/cartStore.ts";
 
 vi.mock("../../api/client.ts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../api/client.ts")>()),
   apiFetch: vi.fn(async () => ({})),
+}));
+
+vi.mock("../../lib/toast.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/toast.ts")>()),
+  showToast: vi.fn(),
 }));
 
 let cleanup: (() => void) | undefined;
@@ -29,10 +36,14 @@ function renderCard(item: ProductItem, queryClient = new QueryClient()) {
 }
 
 describe("ProductCard", () => {
-  it("is one link to the product page", () => {
+  it("is one link to the product page (the 'View offers' look-alike is hidden from screen readers and Tab)", () => {
     const { container, link } = renderCard(makeItem());
-    expect(container.querySelectorAll("a")).toHaveLength(1);
     expect(link.getAttribute("href")).toBe("/product/the-witcher-3-wild-hunt-steam-global");
+    const reachable = [...container.querySelectorAll("a")].filter((a) => a.getAttribute("aria-hidden") !== "true");
+    expect(reachable).toEqual([link]);
+    const viewOffers = [...container.querySelectorAll("a")].find((a) => a.textContent === "View offers")!;
+    expect(viewOffers.getAttribute("tabindex")).toBe("-1");
+    expect(viewOffers.getAttribute("href")).toBe("/product/the-witcher-3-wild-hunt-steam-global");
   });
 
   it("shows title, platform and region as text", () => {
@@ -83,12 +94,39 @@ describe("ProductCard", () => {
     expect(link.textContent).toContain("Out of stock");
     expect(link.textContent).not.toContain("€");
     expect(link.textContent).not.toContain("From");
-    expect(link.className).toContain("unavailable"); // the dimmed style
+    expect(link.parentElement!.parentElement!.className).toContain("unavailable"); // the dimmed style
   });
 
   it("an in-stock card is not dimmed", () => {
-    const { link } = renderCard(makeItem());
-    expect(link.className).not.toContain("unavailable");
+    const { container } = renderCard(makeItem());
+    expect(container.firstElementChild!.className).not.toContain("unavailable");
+  });
+
+  describe("Add to cart (Task 12)", () => {
+    beforeEach(() => cartStore.clear());
+
+    const cartButton = (container: HTMLElement) => container.querySelector("button");
+
+    it("an in-stock card has a button named 'Add to cart: <title>', outside the card link", () => {
+      const { container, link } = renderCard(makeItem());
+      const button = cartButton(container)!;
+      expect(button.textContent).toBe("Add to cart: The Witcher 3: Wild Hunt");
+      expect(link.contains(button)).toBe(false);
+    });
+
+    it("adds the cheapest offer of the card and shows the toast", () => {
+      const { container } = renderCard(makeItem());
+      act(() => cartButton(container)!.click());
+      expect(cartStore.getSnapshot()).toEqual([
+        expect.objectContaining({ offerId: 15, quantity: 1, sellerName: "Retro Ridge", priceCents: 1099, stock: 6 }),
+      ]);
+      expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ message: "Added to cart" }));
+    });
+
+    it("an out-of-stock card has no cart button", () => {
+      const { container } = renderCard(makeItem({ inStock: false, priceCents: null, cheapestOffer: null }));
+      expect(cartButton(container)).toBeNull();
+    });
   });
 
   describe("cover", () => {

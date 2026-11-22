@@ -59,6 +59,17 @@ type Item struct {
 	DiscountPercent *int64  `json:"discountPercent"` // null = unknown / no real discount
 	OfferCount      int64   `json:"offerCount"`      // offers that can be bought now
 	InStock         bool    `json:"inStock"`
+	// CheapestOffer is the offer a card's "Add to cart" button adds: the FIRST
+	// offer of the product page (cheapest, ties by offer id). null = out of stock.
+	CheapestOffer *CheapestOffer `json:"cheapestOffer"`
+}
+
+// CheapestOffer is the part of the cheapest buyable offer that the cart needs
+// (its price is the item's PriceCents).
+type CheapestOffer struct {
+	OfferID    int64  `json:"offerId"`
+	Stock      int64  `json:"stock"`
+	SellerName string `json:"sellerName"`
 }
 
 // FacetOption is one entry of a filter group: a platform or region with the

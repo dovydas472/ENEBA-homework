@@ -14,6 +14,7 @@ export function makeItem(overrides: Partial<ProductItem> = {}): ProductItem {
     discountPercent: 72,
     offerCount: 3,
     inStock: true,
+    cheapestOffer: { offerId: 15, stock: 6, sellerName: "Retro Ridge" },
     ...overrides,
   };
 }

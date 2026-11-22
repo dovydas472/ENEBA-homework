@@ -295,6 +295,49 @@ func TestListProducts_paging(t *testing.T) {
 	}
 }
 
+// The card's "Add to cart" adds item.CheapestOffer; the product page's buy box adds
+// its first offer. They must be the SAME offer for every product (Task 12).
+func TestListProducts_cheapestOfferMatchesProductPage(t *testing.T) {
+	s := newStore(t)
+	items := allItems(t, s, catalog.Filter{Sort: catalog.SortPriceAsc})
+	if len(items) != totalProducts {
+		t.Fatalf("%d items, want %d", len(items), totalProducts)
+	}
+	for _, it := range items {
+		if it.InStock != (it.CheapestOffer != nil) {
+			t.Fatalf("%s: inStock=%v but cheapestOffer=%+v", it.Slug, it.InStock, it.CheapestOffer)
+		}
+		d, err := s.GetProduct(context.Background(), it.Slug)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if it.CheapestOffer == nil {
+			if len(d.Offers) != 0 {
+				t.Errorf("%s: no cheapest offer in the listing, but the product page has %d offers", it.Slug, len(d.Offers))
+			}
+			continue
+		}
+		first := d.Offers[0]
+		got := *it.CheapestOffer
+		want := catalog.CheapestOffer{OfferID: first.OfferID, Stock: first.Stock, SellerName: first.Seller.Name}
+		if got != want {
+			t.Errorf("%s: cheapestOffer = %+v, product page first offer = %+v", it.Slug, got, want)
+		}
+		if it.PriceCents == nil || *it.PriceCents != first.PriceCents {
+			t.Errorf("%s: item price %v, first offer price %d", it.Slug, it.PriceCents, first.PriceCents)
+		}
+	}
+
+	// A known product: Witcher 3's cheapest offer is Retro Ridge at 10.99 with 6 keys (Task 08 report).
+	for _, it := range items {
+		if it.Slug == witcher {
+			if it.CheapestOffer == nil || it.CheapestOffer.Stock != 6 || it.CheapestOffer.SellerName == "" {
+				t.Errorf("witcher cheapestOffer = %+v", it.CheapestOffer)
+			}
+		}
+	}
+}
+
 func TestListProducts_unknownSortIsRejected(t *testing.T) {
 	_, err := newStore(t).ListProducts(context.Background(), catalog.Filter{Sort: "price; DROP TABLE products", Page: 1, PageSize: 10})
 	if err == nil {

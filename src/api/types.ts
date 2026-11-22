@@ -29,6 +29,15 @@ export interface ProductItem {
   /** Offers that can be bought now. */
   offerCount: number;
   inStock: boolean;
+  /** The offer a card's "Add to cart" adds = the first offer of the product page; null = out of stock. */
+  cheapestOffer: CheapestOffer | null;
+}
+
+/** What the cart needs from the cheapest buyable offer of a listing item (its price is the item's priceCents). */
+export interface CheapestOffer {
+  offerId: number;
+  stock: number;
+  sellerName: string;
 }
 
 /** One entry of a filter group, with the number of matching products. */
