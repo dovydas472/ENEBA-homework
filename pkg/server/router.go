@@ -24,6 +24,8 @@ func NewRouter(deps Deps) http.Handler {
 	mux.HandleFunc("/api/products", methodNotAllowed)
 	mux.HandleFunc("GET /api/products/{slug}", productHandler(deps.Catalog))
 	mux.HandleFunc("/api/products/{slug}", methodNotAllowed)
+	mux.HandleFunc("GET /api/search/suggest", suggestHandler(deps.Catalog))
+	mux.HandleFunc("/api/search/suggest", methodNotAllowed)
 
 	// Catch-all for everything else under /api/: JSON 404 instead of HTML/plain text.
 	mux.HandleFunc("/api/", notFound)

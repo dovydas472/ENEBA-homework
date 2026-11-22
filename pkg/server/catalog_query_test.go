@@ -11,6 +11,8 @@ import (
 
 func i64(v int64) *int64 { return &v }
 
+const qLengthMsg = "q must be 2 to 100 characters long (spaces at the ends do not count)"
+
 func TestParseListQuery_valid(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -44,11 +46,30 @@ func TestParseListQuery_valid(t *testing.T) {
 			catalog.Filter{Sort: catalog.SortNewest, Page: 1, PageSize: 24}},
 		{"sort title", "sort=title",
 			catalog.Filter{Sort: catalog.SortTitle, Page: 1, PageSize: 24}},
+		// Search (Task 13a): q is trimmed, inner spaces collapsed; sort defaults to relevance.
+		{"q -> default sort relevance", "q=witcher",
+			catalog.Filter{Query: "witcher", Sort: catalog.SortRelevance, Page: 1, PageSize: 24}},
+		{"q trimmed and inner spaces collapsed", "q=%20%20witchr%20%20%203%20",
+			catalog.Filter{Query: "witchr 3", Sort: catalog.SortRelevance, Page: 1, PageSize: 24}},
+		{"q with an explicit sort keeps that sort", "q=gta&sort=price_asc",
+			catalog.Filter{Query: "gta", Sort: catalog.SortPriceAsc, Page: 1, PageSize: 24}},
+		{"sort=relevance without q is allowed", "sort=relevance",
+			catalog.Filter{Sort: catalog.SortRelevance, Page: 1, PageSize: 24}},
+		{"empty q = not given -> popularity", "q=",
+			catalog.Filter{Sort: catalog.SortPopularity, Page: 1, PageSize: 24}},
+		{"q with filters", "q=gta&platform=steam",
+			catalog.Filter{Query: "gta", Platforms: []string{"steam"}, Sort: catalog.SortRelevance, Page: 1, PageSize: 24}},
+		{"q of exactly 2 characters", "q=gt",
+			catalog.Filter{Query: "gt", Sort: catalog.SortRelevance, Page: 1, PageSize: 24}},
+		{"q of 100 characters (multi-byte, counted as characters)", "q=" + strings.Repeat("%C3%A9", 100),
+			catalog.Filter{Query: strings.Repeat("é", 100), Sort: catalog.SortRelevance, Page: 1, PageSize: 24}},
+		{"SQL-looking q is just text", "q=%27%3B%20DROP%20TABLE%20games%3B--",
+			catalog.Filter{Query: "'; DROP TABLE games;--", Sort: catalog.SortRelevance, Page: 1, PageSize: 24}},
 		{"paging", "page=3&pageSize=48",
 			catalog.Filter{Sort: catalog.SortPopularity, Page: 3, PageSize: 48}},
 		{"smallest page size", "pageSize=1",
 			catalog.Filter{Sort: catalog.SortPopularity, Page: 1, PageSize: 1}},
-		{"unknown parameter names are ignored (q arrives in the search task)", "q=witcher&foo=bar",
+		{"unknown parameter names are ignored", "foo=bar&search=witcher",
 			catalog.Filter{Sort: catalog.SortPopularity, Page: 1, PageSize: 24}},
 		{"everything at once", "platform=steam&region=global&minPrice=100&maxPrice=5000&sort=discount&page=2&pageSize=12",
 			catalog.Filter{Platforms: []string{"steam"}, Regions: []string{"global"}, MinPrice: i64(100), MaxPrice: i64(5000),
@@ -88,8 +109,8 @@ func TestParseListQuery_invalid(t *testing.T) {
 		{"maxPrice not a number", "maxPrice=cheap", "maxPrice must be an integer number of cents (0 or more)"},
 		{"maxPrice negative", "maxPrice=-5", "maxPrice must be an integer number of cents (0 or more)"},
 		{"min greater than max", "minPrice=2000&maxPrice=1000", "minPrice must not be greater than maxPrice"},
-		{"unknown sort", "sort=cheapest", "sort must be one of popularity, price_asc, price_desc, discount, newest, title"},
-		{"sort is case sensitive", "sort=Title", "sort must be one of popularity, price_asc, price_desc, discount, newest, title"},
+		{"unknown sort", "sort=cheapest", "sort must be one of popularity, relevance, price_asc, price_desc, discount, newest, title"},
+		{"sort is case sensitive", "sort=Title", "sort must be one of popularity, relevance, price_asc, price_desc, discount, newest, title"},
 		{"page zero", "page=0", "page must be an integer between 1 and 10000"},
 		{"page negative", "page=-2", "page must be an integer between 1 and 10000"},
 		{"page text", "page=two", "page must be an integer between 1 and 10000"},
@@ -97,6 +118,11 @@ func TestParseListQuery_invalid(t *testing.T) {
 		{"pageSize zero", "pageSize=0", "pageSize must be an integer between 1 and 48"},
 		{"pageSize above max", "pageSize=49", "pageSize must be an integer between 1 and 48"},
 		{"pageSize text", "pageSize=lots", "pageSize must be an integer between 1 and 48"},
+		{"q of 1 character", "q=a", qLengthMsg},
+		{"q of 1 character after trimming", "q=%20a%20%20", qLengthMsg},
+		{"q of only spaces", "q=%20%20%20", qLengthMsg},
+		{"q of 101 characters", "q=" + strings.Repeat("a", 101), qLengthMsg},
+		{"q given twice", "q=gta&q=rdr2", "q must be given once"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -134,7 +134,7 @@ func run(reset bool) error {
 
 	fmt.Println("seeded (committed):")
 	for i := len(after) - 1; i >= 0; i-- { // parents first, easier to read
-		fmt.Printf("  %-10s %6d\n", after[i].Table, after[i].Rows)
+		fmt.Printf("  %-12s %6d\n", after[i].Table, after[i].Rows)
 	}
 	fmt.Printf("  out-of-stock products: %d, offers without keys: %d, inactive offers: %d\n",
 		stats.OutOfStockProducts, stats.ZeroKeyOffers, stats.InactiveOffers)

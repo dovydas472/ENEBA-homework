@@ -26,12 +26,20 @@ const (
 // fakeCatalog is the test double for CatalogReader: tests choose what it
 // returns and can see which filter / slug the handler passed in.
 type fakeCatalog struct {
-	page      catalog.Page
-	detail    catalog.ProductDetail
-	err       error
-	calls     int
-	gotFilter catalog.Filter
-	gotSlug   string
+	page        catalog.Page
+	detail      catalog.ProductDetail
+	suggestions []catalog.Suggestion
+	err         error
+	calls       int
+	gotFilter   catalog.Filter
+	gotSlug     string
+	gotQuery    string
+}
+
+func (f *fakeCatalog) Suggest(_ context.Context, q string) ([]catalog.Suggestion, error) {
+	f.calls++
+	f.gotQuery = q
+	return f.suggestions, f.err
 }
 
 func (f *fakeCatalog) ListProducts(_ context.Context, flt catalog.Filter) (catalog.Page, error) {
@@ -151,7 +159,7 @@ func TestProductsList_nullsAndEmptyLists(t *testing.T) {
 
 func TestProductsList_badRequest(t *testing.T) {
 	tests := []struct{ query, msg string }{
-		{"sort=cheapest", "sort must be one of popularity, price_asc, price_desc, discount, newest, title"},
+		{"sort=cheapest", "sort must be one of popularity, relevance, price_asc, price_desc, discount, newest, title"},
 		{"minPrice=2000&maxPrice=1000", "minPrice must not be greater than maxPrice"},
 		{"pageSize=100", "pageSize must be an integer between 1 and 48"},
 	}

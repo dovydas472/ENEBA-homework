@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -69,10 +70,15 @@ product_stats AS (
 
 // baseCTE is "every product with everything the listing and the facets need".
 // ITEMS AND ALL FACETS READ FROM THIS ONE CTE, so a condition added to its WHERE
-// applies to all of them at once. The future text search adds exactly one line
-// there (e.g. AND g.title ILIKE ...), and the facets follow the search for free.
+// applies to all of them at once. The text search (Task 13a) is exactly that:
+// one LEFT JOIN to the matching games (search.go) and one WHERE line, and the
+// facets and the price range follow the search for free.
+//
+// match_tier / match_score are the game's search rank (sort=relevance). Without
+// a search they are 0 for every row, so relevance falls back to popularity.
 const baseCTE = `
 WITH ` + statsCTEs + `,
+` + searchCTEs + `,
 base AS (
     SELECT p.id, p.slug, p.edition, p.msrp_cents,
            g.title, g.cover_url, g.release_date, g.popularity,
@@ -82,13 +88,16 @@ base AS (
            coalesce(ps.offer_count, 0) AS offer_count,
            CASE WHEN ps.min_price_cents < p.msrp_cents
                 THEN (p.msrp_cents - ps.min_price_cents)::bigint * 100 / p.msrp_cents
-           END AS discount_pct
+           END AS discount_pct,
+           coalesce(gm.match_tier, 0)  AS match_tier,
+           coalesce(gm.match_score, 0) AS match_score
     FROM products p
     LEFT JOIN product_stats ps ON ps.product_id = p.id
     JOIN games     g  ON g.id  = p.game_id
     JOIN platforms pl ON pl.id = p.platform_id
     JOIN regions   r  ON r.id  = p.region_id
-    WHERE true  -- the search task adds its condition HERE (see the comment above)
+    LEFT JOIN game_matches gm ON gm.game_id = g.id
+    WHERE (@q::text IS NULL OR gm.game_id IS NOT NULL)  -- search: only products of matching games
 )`
 
 // The three filters as conditions on a base row (alias b). Each facet query
@@ -110,11 +119,14 @@ const (
 // and discount sorts.
 var orderBy = map[Sort]string{
 	SortPopularity: `b.popularity DESC, b.id`,
-	SortPriceAsc:   `b.min_price_cents ASC NULLS LAST, b.id`,
-	SortPriceDesc:  `b.min_price_cents DESC NULLS LAST, b.id`,
-	SortDiscount:   `(b.min_price_cents IS NULL), b.discount_pct DESC NULLS LAST, b.id`,
-	SortNewest:     `b.release_date DESC NULLS LAST, b.id`,
-	SortTitle:      `b.title ASC, b.id`,
+	// Best match: exact > prefix > contains > typo, then the similarity score,
+	// then the same order as popularity (search.go explains the tiers).
+	SortRelevance: `b.match_tier, b.match_score DESC, b.popularity DESC, b.id`,
+	SortPriceAsc:  `b.min_price_cents ASC NULLS LAST, b.id`,
+	SortPriceDesc: `b.min_price_cents DESC NULLS LAST, b.id`,
+	SortDiscount:  `(b.min_price_cents IS NULL), b.discount_pct DESC NULLS LAST, b.id`,
+	SortNewest:    `b.release_date DESC NULLS LAST, b.id`,
+	SortTitle:     `b.title ASC, b.id`,
 }
 
 // offerStock adds `st.stock` to a row of offers `o`: the number of keys that can
@@ -125,6 +137,11 @@ const offerStock = `CROSS JOIN LATERAL (
     FROM keys k
     WHERE k.offer_id = o.id AND ` + sellableKey + `
 ) st`
+
+// orderPlaceholder marks where itemsSQL gets its ORDER BY line (from the fixed
+// orderBy map, never user text). A plain string replace, not fmt.Sprintf: the
+// SQL contains pg_trgm's `<%` operator, which Sprintf would read as a verb.
+const orderPlaceholder = "{{ORDER_BY}}"
 
 // itemsSQL: the page of products (CTE "page"), then for each of those rows only
 // (at most pageSize) its cheapest buyable offer - the same offer, in the same
@@ -137,7 +154,7 @@ page AS (
            b.cover_url, b.min_price_cents, b.msrp_cents, b.discount_pct, b.offer_count,
            b.min_price_cents IS NOT NULL AS in_stock,
            count(*) OVER () AS total,            -- all matching rows, before LIMIT
-           row_number() OVER (ORDER BY %s) AS pos
+           row_number() OVER (ORDER BY ` + orderPlaceholder + `) AS pos
     FROM base b
     WHERE ` + platformMatch + ` AND ` + regionMatch + ` AND ` + priceMatch + `
     ORDER BY pos
@@ -193,9 +210,10 @@ FROM base b
 WHERE ` + platformMatch + ` AND ` + regionMatch
 
 // ListProducts returns one page of the listing and the facets for the same
-// filters. Items and the three facet queries are sent to Postgres together in
-// ONE batch: one network round trip, and one implicit transaction, so the
-// items and the counts come from the same snapshot of the data.
+// filters (and the same search text f.Query). The search threshold, the items
+// and the three facet queries are sent to Postgres together in ONE batch: one
+// network round trip, and one implicit transaction, which is also what keeps
+// the threshold local to this request (see searchThresholdSQL).
 func (s *Store) ListProducts(ctx context.Context, f Filter) (Page, error) {
 	order, ok := orderBy[f.Sort]
 	if !ok {
@@ -224,15 +242,18 @@ func (s *Store) ListProducts(ctx context.Context, f Filter) (Page, error) {
 		regions = []string{}
 	}
 	filterArgs := func() pgx.NamedArgs {
-		return pgx.NamedArgs{"platforms": platforms, "regions": regions, "min_price": f.MinPrice, "max_price": f.MaxPrice}
+		args := searchArgs(f.Query)
+		args["platforms"], args["regions"] = platforms, regions
+		args["min_price"], args["max_price"] = f.MinPrice, f.MaxPrice
+		return args
 	}
 	itemArgs := filterArgs()
 	itemArgs["limit"] = f.PageSize
 	itemArgs["offset"] = (f.Page - 1) * f.PageSize
 
 	batch := &pgx.Batch{}
-	// itemsSQL has one %s: the ORDER BY line from the fixed whitelist above (never user text).
-	batch.Queue(fmt.Sprintf(itemsSQL, order), itemArgs)
+	batch.Queue(searchThresholdSQL) // first: applies to everything after it in this batch
+	batch.Queue(strings.Replace(itemsSQL, orderPlaceholder, order, 1), itemArgs)
 	batch.Queue(platformFacetSQL, filterArgs())
 	batch.Queue(regionFacetSQL, filterArgs())
 	batch.Queue(priceRangeSQL, filterArgs())
@@ -240,6 +261,11 @@ func (s *Store) ListProducts(ctx context.Context, f Filter) (Page, error) {
 	defer br.Close()
 
 	page := Page{Items: []Item{}, Page: f.Page, PageSize: f.PageSize}
+
+	// 0. the search threshold (returns one row we do not need)
+	if _, err := br.Exec(); err != nil {
+		return Page{}, fmt.Errorf("catalog: search threshold: %w", err)
+	}
 
 	// 1. items (+ total from count(*) OVER ())
 	rows, err := br.Query()
@@ -288,9 +314,21 @@ func (s *Store) ListProducts(ctx context.Context, f Filter) (Page, error) {
 		return Page{}, fmt.Errorf("catalog: batch: %w", err)
 	}
 
-	// A page after the last one has no rows, so the total must be asked separately.
+	// A page after the last one has no rows, so the total must be asked separately -
+	// again behind the search threshold, or a search would be counted with a different one.
 	if len(page.Items) == 0 && f.Page > 1 {
-		if err := conn.QueryRow(ctx, totalSQL, filterArgs()).Scan(&page.Total); err != nil {
+		count := &pgx.Batch{}
+		count.Queue(searchThresholdSQL)
+		count.Queue(totalSQL, filterArgs())
+		cr := conn.SendBatch(ctx, count)
+		defer cr.Close()
+		if _, err := cr.Exec(); err != nil {
+			return Page{}, fmt.Errorf("catalog: search threshold: %w", err)
+		}
+		if err := cr.QueryRow().Scan(&page.Total); err != nil {
+			return Page{}, fmt.Errorf("catalog: count: %w", err)
+		}
+		if err := cr.Close(); err != nil {
 			return Page{}, fmt.Errorf("catalog: count: %w", err)
 		}
 	}

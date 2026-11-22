@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dovydas472/ENEBA-homework/pkg/catalog"
 )
@@ -24,13 +25,21 @@ const (
 //     status 400, so a typo is never silently ignored (a client that sends
 //     sort=cheapest must learn that it got the default order);
 //   - an EMPTY value (?platform=) means "parameter not given";
-//   - unknown parameter NAMES are ignored (the search task adds `q` later);
-//   - unknown slugs are valid: they simply match nothing.
+//   - unknown parameter NAMES are ignored;
+//   - unknown slugs are valid: they simply match nothing;
+//   - the default sort is "relevance" (best match) when q is given, else "popularity".
 //
 // Every error message is written for the client and contains no internals.
 func parseListQuery(q url.Values) (catalog.Filter, error) {
 	f := catalog.Filter{Sort: catalog.SortPopularity, Page: 1, PageSize: catalog.DefaultPageSize}
 	var err error
+
+	if text, given, err := searchParam(q); err != nil {
+		return f, err
+	} else if given {
+		f.Query = text
+		f.Sort = catalog.SortRelevance // the default with a search; an explicit sort below wins
+	}
 
 	if f.Platforms, err = parseSlugList(q, "platform"); err != nil {
 		return f, err
@@ -84,6 +93,29 @@ func single(q url.Values, name string) (value string, given bool, err error) {
 		return "", false, nil
 	}
 	return vals[0], true, nil
+}
+
+// searchParam reads the search text `q` (GET /api/products and the suggestions):
+//   - missing or empty (?q=) -> not given, like every other parameter;
+//   - given -> trimmed, inner spaces collapsed (catalog.NormalizeQuery), and then
+//     it must be 2-100 characters long. Characters, not bytes: "é" is one.
+//     Only spaces ("?q=%20%20") is therefore too short -> 400, not "not given".
+//
+// The text only ever travels to SQL as a query parameter.
+func searchParam(q url.Values) (text string, given bool, err error) {
+	vals := q["q"]
+	if len(vals) > 1 {
+		return "", false, errors.New("q must be given once")
+	}
+	if len(vals) == 0 || vals[0] == "" {
+		return "", false, nil
+	}
+	text = catalog.NormalizeQuery(vals[0])
+	if n := utf8.RuneCountInString(text); n < catalog.MinQueryLen || n > catalog.MaxQueryLen {
+		return "", true, fmt.Errorf("q must be %d to %d characters long (spaces at the ends do not count)",
+			catalog.MinQueryLen, catalog.MaxQueryLen)
+	}
+	return text, true, nil
 }
 
 func validSort(s catalog.Sort) bool {

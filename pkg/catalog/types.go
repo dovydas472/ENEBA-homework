@@ -10,7 +10,8 @@ var ErrNotFound = errors.New("catalog: product not found")
 type Sort string
 
 const (
-	SortPopularity Sort = "popularity" // default
+	SortPopularity Sort = "popularity" // default without a search
+	SortRelevance  Sort = "relevance"  // "Best match": default WITH a search; without one = popularity
 	SortPriceAsc   Sort = "price_asc"
 	SortPriceDesc  Sort = "price_desc"
 	SortDiscount   Sort = "discount"
@@ -19,7 +20,7 @@ const (
 )
 
 // Sorts lists every valid Sort (used for validation and error messages).
-var Sorts = []Sort{SortPopularity, SortPriceAsc, SortPriceDesc, SortDiscount, SortNewest, SortTitle}
+var Sorts = []Sort{SortPopularity, SortRelevance, SortPriceAsc, SortPriceDesc, SortDiscount, SortNewest, SortTitle}
 
 // Paging limits (decided by the owner).
 const (
@@ -31,6 +32,7 @@ const (
 // Prices are integer cents; nil = no bound. The HTTP layer validates the
 // values (see pkg/server) - the store trusts them except for Sort.
 type Filter struct {
+	Query     string   // search text, already normalized (NormalizeQuery); "" = no search
 	Platforms []string // platform slugs, any of them matches
 	Regions   []string // region slugs, any of them matches
 	MinPrice  *int64
@@ -159,4 +161,19 @@ type ProductDetail struct {
 	Game     GameInfo    `json:"game"`
 	Offers   []Offer     `json:"offers"`   // cheapest first, never null
 	Variants []Variant   `json:"variants"` // never null
+}
+
+// Suggestion is one entry of the search-box dropdown: one per GAME, linking to
+// one of its products (the cheapest in stock; see suggestSQL in search.go).
+type Suggestion struct {
+	GameTitle   string  `json:"gameTitle"`
+	ProductSlug string  `json:"productSlug"`
+	Platform    Ref     `json:"platform"` // of that product
+	Region      Ref     `json:"region"`   // of that product
+	CoverURL    *string `json:"coverUrl"`
+	PriceCents  *int64  `json:"priceCents"` // null = no product of the game is in stock
+	InStock     bool    `json:"inStock"`
+	// MatchedAlias is the alias that matched when the title did not
+	// ("GTA 5" for Grand Theft Auto V); null when the title matched.
+	MatchedAlias *string `json:"matchedAlias"`
 }
