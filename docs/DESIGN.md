@@ -243,7 +243,7 @@ Desktop ≥931                                       Mobile ≤600
   **As built in Task 11 (owner decisions S1–S9, they replace the measured Eneba details above where they differ):** the page title is "Store"; the results bar shows "N results"
   (announced with `aria-live`), the sort select, a "Filters (n)" button (≤930px only) and, on its own row, the active-filter chips with "Clear all".
   The sidebar (Platform, Region, Price range) shows at ≥931px; below that the same groups open in a **full-screen** native `<dialog>` drawer with a "Show N results" button.
-  Grid: **4 columns above 1200px, 3 from 601 to 1200px, 2 on phones** (cards stay vertical on phones; the horizontal list card of 4.3 is not used), gap `--grid-gap`, `--space-2` on phones.
+  Grid: **4 columns above 1200px, 3 from 601 to 1200px**, ~~2 on phones (cards stay vertical on phones; the horizontal list card of 4.3 is not used)~~ — phones: see Task 11b below (1 column of list cards), gap `--grid-gap`.
   Pagination (Prev, 1 2 3 … 5, Next; 24 per page) sits under the grid.
 
   **As built in Task 11b (S4; owner decisions of 2026-11-21 replace S3 and the phone part of S7):**
@@ -408,10 +408,10 @@ On the phone list card the price is 20px.
 - **As built in Task 11b:** desktop = still a native `<select>`, but drawn like Eneba's text button: sort icon + 16px bold value + chevron, no box, 40px tall,
   `field-sizing: content` (as wide as the chosen option); "Sort by" is a visually hidden label. ≤930px = **radio items in the drawer** (group "Sort by"):
   20px circle, 2px `--color-border-control` border; checked = `--color-accent` ring + `--radio-dot-size` dot; 14px text; 40px rows. Both use the same labels (`sortLabels.ts`).
-- **Desktop sort (not built):** a ghost button in the results bar: sort icon + "Popularity: Most popular" (`--font-size-base` bold, white) + chevron; opens a menu.
-- **Menu (D):** bg `--color-bg-deep`, `--shadow-dropdown`, `--z-dropdown`, items 40px tall, `--font-size-sm` medium; hover bg `--color-surface-hover`; selected item has a left check and `--color-accent` text.
+- **Eneba's desktop sort (reference):** a ghost button in the results bar: sort icon + "Popularity: Most popular" (`--font-size-base` bold, white) + chevron; opens a custom menu. We copy its look with the native select (above), not the custom menu.
+- **Menu (D, not built):** bg `--color-bg-deep`, `--shadow-dropdown`, `--z-dropdown`, items 40px tall, `--font-size-sm` medium; hover bg `--color-surface-hover`; selected item has a left check and `--color-accent` text.
 - **Form select** (e.g. "Country" in filters): same as the text input (4.2) with a chevron on the right; the native `<select>` is acceptable and preferred (keyboard and screen-reader support for free).
-- Mobile: the sort list lives inside the "Sort and filter" drawer as radio items.
+- Mobile: the sort list lives inside the "Sort and filter" drawer as radio items (built in Task 11b).
 
 ### 4.7 Offer row (product page)
 
