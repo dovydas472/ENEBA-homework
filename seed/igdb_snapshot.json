@@ -34,6 +34,14 @@
         49,
         167,
         169
+      ],
+      "aliases": [
+        "GTA V",
+        "GTA 5",
+        "Grand Theft Auto 5",
+        "GTAV",
+        "GTA5",
+        "Grand Theft Auto V Legacy"
       ]
     },
     {
@@ -65,6 +73,14 @@
         167,
         169,
         508
+      ],
+      "aliases": [
+        "Wiedźmin 3: Dziki Gon",
+        "The Witcher III: Wild Hunt",
+        "Witcher 3",
+        "TW3",
+        "Witcher III",
+        "Zaklínač 3: Divoký hon"
       ]
     },
     {
@@ -90,7 +106,8 @@
       "platforms": [
         6,
         130
-      ]
+      ],
+      "aliases": []
     },
     {
       "igdb_id": 472,
@@ -112,6 +129,13 @@
       "total_rating_count": 4388,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "TES5",
+        "The Elder Scrolls 5: Skyrim",
+        "Skyrim",
+        "TESV: Skyrim",
+        "TES Skyrim"
       ]
     },
     {
@@ -137,6 +161,12 @@
       "platforms": [
         6,
         48
+      ],
+      "aliases": [
+        "GTA: SA",
+        "GTA: San Andreas",
+        "San Andreas",
+        "GTA San Andreas"
       ]
     },
     {
@@ -162,7 +192,8 @@
       "platforms": [
         6,
         130
-      ]
+      ],
+      "aliases": []
     },
     {
       "igdb_id": 25076,
@@ -188,6 +219,11 @@
         6,
         48,
         49
+      ],
+      "aliases": [
+        "RDR2",
+        "RDR 2",
+        "Red Dead Redemption II"
       ]
     },
     {
@@ -213,6 +249,14 @@
         6,
         48,
         167
+      ],
+      "aliases": [
+        "God of War 4",
+        "God of War: New Omega",
+        "Deus da Guerra",
+        "God of War IV",
+        "GoW 4",
+        "GOW"
       ]
     },
     {
@@ -237,6 +281,11 @@
       "total_rating_count": 3506,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "HL2",
+        "Half Life 2",
+        "HL 2"
       ]
     },
     {
@@ -259,6 +308,12 @@
       "total_rating_count": 3257,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "ACII",
+        "AC2",
+        "Assassin's Creed 2",
+        "Assassins Creed 2"
       ]
     },
     {
@@ -284,6 +339,9 @@
       "total_rating_count": 3253,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "BS"
       ]
     },
     {
@@ -309,6 +367,11 @@
       "total_rating_count": 3205,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "GTA VC",
+        "GTA Vice City",
+        "Vice City"
       ]
     },
     {
@@ -331,6 +394,11 @@
       "total_rating_count": 3045,
       "platforms": [
         130
+      ],
+      "aliases": [
+        "TLoZ BotW",
+        "BotW",
+        "Breath of the Wild"
       ]
     },
     {
@@ -355,6 +423,12 @@
       "total_rating_count": 2961,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "Quiver",
+        "HL1",
+        "HL",
+        "Half Life"
       ]
     },
     {
@@ -379,6 +453,9 @@
       "total_rating_count": 2811,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "ME2"
       ]
     },
     {
@@ -403,6 +480,11 @@
       "platforms": [
         6,
         130
+      ],
+      "aliases": [
+        "Batman: Arkham Asylum 2",
+        "Arkham City",
+        "Batman: AC"
       ]
     },
     {
@@ -427,6 +509,11 @@
         6,
         48,
         49
+      ],
+      "aliases": [
+        "Project Icarus",
+        "BioShock: Infinity",
+        "BioShock 3"
       ]
     },
     {
@@ -449,6 +536,14 @@
       "total_rating_count": 2708,
       "platforms": [
         48
+      ],
+      "aliases": [
+        "Uncharted: Kaizokuou to Saigo no Hihou",
+        "Uncharted 4: Kres złodzieja",
+        "Uncharted 4",
+        "Uncharted 4: O Fim de um Ladrão",
+        "Uncharted 4: El Desenlace del Ladrón",
+        "Uncharted 4: Fine di un ladro"
       ]
     },
     {
@@ -474,6 +569,11 @@
       "platforms": [
         6,
         130
+      ],
+      "aliases": [
+        "Batman:AA",
+        "B:AA",
+        "Arkham Asylum"
       ]
     },
     {
@@ -499,6 +599,10 @@
       "total_rating_count": 2594,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "RDR",
+        "Red Dead Revolver 2"
       ]
     },
     {
@@ -523,6 +627,10 @@
       "total_rating_count": 2569,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "Mass Effect 1",
+        "ME"
       ]
     },
     {
@@ -548,6 +656,9 @@
         6,
         48,
         167
+      ],
+      "aliases": [
+        "Horizon"
       ]
     },
     {
@@ -572,6 +683,11 @@
       "total_rating_count": 2463,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "FNV",
+        "New Vegas",
+        "NV"
       ]
     },
     {
@@ -598,6 +714,10 @@
       "total_rating_count": 2412,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "Tomb Raider featuring Lara Croft",
+        "Tomb Raider 9"
       ]
     },
     {
@@ -626,6 +746,9 @@
         167,
         169,
         508
+      ],
+      "aliases": [
+        "Great Rune"
       ]
     },
     {
@@ -655,6 +778,9 @@
         167,
         169,
         508
+      ],
+      "aliases": [
+        "Hollow Knight: Voidheart Edition"
       ]
     },
     {
@@ -677,6 +803,11 @@
       "total_rating_count": 2264,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "FC3",
+        "FarCry 3",
+        "Far Cry 3: Classic Edition"
       ]
     },
     {
@@ -699,6 +830,11 @@
       "total_rating_count": 2212,
       "platforms": [
         48
+      ],
+      "aliases": [
+        "Spider-Man",
+        "Marvel's SpiderMan",
+        "SpiderMan"
       ]
     },
     {
@@ -721,6 +857,9 @@
       "total_rating_count": 2106,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "Minecraft"
       ]
     },
     {
@@ -746,6 +885,10 @@
         6,
         48,
         49
+      ],
+      "aliases": [
+        "Dark Souls 3",
+        "DS3"
       ]
     },
     {
@@ -769,6 +912,12 @@
         6,
         48,
         49
+      ],
+      "aliases": [
+        "Doom (2016)",
+        "Doom 4",
+        "Doom IV",
+        "Doom Classic"
       ]
     },
     {
@@ -793,6 +942,13 @@
       "total_rating_count": 1942,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "GTAIV",
+        "GTA IV",
+        "GTA4",
+        "GTA 4",
+        "Grand Theft Auto 4"
       ]
     },
     {
@@ -816,6 +972,11 @@
       "total_rating_count": 1941,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "Dishonoured",
+        "Dishonored: Die Maske des Zorns",
+        "Dishonored RHCP"
       ]
     },
     {
@@ -844,6 +1005,9 @@
         48,
         49,
         130
+      ],
+      "aliases": [
+        "UT"
       ]
     },
     {
@@ -867,6 +1031,9 @@
       "total_rating_count": 1915,
       "platforms": [
         48
+      ],
+      "aliases": [
+        "Project Beast"
       ]
     },
     {
@@ -890,7 +1057,8 @@
       "platforms": [
         130,
         508
-      ]
+      ],
+      "aliases": []
     },
     {
       "igdb_id": 7599,
@@ -916,7 +1084,8 @@
         6,
         48,
         49
-      ]
+      ],
+      "aliases": []
     },
     {
       "igdb_id": 1011,
@@ -943,6 +1112,9 @@
         48,
         49,
         130
+      ],
+      "aliases": [
+        "BL2"
       ]
     },
     {
@@ -968,6 +1140,9 @@
       "total_rating_count": 1875,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "ME3"
       ]
     },
     {
@@ -990,6 +1165,12 @@
       "total_rating_count": 1865,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "MW1",
+        "COD4",
+        "COD4: MW",
+        "Modern Warfare"
       ]
     },
     {
@@ -1021,7 +1202,8 @@
         49,
         130,
         508
-      ]
+      ],
+      "aliases": []
     },
     {
       "igdb_id": 26192,
@@ -1044,6 +1226,14 @@
       "platforms": [
         48,
         167
+      ],
+      "aliases": [
+        "The Last of Us 2",
+        "The Last of Us Part 2",
+        "TLoU Part II",
+        "TLoU Part 2",
+        "TLoU II",
+        "TLoU 2"
       ]
     },
     {
@@ -1068,6 +1258,13 @@
         48,
         49,
         130
+      ],
+      "aliases": [
+        "AC4",
+        "Assassins Creed 4",
+        "Assassin's Creed 4: Black Flag",
+        "ACIV",
+        "Assassin's Creed IV: Black Flag"
       ]
     },
     {
@@ -1096,6 +1293,9 @@
         6,
         48,
         49
+      ],
+      "aliases": [
+        "Max Heat"
       ]
     },
     {
@@ -1118,6 +1318,13 @@
       "total_rating_count": 1807,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "AC",
+        "AC 1",
+        "AC1",
+        "Assassins Creed",
+        "Prince of Persia: Assassin"
       ]
     },
     {
@@ -1148,7 +1355,8 @@
         130,
         167,
         169
-      ]
+      ],
+      "aliases": []
     },
     {
       "igdb_id": 15,
@@ -1170,6 +1378,9 @@
       "total_rating_count": 1795,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "FO3"
       ]
     },
     {
@@ -1192,6 +1403,11 @@
       "total_rating_count": 1777,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "Assassins Creed: Brotherhood",
+        "AC Brotherhood",
+        "ACB"
       ]
     },
     {
@@ -1218,6 +1434,9 @@
         49,
         167,
         169
+      ],
+      "aliases": [
+        "FO4"
       ]
     },
     {
@@ -1239,6 +1458,12 @@
       "total_rating_count": 1765,
       "platforms": [
         6
+      ],
+      "aliases": [
+        "DAO",
+        "Dragon Age 1",
+        "Dragon Age: Początek",
+        "Dragon Age™: Origins"
       ]
     }
   ]
