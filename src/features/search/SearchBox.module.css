@@ -166,6 +166,19 @@
     position: static;
   }
 
+  /* No layer of its own here (a flex item WITH a z-index would be one, even unpositioned): then the backdrop would
+     also cover the "Close search" × next to the field. The header row is already on the dropdown layer. */
+  .boxOpen {
+    z-index: auto;
+  }
+
+  /* As on Eneba's phone page: only the page UNDER the header row is dimmed, the row with the field stays bright. */
+  .backdrop {
+    position: absolute;
+    inset: 100% 0 auto;
+    height: 100dvh;
+  }
+
   .popup {
     max-height: calc(100dvh - var(--header-height));
   }
