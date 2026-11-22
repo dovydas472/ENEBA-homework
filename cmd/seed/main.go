@@ -57,7 +57,11 @@ func run(reset bool) error {
 	if err != nil {
 		return err
 	}
-	catalog, err := seedgen.Generate(snap)
+	extra, err := seedgen.ParseExtraAliases(seed.ExtraAliasesJSON)
+	if err != nil {
+		return err
+	}
+	catalog, err := seedgen.Generate(snap, extra)
 	if err != nil {
 		return err
 	}
@@ -130,12 +134,13 @@ func run(reset bool) error {
 
 	fmt.Println("seeded (committed):")
 	for i := len(after) - 1; i >= 0; i-- { // parents first, easier to read
-		fmt.Printf("  %-10s %6d\n", after[i].Table, after[i].Rows)
+		fmt.Printf("  %-12s %6d\n", after[i].Table, after[i].Rows)
 	}
 	fmt.Printf("  out-of-stock products: %d, offers without keys: %d, inactive offers: %d\n",
 		stats.OutOfStockProducts, stats.ZeroKeyOffers, stats.InactiveOffers)
 	fmt.Printf("  keys: %d available, %d reserved (expired), %d sold; new sellers: %d\n",
 		stats.AvailableKeys, stats.ExpiredReservedKeys, stats.SoldKeys, stats.NewSellers)
+	fmt.Printf("  search aliases: %d (IGDB + %d hand-written)\n", stats.Aliases, len(extra))
 	fmt.Println("catalog checksum:", sum)
 	return nil
 }

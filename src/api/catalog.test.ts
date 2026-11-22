@@ -1,6 +1,6 @@
 // Unit tests for the catalog API layer. fetch is replaced with a fake, so no server is needed.
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildProductsQuery, getProduct, getProducts } from "./catalog.ts";
+import { buildProductsQuery, getProduct, getProducts, getSuggestions } from "./catalog.ts";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -65,6 +65,48 @@ describe("buildProductsQuery", () => {
   it("omits a list that only contains empty slugs", () => {
     expect(buildProductsQuery({ platform: [""], region: ["", ""] })).toBe("");
   });
+
+  it("puts q first and omits an empty q", () => {
+    expect(buildProductsQuery({ sort: "price_asc", q: "witcher" })).toBe("?q=witcher&sort=price_asc");
+    expect(buildProductsQuery({ q: "" })).toBe("");
+  });
+});
+
+describe("getSuggestions", () => {
+  it("calls /api/search/suggest with the encoded text", async () => {
+    const fake = mockFetch();
+    await getSuggestions("gta 5");
+    await getSuggestions("100%/ü?");
+    expect(fake.mock.calls[0][0]).toBe("/api/search/suggest?q=gta%205");
+    expect(fake.mock.calls[1][0]).toBe("/api/search/suggest?q=100%25%2F%C3%BC%3F");
+  });
+
+  it("returns the parsed body", async () => {
+    const body = {
+      items: [
+        {
+          gameTitle: "Grand Theft Auto V",
+          productSlug: "grand-theft-auto-v-steam-global",
+          platform: { slug: "steam", name: "Steam" },
+          region: { slug: "global", name: "GLOBAL" },
+          coverUrl: null,
+          priceCents: 1199,
+          inStock: true,
+          matchedAlias: "GTA 5",
+        },
+      ],
+    };
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>(async () => new Response(JSON.stringify(body), { status: 200 })));
+    await expect(getSuggestions("gta 5")).resolves.toEqual(body);
+  });
+
+  it("rejects with the server's 400 for a too short text", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ error: "q must be 2 to 100 characters long" }), { status: 400 })),
+    );
+    await expect(getSuggestions("a")).rejects.toMatchObject({ code: "http", status: 400 });
+  });
 });
 
 describe("getProducts / getProduct", () => {
@@ -78,6 +120,12 @@ describe("getProducts / getProduct", () => {
     const fake = mockFetch();
     await getProducts();
     expect(fake.mock.calls[0][0]).toBe("/api/products");
+  });
+
+  it("getProducts sends the search text first and encodes it", async () => {
+    const fake = mockFetch();
+    await getProducts({ q: "gta 5 & co", platform: ["steam"], sort: "relevance" });
+    expect(fake.mock.calls[0][0]).toBe("/api/products?q=gta%205%20%26%20co&platform=steam&sort=relevance");
   });
 
   it("getProduct encodes the slug", async () => {

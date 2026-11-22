@@ -11,4 +11,5 @@ export const SORT_LABELS: Record<Sort, string> = {
   discount: "Biggest discount",
   newest: "Newest",
   title: "Name A–Z",
+  relevance: "Best match", // the API's default with a search (Task 13a); not offered in the controls yet (Task 13b)
 };

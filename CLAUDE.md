@@ -28,9 +28,10 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
 - Data model: see `docs/DATA_MODEL.md`. Any schema change must update it in the same PR.
 
 ## Migration rules
-- Create migrations only with `go run ./cmd/migrate create <name>`. Never edit a migration that is already merged - add a new one.
-- Migrations must be backward compatible with the code currently deployed (expand/contract: add first, remove in a later migration), because the Vercel deploy and the production migration run at the same time.
-- Never run migrations against `production` locally. Production is migrated only by the GitHub Actions workflow `migrate-production.yml` (after merge, or the manual "Run workflow" button).
+- Create migrations only with `go run ./cmd/migrate create <name>`. Never edit a migration that is already merged **or already applied to production** (see the pre-merge run below) - add a new one.
+- Migrations must be backward compatible with the code currently deployed (expand/contract: add first, remove in a later migration), because the old code keeps running against the new schema until the deploy finishes.
+- Never run migrations against `production` locally. Production is migrated only by the GitHub Actions workflow `migrate-production.yml` (the manual "Run workflow" button, or automatically after merge).
+- **Every PR with a migration: production is migrated BEFORE the merge.** Once the PR is reviewed and CI is green, the owner runs *Actions → Migrate production → Run workflow* with "Use workflow from" = **the PR branch**, checks that the log shows the new migration applied, and only then merges. So the schema is ready before the new code deploys (no window where the new code runs against the old schema). The automatic run after the merge then finds nothing to apply. Claude Code lists this step first in the report's "What the owner must do manually" and in the PR checklist; after the pre-merge run the migration file must not change.
 - `cmd/migrate` must never print the connection string, host, user or password (the Actions logs are public).
 
 ## Seed data rules

@@ -560,3 +560,39 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Kodėl mygtukas ne nuorodos viduje:** `<button>` `<a>` viduje – neteisingas HTML (vienas paspaudimas reikštų du veiksmus). Kortelė dabar yra `div` su dviem broliais: nuoroda ir mygtukas. „View offers" – `aria-hidden` ir `tabIndex=-1` (ta pati nuoroda jau yra kortelė).
 - **Klaviatūra:** `.card:has(:focus-visible)` – kortelė pakyla tik **klaviatūros** fokusui (paspaudus pele kortelė „neįstringa" pakelta). Lietimo ekranuose, platesniuose nei telefonas, mygtukai rodomi visada (hover'io ten nėra).
 - **Gali paklausti:** „Kodėl mygtuko pavadinimas „Add to cart: The Witcher 3"?" – WCAG 2.5.3: matomi žodžiai turi būti pavadinimo pradžioje, o likusi dalis pasako, **kurį** produktą – kitaip ekrano skaitytuvas girdėtų 24 vienodus „Add to cart".
+
+# Task 13a – paieškos backend'as: IGDB alias'ai, `q` su klaidomis, pasiūlymai
+
+## Kodėl alias'ai (`game_aliases`, `cmd/igdb-snapshot --aliases-only`)
+- **Ką daro:** be pavadinimo, žaidimas turi kitus vardus – „GTA V", „GTA 5", „RDR2", „Witcher 3". Jie paimti iš IGDB `alternative_names` **tik toms pačioms 50 žaidimų** ir sudėti į `seed/igdb_snapshot.json` laukelį `aliases`. Seed'as juos įrašo į lentelę `game_aliases` (viena eilutė = vienas alias).
+- **Kodėl ne tik „klaidų tolerancija":** santrumpa nėra rašybos klaida. „gta" ir „Grand Theft Auto V" neturi beveik jokių bendrų trigramų, todėl joks `similarity` slenkstis jų nesujungs. Santrumpą žino tik žmonės (ar IGDB) – todėl ji turi būti **duomenyse**.
+- **Valymas (`igdb.CleanAliases`):** tik lotyniškos raidės (japoniško ar kirilica parašyto pavadinimo niekas neįves mūsų paieškoje), be `.exe` failų vardų (IGDB po „Portal" turėjo „hl2.exe" – tada „hl2" rastų Portal), ne lygus pavadinimui, be dublikatų (didžiosios/mažosios raidės nesvarbu), daugiausia 10. Liko 131 alias + 3 rankiniai (`seed/search_aliases_extra.json`: HZD, SMO, Zelda BotW – kiekvienas su priežastimi).
+- **Kodėl lentelė, o ne `games.aliases text[]`:** trigramų GIN indeksas indeksuoja tekstą, ne masyvo elementus. Atskira eilutė gauna tokį pat indeksą kaip `games.title`, o „kuris alias sutapo" – tiesiog tos eilutės reikšmė.
+- **Gali paklausti:** „Kodėl atnaujinus alias'us katalogas neturi keistis?" – produktai, kainos, raktai ir jų `id` gaunami iš snapshot'o su fiksuotu atsitiktinių skaičių generatoriumi. Jei `--aliases-only` pakeistų žaidimų sąrašą ar populiarumą, pasikeistų visi produktai, o production'e – nuorodos, krepšeliai su senais `offerId`. Todėl įrankis keičia **tik** `aliases` (patikrinta: senas ir naujas JSON be `aliases` laukų – identiški), alias'ai nenaudoja RNG, o testas `TestAliasesDoNotChangeTheRestOfTheCatalog` įrodo, kad visa kita sugeneruota taip pat.
+
+## Trigramos: `word_similarity` ir `ILIKE` (`pkg/catalog/search.go`)
+- **Trigrama** – 3 raidžių gabaliukas: „witcher" → „  w", „ wi", „wit", „itc", „tch", „che", „her", „er ". Kuo daugiau bendrų trigramų, tuo panašesni žodžiai – todėl „witchr" vis tiek panašus į „Witcher".
+- **`ILIKE '%q%'`** – „ar yra viduje" (be raidžių dydžio). Greitas ir tikslus, bet klaidos neatleidžia: „eldn ring" neranda „Elden Ring".
+- **`similarity(a, b)`** lygina **visas** eilutes – trumpa užklausa prieš ilgą pavadinimą visada gauna mažą balą. **`word_similarity(q, t)`** ieško geriausiai sutampančios pavadinimo **dalies**: „witchr 3" prieš „The Witcher 3: Wild Hunt" = 0.58. Operatorius `q <% t` = `word_similarity(q, t) >= slenkstis` – ir jį gali naudoti indeksas (funkcija viena – ne).
+- **Žaidimas sutampa**, jei pavadinimas ARBA alias `ILIKE '%q%'` ARBA `q <% term`. Abi sąlygos naudoja tą patį GIN trigramų indeksą (`EXPLAIN`: `BitmapOr` iš dviejų `Bitmap Index Scan`).
+- **Gali paklausti:** „Kodėl `EXPLAIN` rodo `Seq Scan`?" – 50 žaidimų ir 134 alias'ai telpa į vieną disko puslapį; perskaityti jį visą pigiau nei eiti per indeksą, tai planuotojas teisus. CI testas vienai transakcijai išjungia `enable_seqscan` (`SET LOCAL`) ir patikrina, kad abu indeksai **gali** būti naudojami – didesniame kataloge jie ir bus.
+
+## Slenkstis 0.55 ir kaip jis parinktas
+- **Metodas:** realių užklausų lentelė prieš mūsų 50 žaidimų (`witcher`, `witchr 3`, `gta 5`, `eldn ring`, `rdr2`, `portl`, `halflife`, `qwertyzz`, `asdf` …), kiekvienai – balai su skirtingais slenksčiais. Lentelė – Task 13a ataskaitoje.
+- **Ką parodė:** su numatytu 0.6 „witchr 3" (0.58) ir „halflife" (0.58) **nieko** neranda. Su 0.5 „the witcher" prideda Zeldą (0.50 – bendras tik žodis „the"), „hl2" – Half-Life. 0.55 – tarp jų; „asdf" (0.40) ir „qwertyzz" vis tiek nieko.
+- **Kaip nustatomas:** `SELECT set_config('pg_trgm.word_similarity_threshold', '0.55', true)` – **pirma užklausa tame pačiame pgx batch'e**. `true` = galioja tik šiai transakcijai, o pgx batch'ą vykdo kaip vieną numanomą transakciją → po batch'o reikšmė dingsta.
+- **Gali paklausti:** „Kodėl ne `SET`?" – Neon PgBouncer transaction režime serverio jungtis po transakcijos atiduodama kitam klientui; paprastas `SET` liktų toje jungtyje ir „nutekėtų" į svetimas užklausas. Patikrinta per pooler'į: batch'e 0.55, kita užklausa – vėl 0.6.
+
+## Rūšiavimas „Best match" (`sort=relevance`)
+- **Tvarka:** 0 tikslus sutapimas („portal" → Portal) > 1 prasideda („portal" → Portal 2) > 2 yra viduje („witcher" → The Witcher 3) > 3 tik panašus (klaida). Toliau – `word_similarity` balas, tada populiarumas, tada `id` (deterministiškai). Žaidimo rangas = jo **geriausio** termino (pavadinimo ar alias) rangas.
+- **Numatytas rūšiavimas:** su `q` – `relevance`, be `q` – `popularity`. `sort=relevance` be `q` leidžiamas ir lygiai lygus populiarumui (visų `match_tier` = 0).
+- **Facetai:** paieška yra `base` CTE viduje (vienas `LEFT JOIN game_matches` + viena `WHERE` eilutė), todėl prekės, platformų/regionų skaičiai ir kainų intervalas automatiškai skaičiuojami **paieškos rezultatui**.
+- **Gali paklausti:** „Kodėl `ORDER BY alias COLLATE "C"`?" – lygiaverčių alias'ų tvarka priklauso nuo DB kolacijos; CI Postgres ir Neon gali turėti skirtingą. „C" = baitų tvarka, visur vienoda, todėl `matchedAlias` visada tas pats.
+
+## Pasiūlymai – vienas žaidimui (`GET /api/search/suggest`)
+- **Ką daro:** iki 6 žaidimų paieškos laukelio sąrašui: pavadinimas, vieno produkto `slug`, platforma, regionas, viršelis, kaina, `inStock`, `matchedAlias`.
+- **Kodėl vienas žaidimui:** GTA V turi 3 produktus (Steam, PSN, GOTY). Jei rodytume produktus, 6 vietas užimtų 2 žaidimai – vartotojas ieško **žaidimo**, versiją renkasi produkto puslapyje.
+- **Kuris produktas:** pigiausias, kurį **galima nupirkti** (pvz. RDR2 – Epic Games Europe 21.49 €, ne Steam 42.99 €). Jei nė vieno nėra sandėlyje – pirmas žaidimo produktas (populiarumo tvarkos lygiųjų taisyklė – `id`; seed'e tai visada pagrindinė platforma, Global, Standard), `priceCents=null`, `inStock=false`.
+- **`matchedAlias`** – tik kai **pavadinimas nesutapo** („gta 5" → „GTA 5"). Jei pavadinimas sutapo („arkham asylum"), `null` – nėra prasmės rodyti alias šalia pavadinimo, kuris jau matosi.
+- **Cache:** `s-maxage=300, stale-while-revalidate=600` – pasiūlymai keičiasi tik kartu su katalogu; kaina čia gali būti 5 min. sena, produkto puslapis rodo tikrą.
+- **Gali paklausti:** „Kodėl `q` validuojamas serveryje, jei frontend'as irgi tikrina?" – API viešas, kiekvienas gali jį kviesti tiesiogiai. 2–100 simbolių (ne baitų: „é" – vienas), `%` ir `_` pabėgami Go'e, kad „%%" nerastų **visko** (integracinis testas tai tikrina), o tekstas SQL'ą pasiekia **tik kaip parametras**.

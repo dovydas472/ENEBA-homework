@@ -1,5 +1,5 @@
 // Package seedgen turns the committed IGDB snapshot into the full demo catalog
-// (platforms, regions, games, products, sellers, offers, keys) and writes it to
+// (platforms, regions, games + their search aliases, products, sellers, offers, keys) and writes it to
 // the database.
 //
 //   - catalog.go:  the row types and the fixed lookup data (platforms, regions, sellers),
@@ -53,6 +53,7 @@ type Game struct {
 	CoverURL                 string
 	Popularity               int
 	IGDBID                   int64
+	Aliases                  []string // rows of game_aliases, in this order (search only)
 }
 
 // Product is one game on one platform for one region in one edition.

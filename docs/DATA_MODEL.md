@@ -1,12 +1,13 @@
 # Data model
 
 The whole schema of the marketplace, designed once. Only the **catalog** tables exist today
-(migration `00002_catalog.sql`). The **auth** and **commerce** tables are *planned*: they are
+(migration `00002_catalog.sql`, plus `game_aliases` for search from `00003_search_aliases.sql`). The **auth** and **commerce** tables are *planned*: they are
 created in their own tasks and must follow this document (or update it in the same PR).
 
 | Group | Tables | Status |
 |---|---|---|
 | Catalog | `platforms`, `regions`, `games`, `products`, `sellers`, `offers`, `keys` | **created** – migration `00002` |
+| Search | `game_aliases` | **created** – migration `00003` (Task 13a) |
 | Auth | `users`, `sessions` | planned – auth task |
 | Commerce | `orders`, `order_items`, `payments` + column `keys.order_item_id` | planned – checkout task |
 
@@ -52,6 +53,11 @@ erDiagram
         integer popularity "from IGDB, default 0"
         bigint igdb_id UK "nullable"
         timestamptz created_at
+    }
+    game_aliases {
+        bigint id PK
+        bigint game_id FK
+        text alias "trigram index"
     }
     products {
         bigint id PK
@@ -136,6 +142,7 @@ erDiagram
     platforms ||--o{ products : "platform of"
     regions   ||--o{ products : "region of"
     games     ||--o{ products : "sold as"
+    games     ||--o{ game_aliases : "also called"
     products  ||--o{ offers   : "offered by sellers"
     sellers   ||--o{ offers   : "sells"
     offers    ||--o{ keys     : "stock"
@@ -191,6 +198,22 @@ The game itself – everything that is the same on every platform.
 - **`gin_trgm_ops` (GIN)** supports *both* `ILIKE '%witcher%'` (substring) *and* the similarity operators `%` / `<%` (typos) – one index for both kinds of search. GIN is faster to read than GiST; GiST's only extra (`ORDER BY title <-> 'x'`, nearest-neighbour) is not needed: we order the few matching rows by `word_similarity()` after filtering.
 - **Plain `title`, not `lower(title)`:** pg_trgm lowercases trigrams itself and `ILIKE` is case-insensitive, so an expression index would add nothing (and every query would have to repeat the exact expression to use it).
 - Note: the function `similarity(a, b)` alone cannot use an index; queries must filter with the *operators* (`%`, `<%`) and may sort by the function.
+
+### `game_aliases` (migration `00003`, Task 13a)
+Other names of a game that the search must find: abbreviations and alternative titles ("GTA V", "RDR2",
+"Witcher 3"). Filled by the seed from the IGDB snapshot (`alternative_names`, cleaned) plus a few
+hand-written ones in `seed/search_aliases_extra.json`. Used **only by search** – never shown as the title.
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | like every table; the seed restarts it at 1, so ids are deterministic |
+| `game_id` | `bigint` NN, FK → `games` **RESTRICT** | the game this alias belongs to |
+| `alias` | `text` NN, CHECK not blank | the other name, as IGDB writes it (case kept) |
+
+- **Unique index `(game_id, lower(alias))`:** one alias once per game, whatever the case ("GTA V" = "gta v"). Its leading `game_id` also serves "aliases of a game" and the FK check.
+- **Search index:** `CREATE INDEX game_aliases_alias_trgm_idx ON game_aliases USING gin (alias gin_trgm_ops);` – the same kind as `games_title_trgm_idx`, so the alias half of the search uses an index for `ILIKE` *and* `<%`.
+- **Why a table and not `games.aliases text[]`:** a trigram GIN index indexes a *text value*, not the elements of an array. One row per alias gets the same index as the title, and "which alias matched" (shown in the search dropdown) is simply that row. An array would need an `unnest` per game per query (no index) or a concatenated "search text" column that loses which alias matched.
+- **Backward compatible (expand/contract):** a new table only; the code deployed while the migration runs never reads it. Until the seed fills it, search works on titles only.
 
 ### `products`
 The thing a buyer chooses: **one game on one platform for one region in one edition**.
@@ -393,8 +416,8 @@ stateDiagram-v2
 SQL that the Go code (hand-written `pgx`) runs. User input is never concatenated into SQL: it travels as
 query parameters (`$n`; in `pkg/catalog` written as named parameters `@name`, which pgx rewrites to `$n`).
 Sketches 1, 1b and 2 are **implemented in `pkg/catalog/store.go`** (Task 09) and tested against the
-deterministic seed (`pkg/catalog/store_integration_test.go`, run in CI); sketches 3 and 4 are still plans
-for the checkout and search tasks. The "sellable key" condition appears in all of them:
+deterministic seed (`pkg/catalog/store_integration_test.go`, run in CI); sketch 4 (search) is implemented in
+`pkg/catalog/search.go` (Task 13a); sketch 3 is still a plan for the checkout task. The "sellable key" condition appears in all of them:
 
 ```sql
 k.status <> 'sold' AND (k.reserved_until IS NULL OR k.reserved_until < now())
@@ -414,7 +437,7 @@ sorts and is **excluded** whenever a price filter is used.
 
 The query is built from one shared CTE, `base` ("every product with everything the listing and the
 facets need"). **The items and all facets read from `base`**, so a condition added to its `WHERE`
-applies to all of them at once - the future text search (`q`) adds exactly one line there.
+applies to all of them at once - the text search (`q`, sketch 4) is one `LEFT JOIN` and one `WHERE` line there.
 
 ```sql
 -- named parameters: @platforms text[] (empty = no filter), @regions text[], @min_price bigint | NULL,
@@ -446,13 +469,16 @@ base AS (
            CASE WHEN ps.min_price_cents < p.msrp_cents          -- only a real discount; NULL if msrp
                 THEN (p.msrp_cents - ps.min_price_cents)::bigint * 100  -- unknown, out of stock or
                      / p.msrp_cents                                     -- price >= msrp. Integer
-           END AS discount_pct                                          -- division = rounds DOWN
+           END AS discount_pct,                                         -- division = rounds DOWN
+           coalesce(gm.match_tier, 0)  AS match_tier,    -- search rank (sketch 4); 0 without a search
+           coalesce(gm.match_score, 0) AS match_score
     FROM products p
     LEFT JOIN product_stats ps ON ps.product_id = p.id   -- LEFT: products without stock stay visible
     JOIN games     g  ON g.id  = p.game_id
     JOIN platforms pl ON pl.id = p.platform_id
     JOIN regions   r  ON r.id  = p.region_id
-    WHERE true                       -- the search task adds its condition HERE (items AND facets follow)
+    LEFT JOIN game_matches gm ON gm.game_id = g.id       -- the search CTEs of sketch 4 (Task 13a)
+    WHERE (@q::text IS NULL OR gm.game_id IS NOT NULL)   -- search: items AND facets follow it
 )
 SELECT b.slug, b.title, b.edition, b.platform_slug, b.platform_name, b.region_slug, b.region_name,
        b.cover_url, b.min_price_cents, b.msrp_cents, b.discount_pct, b.offer_count,
@@ -571,19 +597,51 @@ RETURNING k.id;
 - **`SKIP LOCKED`**: a second buyer at the same moment does not *wait* for the first one's locks – they skip those rows and take the next free keys. Without it, all concurrent checkouts of a popular offer would queue on the same rows.
 - After locking, Postgres re-checks the `WHERE` on the newest row version, so a key that someone else reserved and committed in the meantime is not taken.
 
-### 4. Title search (why the trigram index exists)
+### 4. Search: title + aliases, typos allowed (Task 13a, `pkg/catalog/search.go`)
+`GET /api/products?q=…` (items and facets) and `GET /api/search/suggest?q=…` share these CTEs.
+`q` is trimmed, inner spaces collapsed and 2-100 characters long (else 400) – validated in `pkg/server`.
+
 ```sql
--- $1 what the user typed, e.g. 'witchr'; % and _ in it are escaped in Go before use in ILIKE
-SELECT g.slug, g.title, word_similarity($1, g.title) AS score
-FROM games g
-WHERE g.title ILIKE '%' || $1 || '%'   -- substring: 'witcher' in 'The Witcher 3'
-   OR $1 <% g.title                     -- typo-tolerant word match: 'witchr' ~ 'Witcher'
-ORDER BY score DESC, g.title
-LIMIT 10;
+-- @q          'witchr 3'      (NULL = no search: the CTEs return no rows, base does not filter)
+-- @q_prefix   'witchr 3%'     built in Go; %, _ and \ in q are escaped first
+-- @q_contains '%witchr 3%'
+SELECT set_config('pg_trgm.word_similarity_threshold', '0.55', true);  -- first query of the SAME batch
+
+WITH matched_terms AS (   -- every title and alias that matches; each half uses its own trigram index
+    SELECT g.id AS game_id, g.title AS term, NULL::text AS alias
+    FROM games g
+    WHERE g.title ILIKE @q_contains OR @q <% g.title          -- contains  OR  similar (typo)
+    UNION ALL
+    SELECT a.game_id, a.alias, a.alias
+    FROM game_aliases a
+    WHERE a.alias ILIKE @q_contains OR @q <% a.alias
+),
+ranked_terms AS (
+    SELECT game_id, alias,
+           CASE WHEN lower(term) = lower(@q) THEN 0   -- exact      "portal"  -> Portal
+                WHEN term ILIKE @q_prefix   THEN 1   -- prefix     "portal"  -> Portal 2
+                WHEN term ILIKE @q_contains THEN 2   -- contains   "witcher" -> The Witcher 3
+                ELSE 3                                -- typo only  "eldn ring" -> Elden Ring
+           END AS tier,
+           word_similarity(@q, term) AS score,
+           bool_or(alias IS NULL) OVER (PARTITION BY game_id) AS title_matched
+    FROM matched_terms
+),
+game_matches AS (         -- one row per game: its BEST term decides the rank
+    SELECT DISTINCT ON (game_id) game_id, tier AS match_tier, score AS match_score,
+           CASE WHEN title_matched THEN NULL ELSE alias END AS matched_alias
+    FROM ranked_terms
+    ORDER BY game_id, tier, score DESC, alias COLLATE "C" NULLS FIRST
+)
+-- listing: base LEFT JOINs game_matches (sketch 1); sort=relevance =
+--   ORDER BY match_tier, match_score DESC, popularity DESC, id
+-- suggest: game_matches + per game its cheapest in-stock product, LIMIT 6
 ```
-Both conditions are served by `games_title_trgm_idx`. `<%` uses the default
-`pg_trgm.word_similarity_threshold` (0.6); changing it would need `SET`, which PgBouncer transaction
-mode does not keep – it would have to be `SET LOCAL` inside the query's transaction.
+
+- **`word_similarity(q, term)` / `q <% term`:** the share of the query's trigrams found in the best matching *part* of the term (0-1). Unlike `similarity()` (whole strings), a short query is not punished for a long title: "witchr 3" vs "The Witcher 3: Wild Hunt" = 0.58.
+- **Threshold 0.55** (default 0.6), tuned with a table of real queries (Task 13a report). It is set with `set_config(…, true)` = local to the transaction, as the **first query of the same pgx batch**: pgx runs a batch as one implicit transaction, so the value is gone after the batch. A plain `SET` would stay on the PgBouncer server connection (transaction mode) and leak into other requests.
+- **Indexes:** both `ILIKE '%…%'` and `<%` are index conditions on the GIN trigram indexes (`BitmapOr` of two `Bitmap Index Scan`s per table). With 50 games and ~130 aliases (one page each) the planner correctly prefers a sequential scan; the CI test `TestSearchMatchCanUseTheTrigramIndexes` turns seq scans off for one transaction and checks that both indexes are used.
+- **`matched_alias`** is set only when the title did not match at all, so the dropdown can show "GTA 5 → Grand Theft Auto V" and never an alias next to a title that obviously matches.
 
 ## Why RESTRICT and not CASCADE
 `ON DELETE CASCADE` would turn one mistaken `DELETE FROM games` into the silent loss of its products,

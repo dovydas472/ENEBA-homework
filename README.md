@@ -52,9 +52,10 @@ JSON, `camelCase` field names. Money is **integer cents** (formatting is the fro
 
 | Parameter | Meaning |
 |---|---|
+| `q` | Search text (Task 13a): game **title or alias** ("gta 5", "rdr2"), contains or typo match (`witchr 3`). Trimmed, 2–100 characters. Filters the items **and** the facets |
 | `platform`, `region` | Comma-separated slugs, several allowed: `platform=steam,psn`. Unknown slugs match nothing |
 | `minPrice`, `maxPrice` | Integer cents ≥ 0, `minPrice ≤ maxPrice`. Uses the cheapest *in-stock* price, so out-of-stock products are excluded when a price filter is set |
-| `sort` | `popularity` (default) · `price_asc` · `price_desc` · `discount` · `newest` · `title`. Out-of-stock products come last on the price and discount sorts |
+| `sort` | `popularity` (default without `q`) · `relevance` ("Best match", default with `q`; without `q` = popularity) · `price_asc` · `price_desc` · `discount` · `newest` · `title`. Out-of-stock products come last on the price and discount sorts |
 | `page`, `pageSize` | `page` ≥ 1 (default 1); `pageSize` 1–48 (default 24) |
 
 An invalid value (`sort=cheapest`, `pageSize=100`, `minPrice=-1` …) is answered with `400` and a clear message, never
@@ -91,12 +92,27 @@ curl "localhost:8080/api/products?platform=steam&region=global&sort=price_asc&pa
 (`global`) but not the platform filter: Steam is selected, yet PSN still shows its 8 products. The `regions` counts
 describe the platform filter (all Steam products: 43 + 6 + 1 + 4 = 54).
 
+`GET /api/search/suggest?q=…` – up to 6 games for the search-box dropdown, best match first, **one item per game**:
+`{"items": [{"gameTitle", "productSlug", "platform": {slug, name}, "region": {slug, name}, "coverUrl", "priceCents" | null,
+"inStock", "matchedAlias" | null}]}`. `productSlug` is the game's cheapest in-stock product (none in stock: its first
+product, `priceCents: null`, `inStock: false`); `matchedAlias` is the alias that matched when the title did not.
+
+```bash
+curl "localhost:8080/api/search/suggest?q=gta%205"
+```
+```json
+{"items": [{"gameTitle": "Grand Theft Auto V", "productSlug": "grand-theft-auto-v-steam-global",
+            "platform": {"slug": "steam", "name": "Steam"}, "region": {"slug": "global", "name": "GLOBAL"},
+            "coverUrl": "https://images.igdb.com/…", "priceCents": 1199, "inStock": true, "matchedAlias": "GTA 5"}, "…"]}
+```
+How matching and ranking work (trigrams, aliases, the 0.55 threshold): [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md), sketch 4.
+
 **Caching.** Successful responses carry `Cache-Control` so the Vercel CDN can answer without calling the function:
-listing `public, s-maxage=60, stale-while-revalidate=300`, product page `public, s-maxage=15, stale-while-revalidate=60`;
-errors are `no-store`. Short staleness is safe because browsing never decides money: checkout re-checks stock and price
+listing `public, s-maxage=60, stale-while-revalidate=300`, product page `public, s-maxage=15, stale-while-revalidate=60`,
+suggestions `public, s-maxage=300, stale-while-revalidate=600`; errors are `no-store`. Short staleness is safe because browsing never decides money: checkout re-checks stock and price
 in the database before it charges anything.
 
-Typed frontend functions: `src/api/catalog.ts` (`getProducts`, `getProduct`), types in `src/api/types.ts`.
+Typed frontend functions: `src/api/catalog.ts` (`getProducts`, `getProduct`, `getSuggestions`), types in `src/api/types.ts`.
 
 ## Database migrations
 Migrations are SQL files in `migrations/` (numbered, [goose](https://github.com/pressly/goose) format) embedded into the `cmd/migrate` binary.
@@ -111,9 +127,20 @@ go run ./cmd/migrate create add_games  # new numbered file in migrations/ (no DB
 ```
 
 **Production** is migrated only by GitHub Actions (`.github/workflows/migrate-production.yml`):
-automatically after a merge to `main` that touches `migrations/` or `cmd/migrate/`, or manually via
-*Actions → Migrate production → Run workflow*. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
+manually via *Actions → Migrate production → Run workflow*, or automatically after a merge to `main` that touches
+`migrations/` or `cmd/migrate/`. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
 (Neon `production` branch, **direct** connection string). Never run migrations against production from a laptop.
+
+**Procedure for every PR that adds a migration** (schema first, code second):
+1. Review the PR and wait for green CI.
+2. *Actions → Migrate production → Run workflow*, **"Use workflow from" = the PR branch**. The workflow checks out that
+   branch, so it applies the new migration to production. Check the log: the new file is listed as applied.
+3. Merge. The Vercel deploy now finds the schema already in place; the automatic migrate run after the merge has
+   nothing left to apply.
+
+Why: the new code may read a table or column the migration adds. If the code deployed first, it would fail until the
+migration ran. The migration itself is always backward compatible (expand/contract), so the *old* code keeps working
+against the new schema between steps 2 and 3. After step 2 the migration file must not change; a fix is a new migration.
 
 ## Seed data
 The catalog (50 real games, 9 platforms, 4 regions, 8 fictional sellers, offers and fake keys) comes from a
@@ -121,15 +148,17 @@ committed **IGDB snapshot** – *Data provided by [IGDB](https://www.igdb.com/)*
 IGDB's image CDN; nothing is downloaded into the repo.
 
 ```bash
-# owner only, once (needs IGDB_CLIENT_ID / IGDB_CLIENT_SECRET in the local .env):
-go run ./cmd/igdb-snapshot     # writes seed/igdb_snapshot.json
+# owner only (needs IGDB_CLIENT_ID / IGDB_CLIENT_SECRET in the local .env):
+go run ./cmd/igdb-snapshot                 # full refresh: writes seed/igdb_snapshot.json (games + aliases)
+go run ./cmd/igdb-snapshot --aliases-only  # keeps the 50 games, only refreshes their search aliases
 
 # local: Neon `dev` branch (DATABASE_URL_DIRECT from .env), from the repo root
 go run ./cmd/seed              # seeds an EMPTY catalog, refuses if data exists
 go run ./cmd/seed --reset      # deletes the catalog and seeds it again
 ```
 
-- **Deterministic:** a fixed RNG seed – the same snapshot always gives exactly the same rows (and ids). The tool prints a `catalog checksum`; it is identical on `dev` and `production`.
+- **Deterministic:** a fixed RNG seed – the same snapshot always gives exactly the same rows (and ids). The tool prints a `catalog checksum`; it is identical on `dev` and `production`. Current value (since Task 13a, with the search aliases): **`4e94565d904cc1698b65cce04cbff8d9`**.
+- **Search aliases** (`game_aliases`): IGDB `alternative_names` of the 50 games (Latin script, no `.exe` names, max 10 per game) plus a few hand-written ones in `seed/search_aliases_extra.json`, each with a reason.
 - Everything is written in **one transaction** (all or nothing). Key codes are obviously fake: `DEMO-XXXX-XXXX-XXXX`.
 - **Production** is seeded only by GitHub Actions: *Actions → Seed production → Run workflow* (`confirm` = `seed-production`, tick `reset` to replace existing data).
 
@@ -145,13 +174,13 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - `api/index.go` – the only Vercel function; forwards to the router
 - `pkg/server/` – router and handlers (they depend on small interfaces: `DBPinger`, `CatalogReader`); query-string validation
 - `pkg/db/` – lazy, shared pgx connection pool
-- `pkg/catalog/` – catalog queries (listing + facets, product page), seller rating label; pure Go + pgx, no HTTP
+- `pkg/catalog/` – catalog queries (listing + facets, product page, search + suggestions), seller rating label; pure Go + pgx, no HTTP
 - `pkg/testdb/` – test helper: migrated + seeded Postgres from `TEST_DATABASE_URL` (tests skip when it is empty; with `REQUIRE_TEST_DB=1`, as in the CI `migrations` job, they fail instead)
 - `cmd/local/` – local dev server using the same router (loads `.env`)
 - `cmd/migrate/` – goose migration runner (`up`/`down`/`status`/`version`/`create`)
 - `cmd/igdb-snapshot/` – one-time, local IGDB download → `seed/igdb_snapshot.json`
 - `cmd/seed/` – deterministic catalog seed from the snapshot (`--reset`)
-- `seed/` – the committed IGDB snapshot, embedded with `go:embed`
+- `seed/` – the committed IGDB snapshot and the hand-written extra search aliases, embedded with `go:embed`
 - `pkg/igdb/` – snapshot format, Twitch OAuth + IGDB client, selection filters
 - `pkg/seedgen/` – generation rules (platforms, products, prices, offers, keys), validation, bulk insert
 - `pkg/dbsafe/` – `-pooler` guard and secret-free error messages shared by `cmd/migrate` and `cmd/seed`

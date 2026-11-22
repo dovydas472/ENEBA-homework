@@ -1,10 +1,15 @@
 // Typed functions for the catalog endpoints. Every call goes through apiFetch
 // (timeout, typed errors), never through a raw fetch.
 import { apiFetch, type ApiOptions } from "./client.ts";
-import type { ProductDetail, ProductsResponse, Sort } from "./types.ts";
+import type { ProductDetail, ProductsResponse, Sort, SuggestResponse } from "./types.ts";
 
 /** The query parameters of GET /api/products. Anything left out (or empty) is not sent. */
 export interface ProductsParams {
+  /**
+   * Search text (title or alias, typos allowed). The server trims it and needs 2-100 characters (else 400).
+   * With `q` the default sort is "relevance" (best match); facets are counted over the search result.
+   */
+  q?: string;
   /** Platform slugs, e.g. ["steam", "psn"] (multi-select). */
   platform?: string[];
   /** Region slugs (multi-select). */
@@ -24,7 +29,7 @@ function isEmpty(v: unknown): boolean {
 }
 
 /**
- * Turns params into a query string ("?platform=steam,psn&sort=price_asc"), or ""
+ * Turns params into a query string ("?q=gta&platform=steam,psn&sort=price_asc"), or ""
  * when nothing is set.
  * - empty values are omitted (the server treats a missing parameter as "no filter"),
  * - 0 is kept (minPrice=0 is a real value),
@@ -32,7 +37,7 @@ function isEmpty(v: unknown): boolean {
  * - the order is fixed, so the same filters always give the same URL (better CDN cache hits).
  */
 export function buildProductsQuery(params: ProductsParams): string {
-  const order = ["platform", "region", "minPrice", "maxPrice", "sort", "page", "pageSize"] as const;
+  const order = ["q", "platform", "region", "minPrice", "maxPrice", "sort", "page", "pageSize"] as const;
   const parts: string[] = [];
   for (const key of order) {
     const raw = params[key];
@@ -53,4 +58,13 @@ export function getProducts(params: ProductsParams = {}, options?: ApiOptions): 
 /** GET /api/products/{slug}: product page data (rejects with ApiError status 404 for an unknown slug). */
 export function getProduct(slug: string, options?: ApiOptions): Promise<ProductDetail> {
   return apiFetch<ProductDetail>(`/api/products/${encodeURIComponent(slug)}`, options);
+}
+
+/**
+ * GET /api/search/suggest?q=…: up to 6 games for the search-box dropdown, best match first.
+ * The server trims `q` and answers 400 (ApiError) when it is shorter than 2 or longer than 100 characters,
+ * so the caller should only ask once the user has typed at least 2 characters.
+ */
+export function getSuggestions(q: string, options?: ApiOptions): Promise<SuggestResponse> {
+  return apiFetch<SuggestResponse>(`/api/search/suggest?q=${encodeURIComponent(q)}`, options);
 }

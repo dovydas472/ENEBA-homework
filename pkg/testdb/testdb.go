@@ -102,7 +102,11 @@ func setup(url string) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, err
 	}
-	cat, err := seedgen.Generate(snap)
+	extra, err := seedgen.ParseExtraAliases(seed.ExtraAliasesJSON)
+	if err != nil {
+		return nil, err
+	}
+	cat, err := seedgen.Generate(snap, extra)
 	if err != nil {
 		return nil, err
 	}
