@@ -136,7 +136,7 @@ newsletter, Trustpilot strip.
 1. Open the PR Preview and compare with eneba.com yourself at a laptop size and on your phone (the CLAUDE.md rule now asks for this in every UI task).
 2. On a real phone: ☰ menu, search icon, "Sort and filter" drawer (tap the dimmed area to close), the sideways-scrolling chips row.
 3. On a laptop: hover a card (slide-up + "View offers"), Tab through a card (same slide on keyboard focus).
-4. Export the session log (`/export`) as `ai-logs/2026-11-22_01_visual-parity.md` and commit it on this branch.
+4. ~~Export the session log~~ – done: converted from the transcript (remote procedure, CLAUDE.md) to `ai-logs/2026-11-21_03_visual-parity.md` and committed on this branch.
 
 ## 4. Plain-language explanation
 The app had Eneba's colours and font, but its layout was built from written notes. This task put the real site next to ours and measured it with a script
@@ -155,8 +155,9 @@ instead of being faked. Accessibility stayed at 0 axe violations; one Eneba colo
 - The task says "Store reference screenshots outside the repo" – done; the reference is described in words above.
 
 ## 6. Open questions
-- The demo banner is covered while the ☰ menu or the drawer is open (both are full-height overlays). It is visible again as soon as they close. OK, or should the overlays start under the banner?
-- Eneba's chips are one per filter group with a dropdown; ours are one per value with ×. Keep ours (simpler, one click to remove), or copy Eneba's grouping later?
+Both answered by the owner on 2026-11-22 (PR review):
+- ~~The demo banner is covered while the ☰ menu or the drawer is open.~~ **Owner: fine, keep** (it is visible again as soon as they close).
+- ~~Eneba's chips are one per filter group with a dropdown; ours are one per value with ×.~~ **Owner: keep our per-value chips.**
 
 ## 7. Self-review (task-reviewer)
 The `task-reviewer` subagent was given only the task number. Its summary (run after the code and docs were committed, before this report existed):
