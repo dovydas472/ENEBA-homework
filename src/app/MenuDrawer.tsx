@@ -1,10 +1,11 @@
 import { X } from "lucide-react";
 import { useRef } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { displayName } from "../api/auth.ts";
 import { useCurrentUser } from "../features/auth/useCurrentUser.ts";
 import { useSignOut } from "../features/auth/useSignOut.ts";
 import { APP_NAME } from "../lib/appInfo.ts";
+import { authPageLink } from "../lib/safeNext.ts";
 import { useModalDialog } from "../lib/useModalDialog.ts";
 import styles from "./MenuDrawer.module.css";
 import { NAV_LINKS } from "./navLinks.ts";
@@ -26,6 +27,9 @@ export function MenuDrawer({ open, onClose }: MenuDrawerProps) {
   useModalDialog(dialog, open);
   const { user } = useCurrentUser();
   const { signOut } = useSignOut();
+  // Like the header's "Sign in": after signing in, come back to the page the menu was opened on.
+  const { pathname, search } = useLocation();
+  const here = pathname + search;
 
   return (
     // `onClose` also fires when the browser closed the dialog (Esc): then the state follows the DOM.
@@ -83,12 +87,12 @@ export function MenuDrawer({ open, onClose }: MenuDrawerProps) {
             ) : (
               <>
                 <li>
-                  <Link to="/login" className={styles.link} onClick={onClose}>
+                  <Link to={authPageLink("/login", here)} className={styles.link} onClick={onClose}>
                     Sign in
                   </Link>
                 </li>
                 <li>
-                  <Link to="/register" className={styles.link} onClick={onClose}>
+                  <Link to={authPageLink("/register", here)} className={styles.link} onClick={onClose}>
                     Create account
                   </Link>
                 </li>

@@ -149,13 +149,13 @@ describe("phone menu: account part", () => {
   const openMenu = () => click($<HTMLButtonElement>("header button[aria-label='Open menu']")!);
   const accountSection = () => $("dialog section[aria-label=Account]")!;
 
-  it("signed out: Sign in and Create account", async () => {
+  it("signed out: Sign in and Create account, both returning to this page", async () => {
     await mount();
     await openMenu();
     const links = [...accountSection().querySelectorAll("a")].map((a) => [a.textContent, a.getAttribute("href")]);
     expect(links).toEqual([
-      ["Sign in", "/login"],
-      ["Create account", "/register"],
+      ["Sign in", "/login?next=%2Fcart"],
+      ["Create account", "/register?next=%2Fcart"],
     ]);
   });
 
