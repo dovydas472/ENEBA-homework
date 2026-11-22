@@ -42,7 +42,8 @@
   padding: 0 var(--space-1);
   overflow: hidden;
   background: var(--color-overlay);
-  color: var(--color-text-on-overlay);
+  /* Full white, not Eneba's 85% white: over a very light cover that gives only 3.95:1; white gives 4.74:1 (DESIGN.md 5.1). */
+  color: var(--color-text);
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-none);

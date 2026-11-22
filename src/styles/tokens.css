@@ -22,7 +22,6 @@
   --color-surface-chip: #2c0e6c; /* active-filter chips and the "Sort and filter" pill */
   --color-backdrop: rgba(0, 0, 0, 0.4); /* dims the page behind the filter drawer */
   --color-border-dark: #1f0a4d; /* bottom line of the compact (phone) header */
-  --color-text-on-overlay: rgba(255, 255, 255, 0.85); /* platform name on the dark strip over a cover */
   --color-skeleton: rgba(255, 255, 255, 0.1); /* loading placeholder (derived, no Eneba source) */
   --color-skeleton-shine: rgba(255, 255, 255, 0.2);
 

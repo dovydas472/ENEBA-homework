@@ -1,4 +1,4 @@
-/* Product cover (DESIGN.md 4.3): 5:7 portrait box. The ratio is set on the box, not on the image. */
+/* Product cover (DESIGN.md 4.3): portrait box of --cover-aspect-ratio (223 / 303, measured on Eneba). The ratio is set on the box, not on the image. */
 .cover {
   aspect-ratio: var(--cover-aspect-ratio);
   width: 100%;

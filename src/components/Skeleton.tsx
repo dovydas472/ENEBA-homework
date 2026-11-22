@@ -4,7 +4,7 @@ import styles from "./Skeleton.module.css";
 interface SkeletonProps {
   /** text = one line of text (full width, one line tall); block = fills its box, the caller sets the size. */
   variant?: "text" | "block";
-  /** Use it to set the size of a block, e.g. a cover that is 5:7. */
+  /** Use it to set the size of a block, e.g. a portrait cover box. */
   className?: string;
 }
 
