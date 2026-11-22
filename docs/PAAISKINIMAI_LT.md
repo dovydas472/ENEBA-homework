@@ -455,7 +455,7 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Gali paklausti:** „Kodėl ne `<div role=dialog>`?" – tada fokuso spąstus, Esc ir fokuso grąžinimą reikėtų rašyti rankomis (ir klaidos tikimybė didelė). „Kodėl stalčiuje turinys tik kai `open`?" – kad šoninė juosta ir stalčius neturėtų dviejų tų pačių kontrolių vienu metu (dubliuoti id, dviguba būsena). „Kaip testuojama?" – jsdom'e nėra `showModal`, testuose jis pakeistas paprastu atributu (testuoja mūsų logiką, ne naršyklę); tikrą elgesį patikrinau headless Edge.
 
 ## Viršelio atsarginis variantas (`CoverImage.tsx`)
-- **Ką daro:** `<img loading="lazy">` dėžutėje su **fiksuotu** `aspect-ratio: 5 / 7`. Jei `coverUrl` yra `null` arba paveikslėlis nepasikrauna (`onError`), vietoj sulūžusios ikonos rodomas sugeneruotas viršelis (žaidimo pavadinimas ant gradiento iš tokenų). Prisimename, **kuris adresas** nepavyko (`failedUrl`), o ne tiesiog „nepavyko", kad naujas adresas gautų naują bandymą.
+- **Ką daro:** `<img loading="lazy">` dėžutėje su **fiksuotu** `aspect-ratio` (`--cover-aspect-ratio`; nuo Task 11b – išmatuotas Eneba santykis 223 / 303, anksčiau 5 / 7). Jei `coverUrl` yra `null` arba paveikslėlis nepasikrauna (`onError`), vietoj sulūžusios ikonos rodomas sugeneruotas viršelis (žaidimo pavadinimas ant gradiento iš tokenų). Prisimename, **kuris adresas** nepavyko (`failedUrl`), o ne tiesiog „nepavyko", kad naujas adresas gautų naują bandymą.
 - **Kodėl fiksuotas santykis:** dėžutė turi galutinį aukštį dar prieš atsisiunčiant paveikslėlį → puslapis nešokinėja (CLS). Išmatuota: 0.0001 (riba „gerai" – 0.1).
 - **Gali paklausti:** „Kodėl `alt=""`?" – paveikslėlis dekoratyvus: pavadinimas jau yra kortelės tekste, kitaip ekrano skaitytuvas jį skaitytų dukart. „Kodėl `loading=lazy`?" – kortelės žemiau ekrano nesisiunčia, kol nepriartėjama (24 viršeliai per puslapį).
 
@@ -471,3 +471,36 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 ## Prieinamumas Store puslapyje (aria-live, antraštės, kontrastas)
 - **Ką daro:** rezultatų skaičius („108 results") yra `aria-live="polite"` – ekrano skaitytuvas pranešia pasikeitimą po kiekvieno filtro. Antraščių eilė: h1 (Store) → h2 (Filters, Products) → h3 (filtrų grupės, kortelių pavadinimai). Išparduotos kortelės pritemdymas 0.7 sugadino mėtinio teksto kontrastą (4.0:1), todėl `--opacity-dimmed` yra 0.8 (5.0:1); klaidos žinutė kainos filtre – ant tamsios kortelės spalvos, ne ant skydelio (DESIGN.md 5.1).
 - **Gali paklausti:** „Kaip tikrinai?" – axe-core (WCAG 2 A/AA, 2.1 AA, best practice) headless Edge: 0 pažeidimų darbalaukyje ir telefone, stalčius uždarytas ir atidarytas. Pirmasis paleidimas rado kontrasto pažeidimą – ištaisyta tokeno reikšme.
+
+# Task 11b – vizualinis panašumas į eneba.com
+
+## Kaip lyginau su eneba.com (metodas)
+- **Ką daro:** headless Edge (`puppeteer-core`, scratchpad'e, ne repo) atidarė eneba.com 1440×900 ir 390×844 dydžiais: header, `/store/all`, tą patį su platformos filtru, telefono „Sort and filter" stalčių, ☰ meniu, footer ir užvestą pelę ant kortelės. Ne tik ekrano nuotraukos – skriptas skaitė **apskaičiuotus stilius** (`getComputedStyle`) ir elementų matmenis (`getBoundingClientRect`), todėl skaičiai (pvz. tarpas tarp kortelių 20 px, ne 22) yra išmatuoti, ne „iš akies". Tada tas pats su mūsų puslapiais, pataisymai ir pakartotinis palyginimas.
+- **Kodėl nuotraukos ne repo:** tai Eneba autorinė sąsaja (logotipas, viršeliai, reklamos). Repo – tik **mūsų** nuotraukos (`docs/reports/assets/task11b_*`), o Eneba aprašyta žodžiais ataskaitoje.
+- **Gali paklausti:** „Ar apėjai apsaugas?" – ne: slapukų / vietovės iššokantys langai buvo tik pašalinti iš DOM prieš nuotrauką (sutikimas neduotas), Cloudflare puslapių (prisijungimas) nebandžiau. „Kas dabar privaloma?" – CLAUDE.md taisyklė: kiekviena UI užduotis baigiama palyginimu 1440 ir 390 px.
+
+## Header: nav juosta, ☰ meniu ir paieškos ikona (`Header.tsx`, `MenuDrawer.tsx`, `navLinks.ts`)
+- **Ką daro:** darbalaukyje paieškos laukas iškart po žodžio ženklu, krepšelis ir „Sign in" dešinėje, po jais visos pločio tamsesnė nav juosta: Store, Steam, PSN, Xbox Live, Nintendo eShop. Telefone (≤930 px) viena 56 px eilutė: ☰ · pavadinimas · paieškos ikona · krepšelis · paskyra. ☰ atidaro meniu su tomis pačiomis nuorodomis, paieškos ikona atidaro lauką **ant** eilutės (× arba Esc uždaro ir grąžina fokusą į ikoną).
+- **Kodėl taip:** tokia Eneba struktūra. Bet „jokios negyvos sąsajos": dedame **tik veikiančias** nuorodas (be „Categories", kalbos/valiutos, norų sąrašo, reklamos). Nuorodų sąrašas vienas (`NAV_LINKS`) – jį naudoja nav juosta, meniu ir footer, todėl jie negali išsiskirti. Platformų URL kuriami tuo pačiu `buildStoreSearch`, kurį naudoja Store puslapis, o testas patikrina, kad `parseStoreParams` juos perskaito kaip tikslų filtrą.
+- **Kas rodoma kur – CSS, ne React:** abu variantai yra DOM'e, media query paslepia nereikalingą. React saugo tik „ar meniu / paieška atidaryti". Paprasčiau nei matuoti ekrano plotį JS'e ir nėra šokinėjimo kraunantis.
+- **Gali paklausti:** „Kodėl krepšelio skaičius dingo?" – Eneba tuščiam krepšeliui ženklelio nerodo; nuorodos pavadinimas vis tiek sako „Cart, 0 items". „Kodėl ikonos 40×40, o ne 44?" – kad eilutė tilptų 360 px telefone (patikrinta 360–1440 px pločiais – jokio horizontalaus slinkimo), o 40 px yra mūsų minimalus paspaudimo dydis.
+
+## `useModalDialog` – vienas kabliukas dviem dialogams (`src/lib/useModalDialog.ts`)
+- **Ką daro:** sinchronizuoja React būseną `open` su natyviu `<dialog>`: `true` → `showModal()`, `false` → `close()`. Naudoja filtrų stalčius ir telefono meniu.
+- **Kodėl:** anksčiau šis efektas buvo `FilterDrawer` viduje; antram dialogui būtų reikėję kopijuoti. `showModal()` duoda fokuso spąstus, Esc ir fokuso grąžinimą (žr. Task 11 skyrių apie focus trap).
+- **Gali paklausti:** „O jei naršyklė uždaro pati (Esc)?" – dialogas siunčia `close` įvykį, komponentas jį gauna per `onClose` ir nustato `open = false`, todėl būsena seka DOM'ą.
+
+## Store puslapis telefone: stalčius su rūšiavimu ir sąrašo kortelės (`FilterDrawer.tsx`, `SortRadios.tsx`, `ProductCard`)
+- **Ką daro:** savininko sprendimu (pakeičia Task 11 S3 ir S7 telefone) stalčius yra 300 px skydelis iš kairės ant patamsinto puslapio, viduje „Sort by" (radio mygtukai), kaina, platforma, regionas, apačioje „Show N results". Atidaromas apvaliu „Sort and filter (n)" mygtuku; šalia jo – aktyvių filtrų „chip'ai" vienoje į šoną slenkančioje eilutėje. Kortelės telefone – vienas stulpelis horizontalių kortelių (70 px viršelis kairėje).
+- **Kodėl radio, o ne select telefone:** taip daro Eneba, ir radio grupė su vienu `name` duoda rodyklių klavišus bei „1 iš 6" ekrano skaitytuvui be mūsų kodo. Abu rūšiavimo valdikliai naudoja tą pačią etikečių lentelę `SORT_LABELS`.
+- **Paspaudimas ant patamsinto fono uždaro:** `<dialog>` užima tik 300 px juostą; paspaudimas ant `::backdrop` ateina į patį `<dialog>` elementą, o skydelio viduje – į jo vaikus. Todėl `event.target === event.currentTarget` reiškia „už skydelio".
+- **Gali paklausti:** „Kodėl telefone platformos nėra ant viršelio juostos?" – Eneba ten rodo logotipą; mes logotipų nekopijuojame, o „Nintendo eShop" tekstas į 70 px netelpa – platforma perkelta į mėtinę eilutę („PSN GLOBAL"). „Kodėl DOM'e chip'ai prieš rezultatų skaičių, nors telefone skaičius viršuje?" – darbalaukyje tokia ir vaizdo tvarka; telefone CSS `order` pakelia tik skaičių, kuris nėra fokusuojamas, todėl Tab tvarka vis tiek sutampa su tuo, ką matai.
+
+## Kortelė: platformos juosta ir „slide-up" užvedus pelę (`ProductCard.tsx`)
+- **Ką daro:** ant viršelio apačios tamsi juosta su platforma, po pavadinimu – regionas, „From €29.99 -60%" vienoje eilutėje ir kaina. Užvedus pelę (ar fokusavus klaviatūra) visas turinys pakyla per mygtuko aukštį ir atsiranda „View offers" – kaip Eneba (ji dar rodo „Add to cart", bet krepšelio neturime).
+- **Kaip veikia:** kortelė `overflow: hidden`; vidinis `.slide` turi „View offers" eilutę absoliučiai **po** matoma dalimi (`top: 100%`), o hover'yje `.slide` gauna `transform: translateY(-…)`. `transform` nekeičia išdėstymo → nėra CLS. Tik `(hover: hover)` įrenginiuose, kad lietimas „neįstrigtų".
+- **Gali paklausti:** „Kodėl „View offers" yra `aria-hidden`?" – visa kortelė jau yra viena nuoroda; be to ekrano skaitytuvas kiekvienos kortelės pavadinime skaitytų „View offers". „Kodėl tekstas juostoje pilnai baltas, nors Eneba – 85 %?" – ant labai šviesaus viršelio 85 % balta duoda tik 3.95:1 (< 4.5:1), pilna balta – 4.74:1. Užduotis sako: jei Eneba spalva nepraeina kontrasto, paliekame prieinamą.
+
+## `ButtonLink` – nuoroda, kuri atrodo kaip mygtukas (`Button.tsx`, „Browse the store")
+- **Ką daro:** `<Link>` su `Button` klasėmis. Naudojamas Home puslapio „Browse the store".
+- **Kodėl ne `<button onClick={navigate}>`:** perėjimas į kitą puslapį yra navigacija – teisingas elementas yra `<a>`: galima atidaryti naujame skirtuke, ekrano skaitytuvas sako „link". Pridėta `color` taisyklė hover'iui, nes `global.css` užvestas nuorodas nudažo geltonai (geltonas tekstas ant geltono fono būtų nematomas).

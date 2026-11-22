@@ -45,6 +45,7 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
 - UI: follow `docs/DESIGN.md`; use tokens from `src/styles/tokens.css`; CSS Modules only; no hardcoded colors/sizes.
 - If a needed value has no token, add the token to `tokens.css` and document it in `docs/DESIGN.md` in the same PR. Breakpoints are the literal numbers from `DESIGN.md` (600 / 930 / 1200 px).
 - Do not copy Eneba's logo, icons, illustrations or images. The wordmark is the text placeholder `APP_NAME`.
+- Every UI task ends with a side-by-side comparison against eneba.com at 1440 px and 390 px (reference screenshots outside the repo). The report lists the remaining differences and why (e.g. intentionally not copied, no such feature).
 
 ## Workflow rules
 - One task = one branch `task/NN-short-name`, created from an up-to-date `main` (`git checkout main && git pull`).

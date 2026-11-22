@@ -52,7 +52,7 @@ Rules for every future UI task:
 
 | Code | Meaning |
 |---|---|
-| **S** | Computed style read from the live page with a headless browser (Edge) on **2026-11-20**. S1 = `/store/all` at 1440 px, S2 = a product page, S3 = same store page at 390 px |
+| **S** | Computed style read from the live page with a headless browser (Edge) on **2026-11-20**. S1 = `/store/all` at 1440 px, S2 = a product page, S3 = same store page at 390 px. **S4** = re-measured on **2026-11-21** for Task 11b (header, store page with and without a platform filter, drawer, menu, footer; 1440 and 390 px) |
 | **C** | Rule found in Eneba's published CSS bundles (`static.eneba.games/main.*.css` and the page chunks). Class names are hashed, so the rule is identified by what it styles |
 | **D** | Derived by us (Eneba has no equivalent we could read). Built only from other tokens |
 | **A** | Adjusted by us for accessibility; the original is noted |
@@ -74,6 +74,9 @@ Eneba's "dark theme" is **deep purple**, not neutral black. Page `#4618ac`, pane
 | `--color-surface-hover` | `rgba(255,255,255,.1)` | hover on menu items | D |
 | `--color-overlay` | `rgba(0,0,0,.55)` | label strip over a cover image | S1 platform strip |
 | `--color-footer-bg` | `rgba(0,0,0,.7)` | footer | S1 `footer` |
+| `--color-surface-chip` | `#2c0e6c` | active-filter chips, the "Sort and filter" pill | S4 filter pill / mobile pill bg (Task 11b) |
+| `--color-backdrop` | `rgba(0,0,0,.4)` | dims the page behind the filter drawer | S4 drawer overlay (Task 11b) |
+| `--color-border-dark` | `#1f0a4d` | 1px bottom line of the phone header | S4 mobile `header` border (Task 11b) |
 | `--color-skeleton` (`-shine`) | `rgba(255,255,255,.1)` (`.2`) | loading placeholder | D |
 | `--color-text` | `#fff` | text, headings, prices | S1 |
 | `--color-text-muted` | `rgba(255,255,255,.7)` | counts, hints | S1 filter counts |
@@ -140,7 +143,7 @@ Text is `-webkit-font-smoothing: antialiased` (S1 `body`).
 
 | Group | Tokens | Source |
 |---|---|---|
-| Spacing | `--space-1…7` = 5, 10, 15, 20, 30, 40, 60 px | S1/S2 paddings are almost all multiples of 5 (card body 15, panel 20, row 20, grid gap 22) |
+| Spacing | `--space-1…7` = 5, 10, 15, 20, 30, 40, 60 px; `--space-half` 3px (Task 11b) | S1/S2 paddings are almost all multiples of 5 (card body 15, panel 20, row 20, grid gap 20). The 3px step is S4: "€59.99 -67%" on a card, footer link rows |
 | Radii | `--radius-none` 0 · `-sm` 3px · `-md` 5px · `-pill` 50px · `-round` 50% | C `border-radius` usage: buttons, cards, inputs, panels are **square**; checkbox 3px; pill tags 50px; avatars 50% |
 | Shadows | `--shadow-inset` `inset 0 1px 3px #1f0a4d` (inputs) · `-dropdown` `0 7px 15px rgba(0,0,0,.2)` · `-popup` `0 7px 17px rgba(0,0,0,.55)` · `-modal` `0 2px 27px rgba(0,0,0,.5)` · `-toast` `0 3px 9px rgba(0,0,0,.4)` | C. Mapping shadow → component is ours (**D**) |
 | z-index | `--z-base` 0 · `-raised` 1 · `-sticky` 10 · `-dropdown` 20 · `-drawer` 30 · `-modal` 40 · `-toast` 50 | **D**: Eneba uses 1, 2, 19–21, 999, 333333 ad hoc; we use a small named scale |
@@ -163,6 +166,9 @@ Added in Task 11 (Store page): `--opacity-dimmed` 0.8 (out-of-stock card and the
 `--cover-aspect-ratio` 5 / 7 (cover box, 4.3), `--checkbox-size` 20px (4.8), `--price-input-width` 77px (4.2 / 4.8),
 `--font-family-tabular` (Arial stack: Metropolis has no tabular figures, and digits of unequal width make a number that changes every frame jitter; used by the two price boxes),
 `--slider-thumb-size` 20px (the painted thumb), `--slider-thumb-hit` 24px (the clickable thumb; 40px = `--hit-target-min` at ≤930px) and `--slider-track-height` 4px (4.8, price slider).
+Added / changed in Task 11b (S4): `--chip-height` 30px (active-filter chip), `--drawer-width` 300px ("Sort and filter" drawer), `--platform-strip-height` 22px (18px ≤600px; strip on a cover),
+`--list-cover-width` 70px (cover of the phone list card), `--radio-dot-size` 10px (checked radio). **Changed:** `--grid-gap` 22px → **20px** (re-measured: 4 × 225px cards in 960px) and
+`--cover-aspect-ratio` 5 / 7 → **223 / 303** (the measured cover box, strip included).
 
 ---
 
@@ -193,6 +199,16 @@ All measurements were taken from the live site (S1–S3). The page is **centered
 
 **Mobile (≤930px)** — one row, 56px: `☰` · `APP_NAME` · search icon (opens a full-width search) · ♡ · 🛒 · account icon.
 Categories move into the hamburger drawer. Every icon button is at least 40×40.
+
+**As built in Task 11b (S4 re-measure; replaces the Task 10 header):**
+- Desktop (≥931px): the search field sits **right after** the wordmark (20px gap, not centred), max 550px, 57px tall; cart (44px wide, 24px icon) and
+  "Sign in" (14px medium) are pushed to the right edge. The cart badge is hidden while the cart is empty (Eneba shows none for 0); the link's name still says "0 items".
+- Nav strip under it: full width, `--color-bg-deep`, 50px, links 16px medium `--color-text-nav` with 10px padding, the first link's text aligned with the content edge.
+  **Only working links**: Store, Steam, PSN, Xbox Live, Nintendo eShop (`/store?platform=…`), from one list (`src/app/navLinks.ts`) shared with the phone menu and the footer.
+- Phone/tablet (≤930px): one 56px row with a 1px `--color-border-dark` bottom line: ☰ (icon on the 20px gutter) · wordmark (20px) · search icon · cart · account, icons 40×40.
+  The search icon opens the field **over the row** (with a × close; Esc also closes and returns focus to the icon). ☰ opens a full-screen menu
+  (native `<dialog>`, page colour, header row = wordmark + ×, links 16px regular, 40px rows with 10px 20px padding).
+- No locale/currency switch, no wishlist heart, no "Categories" item and no promo pill: we have no such features (see the Task 11b report, "intentionally not copied").
 
 ### 3.2 Store page (catalog with filters)
 
@@ -230,6 +246,18 @@ Desktop ≥931                                       Mobile ≤600
   Grid: **4 columns above 1200px, 3 from 601 to 1200px, 2 on phones** (cards stay vertical on phones; the horizontal list card of 4.3 is not used), gap `--grid-gap`, `--space-2` on phones.
   Pagination (Prev, 1 2 3 … 5, Next; 24 per page) sits under the grid.
 
+  **As built in Task 11b (S4; owner decisions of 2026-11-21 replace S3 and the phone part of S7):**
+  - Content starts 20px under the header; h1 margin `10px 0 30px`. Desktop results column: the chips row (only when a filter is active, 30px tall, 30px above the bar),
+    then the bar: "N results" (white 14px medium) left, the sort right, 10px above the grid. Grid gap 20px.
+  - Active-filter chips: `--color-surface-chip` pills, `--chip-height`, 14px medium, × icon; "Clear all" is yellow 16px text. (Eneba's pills open a per-group dropdown; ours remove one value.)
+  - **≤930px:** no sidebar. Order: count (muted 14px regular), then one sideways-scrolling row: the **"Sort and filter (n)" pill** (`--color-surface-chip`, `--radius-pill`, 40px) ·
+    1px white divider · the chips; then the list. The sort select is hidden; the sort is inside the drawer.
+  - **Drawer** (replaces the full-screen S3 drawer): native `<dialog>`, `--drawer-width` 300px from the left, full height, slides in, page dimmed by `--color-backdrop`
+    (a click there closes it). Header 56px on `--color-surface` ("Sort and filter" 16px bold + ×), then the groups **Sort by** (radios), Price range, Platform, Region,
+    then a footer on `--color-surface` with a full-width primary "Show N results".
+  - **Phones (≤600px): one column of horizontal list cards** (replaces the 2 columns of S7), 15px apart; see 4.3.
+  - Pagination: see 4.12.
+
 ### 3.3 Product page
 
 - Wider container: `--page-max-width-wide`, 40px gutters (content spanned x = 40…1400 at 1440px).
@@ -248,6 +276,11 @@ Full-bleed banner row, category icon carousel (icon + 12px bold label), then pro
 
 `--color-footer-bg` (`rgba(0,0,0,.7)`), full-bleed, about 540px tall on desktop: columns of links (`--font-size-xs`, `--color-text-nav`), social links, legal line.
 Mobile: columns stack, link rows get ≥40px tap height.
+
+**As built in Task 11b (S4):** columns with a 14px bold white heading (10px under it) and 12px `--color-text-nav` links (3px row padding), 60px apart:
+"Shop" (the nav links) and "About" (GitHub link + the IGDB credit sentence, whose in-text link stays underlined); at the bottom the legal line
+(12px medium `--color-text-subtle`: "EneHomeworkBa is an internship demo project and is not affiliated with Eneba."). 60px padding top and bottom.
+No social links, app badges, newsletter or locale button (we have none).
 
 ### 3.6 Cart and sign-in
 
@@ -324,11 +357,22 @@ Optional corner promo tag: bg `--color-accent`, text `#2c0e6c`, `--font-size-2xs
 **As built in Task 11:** cover (`--cover-aspect-ratio`, with a generated gradient placeholder showing the title when there is no cover or it fails to load), title (2 lines), the edition only when it is not "Standard",
 platform and region as mint uppercase text (4.5, "Region / platform text"), then "From" + struck-through MSRP + discount (4.4) and the price, pinned to the bottom of the card.
 Out of stock: no price, "Out of stock" in `--color-text-muted`, the card at `--opacity-dimmed` (still a link). No cashback badge, cart button or wishlist yet; the card has no action buttons (the whole card is the link).
-Hover (only where `(hover: hover)`): `--shadow-popup` and an accent title.
+~~Hover (only where `(hover: hover)`): `--shadow-popup` and an accent title.~~ (replaced in Task 11b)
+
+**As built in Task 11b (S4):** no border (Eneba draws a mint border only on cashback cards). The cover box is `--cover-aspect-ratio` (223 / 303) with a dark
+**platform strip** over its bottom (`--platform-strip-height`, `--color-overlay`, 10px bold uppercase **white** text; Eneba uses 85% white, see 5.1).
+Body padding `15px 15px 10px`: title 12/18 bold (2 lines, 10px under it), edition (only if not "Standard"), the **region** in mint, then at the bottom
+"From €29.99 -60%" on one line and the 22px price. **Hover / keyboard focus:** like Eneba, the whole content slides up by `--button-height` + 15px and reveals
+an outlined "View offers" label at the bottom (it is part of the card link and `aria-hidden`, so the link name stays the product). Eneba also reveals a yellow
+"Add to cart" — we have no cart yet. Hover only where `(hover: hover)`; touch screens never get a stuck slide.
 
 **Mobile (≤600px)** — horizontal list item (S3): 348×132 on a 390px screen, padding 8px, 2-column grid: cover thumbnail **70×98** + info.
 Title 12/15.6 bold, regions as above; price block; a **cart icon button** (≥40×40) bottom-right; a wishlist heart top-right;
 cashback badge shrinks to a 26×26 mint square on the cover's right edge. The info column leaves 50px at the right for the cart button.
+
+**As built in Task 11b:** this list card is used on phones (owner decision). Padding 10px, 10px gap, cover `--list-cover-width` (70px) on the left, text on the right;
+price 20px (`--font-size-lg`). No cart button and no heart (no such features yet), so the text uses the full width. The platform strip is **not** shown on the small
+cover (Eneba shows a logo there; names like "Nintendo eShop" do not fit 70px as text) — the platform joins the mint line instead ("PSN  GLOBAL").
 
 ### 4.4 Price display
 
@@ -341,6 +385,9 @@ cashback badge shrinks to a 26×26 mint square on the cover's right edge. The in
 | Cashback line | `--font-size-sm` bold `--color-discount` (card: 12px) | icon + "14% Cashback", optional "Best cashback" pill |
 
 Format: currency symbol first for EUR (`€19.92`), amounts from integer cents via `Intl.NumberFormat`. Never show a float computed in the UI.
+
+**As built in Task 11b (S4):** the label, the old price and the discount share ONE line ("From €29.99 -60%", 12px bold, `--space-half` apart), the price is under it (5px gap).
+On the phone list card the price is 20px.
 
 ### 4.5 Badge / tag
 
@@ -357,7 +404,10 @@ Format: currency symbol first for EUR (`€19.92`), amounts from integer cents v
 
 ### 4.6 Select (sort)
 
-- **As built in Task 11:** a native `<select>` styled like the text input (4.2) with a "Sort by" label and a chevron, on desktop and phones alike (not the custom menu and not radio items in the drawer).
+- ~~**As built in Task 11:** a native `<select>` styled like the text input (4.2) with a "Sort by" label and a chevron, on desktop and phones alike (not the custom menu and not radio items in the drawer).~~
+- **As built in Task 11b:** desktop = still a native `<select>`, but drawn like Eneba's text button: sort icon + 16px bold value + chevron, no box, 40px tall,
+  `field-sizing: content` (as wide as the chosen option); "Sort by" is a visually hidden label. ≤930px = **radio items in the drawer** (group "Sort by"):
+  20px circle, 2px `--color-border-control` border; checked = `--color-accent` ring + `--radio-dot-size` dot; 14px text; 40px rows. Both use the same labels (`sortLabels.ts`).
 - **Desktop sort (not built):** a ghost button in the results bar: sort icon + "Popularity: Most popular" (`--font-size-base` bold, white) + chevron; opens a menu.
 - **Menu (D):** bg `--color-bg-deep`, `--shadow-dropdown`, `--z-dropdown`, items 40px tall, `--font-size-sm` medium; hover bg `--color-surface-hover`; selected item has a left check and `--color-accent` text.
 - **Form select** (e.g. "Country" in filters): same as the text input (4.2) with a chevron on the right; the native `<select>` is acceptable and preferred (keyboard and screen-reader support for free).
@@ -393,6 +443,9 @@ Format: currency symbol first for EUR (`€19.92`), amounts from integer cents v
   The boxes are text inputs with `inputmode="decimal"` (so "12,50" works and invalid text can be reported); an error message ("min > max", "not an amount") sits on `--color-surface-card` under the boxes (5.1: error text is not allowed directly on a panel), and no request is made.
   The painted thumb is `--slider-thumb-size`; its clickable area is `--slider-thumb-hit` (40px on touch-sized screens). With no price range (nothing in stock) the slider is disabled.
   Checkbox groups can be folded with their header button (`aria-expanded`); the "N more" toggle is not needed yet (8 platforms at most).
+- **As built in Task 11b (S4):** groups are separated by a **2px line of the page colour** (`--color-bg`), not a thin white line. The chevron points **up** while open
+  and down while folded. Order: Price range, Platform, Region (Eneba starts with Price range). A group with ticked options shows a small yellow count badge next to its
+  title (`--color-accent`, 12px bold, 16px circle; screen readers hear "2 selected"). Checkbox rows: 25px tall, 10px apart (40px rows without gap ≤930px).
 - **Search inside a group** ("Product type"): input with magnifier button on the right.
 - **Loading:** checkbox rows replaced by 3–5 skeleton lines. **Empty:** hide the group.
 
@@ -420,6 +473,12 @@ Small notification, bottom of the screen: desktop bottom-right (offset `--space-
 - Left 4px bar by type: success `--color-secondary`, error `--color-danger`, info `--color-accent`. Icon/label text for the type so color is not the only signal.
 - Close button ≥40×40, ghost. Auto-dismiss after 5s; paused on hover and focus; errors stay until dismissed.
 - `role="status"` + `aria-live="polite"` (errors: `role="alert"`). Enter/leave: fade + 8px slide, `--transition-fast`.
+
+### 4.12 Pagination (Task 11b, S4)
+
+`‹ 1 2 3 … 10 ›`, centred, 30px under the grid. Previous / next are **square arrow buttons** (`--button-height` square, 1px `--color-border-strong`, chevron icon, 10px from the numbers;
+hover = secondary-button hover; disabled = `opacity: .5`), named "Previous page" / "Next page" for screen readers. Page numbers are plain 16px bold white text in a
+`--button-height` tap area; the **current page is `--color-accent`** (no box) and has `aria-current="page"`; hover → accent. The ellipsis is `aria-hidden`.
 
 ---
 
@@ -453,6 +512,12 @@ Minimums for every screen: text contrast **≥ 4.5:1**, non-text UI (borders of 
 | Non-text: checkbox border (white 70%) on panel | 4.79 | pass (≥3:1) |
 | Non-text: `--color-error-border` `#e76a8c` on page | 3.44 | pass (≥3:1; text needs `--color-error`) |
 | Non-text: focus ring `#fad318` on page | 7.25 | pass |
+| `#fff` on `--color-surface-chip` `#2c0e6c` (chips, "Sort and filter" pill) | 15.15 | pass (Task 11b) |
+| `--color-text-nav` `#dcd8e6` / `--color-text-subtle` `#b3aac9` / `--color-accent` on the footer (`rgba(0,0,0,.7)` over page) | 13.50 / 8.55 / 12.95 | pass (Task 11b) |
+| `--color-accent` on `--color-bg-deep` (nav strip hover) | 9.23 | pass (Task 11b) |
+| ~~Eneba platform strip text `rgba(255,255,255,.85)` on `--color-overlay` over a **white** cover (worst case)~~ | 3.95 | **fails** (Task 11b) |
+| **`#fff` on `--color-overlay` over a white cover (worst case)** | 4.74 | pass — the strip uses full white: this is an **adjustment** |
+| Non-text: `--color-border-dark` line / chip and pill background vs page | 1.64 / 1.43 | exempt: decorative line; the chips are identified by their white text (as on Eneba) |
 
 Disabled controls (`opacity: .5`) are exempt from the contrast rule (WCAG), but the disabled state must still be recognisable.
 The numbers were computed with a small script (sRGB → relative luminance → `(L1+.05)/(L2+.05)`); re-check whenever a color token changes.
@@ -488,3 +553,8 @@ focus ring, z-index scale. They only use tokens from this file, so they will loo
 exact behaviour of the card's hover-revealed actions (see 4.3). If the owner sends screenshots of cart, sign-in and a hovered card, update 3.6 and 4.3.
 
 **Asking the owner for the final name:** replace `APP_NAME` everywhere in one pass (header wordmark, `<title>`, README) when it is decided.
+
+**Task 11b re-measure (2026-11-21, S4):** headless Edge, one page load at a time, at 1440×900 and 390×844: home (header), `/store/all`, `/store/all?drms[]=steam`
+(platform filter + chips), the mobile "Sort and filter" drawer, the mobile ☰ menu, the footer and a hovered card. Cookie / location pop-ups were removed from the
+DOM before the screenshots (no consent was given). Reference screenshots are kept **outside the repo**; the comparison and the remaining differences are in
+`docs/reports/TASK_11b_visual_parity.md`. The mobile search field could not be captured opened (it is the input itself, not a button), so its open state is ours.
