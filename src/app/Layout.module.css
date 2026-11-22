@@ -69,9 +69,4 @@
     width: auto;
     max-width: none;
   }
-
-  /* A page with a sticky bottom bar (product page) marks it with data-bottom-bar: the notices sit above it. */
-  .layout:has([data-bottom-bar]) .notices {
-    bottom: calc(var(--sticky-bar-height) + var(--space-2));
-  }
 }

@@ -534,7 +534,7 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 ## Pranešimas („toast") (`src/lib/toast.ts`, `src/app/Toaster.tsx`)
 - **Ką daro:** `showToast({ kind, message, action })` iš bet kur; `<Toaster />` layout'e rodo **vieną** pranešimą (naujas pakeičia seną), 5 s, sustabdo laikmatį, kol pelė ar fokusas ant jo; „View cart" nuoroda ir × mygtukas (40×40).
 - **Kodėl `role="status"` visada DOM'e:** ekrano skaitytuvas praneša tik apie tekstą, atsiradusį **jau esamame** „live region". Todėl tuščias regionas nepaslepiamas `display: none` (tai pašalintų jį iš prieinamumo medžio), jis tiesiog 0 px aukščio.
-- **Vieta:** apatinis kampas, tame pačiame stulpelyje kaip „Waking up the server…" pranešimas, kad jie niekada neužeitų vienas ant kito. Telefone su apatine juosta pranešimas pakeliamas virš jos (CSS `:has([data-bottom-bar])`).
+- **Vieta:** apatinis kampas, tame pačiame stulpelyje kaip „Waking up the server…" pranešimas, kad jie niekada neužeitų vienas ant kito.
 
 ## Produkto puslapio duomenų kelias: prefetch → cache → puslapis (`ProductPage.tsx`, `queries.ts`)
 - **Ką daro:** `useQuery(productQuery(slug))` – tas pats raktas `["product", slug]`, kurį Store kortelė užpildo užvedus pelę (`prefetchQuery`, Task 11). Paspaudus kortelę duomenys dažniausiai jau cache'e → puslapis atsiranda iškart (patikrinta: perėjimas iš Store – skeleton'o nė nesimato, CLS 0).
@@ -548,10 +548,10 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Išmatuota:** skaičiai paimti iš tikro eneba.com puslapio (`getComputedStyle`), pvz. dėžutės `padding 20 20 15`, šešėlis `0 3px 9px rgba(0,0,0,.25)`, eilutė `rgba(0,0,0,.3)` su 20 px paraštėmis. Naujos reikšmės tapo tokenais (DESIGN.md 2).
 - **Gali paklausti:** „Kodėl nėra „Buy now"?" – apmokėjimo dar nėra; mygtukas be funkcijos būtų „negyva sąsaja". „Kodėl dėžutėje perbraukta kaina 70 % balta, o ne kaip kortelėje?" – ant šviesesnio skydelio `#b3aac9` nepraeina 4.5:1 (axe rado); Eneba čia irgi naudoja 70 % baltą.
 
-## Apatinė „Add to cart" juosta telefone (`StickyBuyBar.tsx`, `useInView.ts`)
-- **Ką daro:** telefone (≤600 px) prie ekrano apačios – geriausia kaina ir „Add to cart". Rodoma tik kai pirkimo dėžutės mygtukas **nebematomas** ekrane, kad vienu metu nebūtų dviejų vienodų mygtukų.
-- **Kaip:** `IntersectionObserver` praneša, kai dėžutės mygtukas įeina į ekraną ar iš jo išeina (jokio `scroll` klausytojo). Paslėpta juosta – `visibility: hidden` + `transform`: ji išimama ir iš Tab eilės, ir iš ekrano skaitytuvo. Puslapio apačioje paliekama vietos (`--sticky-bar-height`), kad juosta neuždengtų turinio.
-- **Gali paklausti:** „Ar Eneba tokią turi?" – ne (patikrinta 390 px), todėl išvaizda sudėta iš mūsų tokenų. „Kodėl ne `position: sticky`?" – juosta turi būti visada ekrano apačioje, nepriklausomai nuo to, kur ji yra DOM'e – tai `fixed`.
+## Kodėl telefone nėra apatinės „Add to cart" juostos
+- **Kas buvo:** užduotis (P5) prašė juostos ekrano apačioje telefone. Ji buvo padaryta, bet Eneba tokios neturi (patikrinta 390 px).
+- **Sprendimas:** peržiūroje savininkas nusprendė – panašumas į Eneba svarbiau, juosta pašalinta (komponentas, jo testas, CSS, tokenas `--sticky-bar-height` ir `useInView`). Telefone „Add to cart" yra pirkimo dėžutėje puslapio viršuje ir kiekvienoje pasiūlymo eilutėje.
+- **Gali paklausti:** „Kodėl ištrynėte veikiantį kodą?" – nenaudojamas kodas (ir pagalbinis `useInView`, kurio niekas kitas nenaudojo) tik apsunkina palaikymą; jį visada galima atkurti iš git istorijos.
 
 ## Kortelės „Add to cart" ir `cheapestOffer` API (`ProductCard.tsx`, `pkg/catalog/store.go`)
 - **Ką daro:** Store kortelė užvedus pelę rodo „Add to cart" (geltonas) ir „View offers", telefone – kontūrinį krepšelio ikonos mygtuką. Prideda **pigiausią** pasiūlymą. Išparduotos kortelės mygtuko neturi.

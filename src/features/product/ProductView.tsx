@@ -4,14 +4,11 @@ import type { ProductDetail } from "../../api/types.ts";
 import { Badge } from "../../components/Badge.tsx";
 import { Breadcrumb } from "../../components/Breadcrumb.tsx";
 import { Skeleton } from "../../components/Skeleton.tsx";
-import { cx } from "../../lib/cx.ts";
-import { useInView } from "../../lib/useInView.ts";
 import { CoverImage } from "../store/CoverImage.tsx";
 import { BuyBox, OutOfStockBox } from "./BuyBox.tsx";
 import { OfferList } from "./OfferList.tsx";
 import { ProductDetails } from "./ProductDetails.tsx";
 import styles from "./ProductView.module.css";
-import { StickyBuyBar } from "./StickyBuyBar.tsx";
 import { VariantList } from "./VariantList.tsx";
 
 /**
@@ -19,17 +16,15 @@ import { VariantList } from "./VariantList.tsx";
  *  - desktop: breadcrumb; cover (224px) + title + facts; the buy box in a 350px column on the right;
  *    under them the offers, other versions and the details.
  *  - ≤ 930px: one column - small cover next to the title, the buy box edge to edge, then the rest.
- *  - ≤ 600px: + the sticky "Add to cart" bar at the bottom (P5).
+ *    No sticky "Add to cart" bar on phones: Eneba has none (owner review: parity wins over P5).
  * The order on screen comes from CSS grid areas (ProductView.module.css), so the HTML order stays logical.
  */
 export function ProductView({ detail }: { detail: ProductDetail }) {
   const { product, game } = detail;
   const buyable = detail.offers.length > 0;
-  // The phone bar shows only while the buy box's own button is off screen.
-  const { ref: buyButtonRef, inView: buyButtonVisible } = useInView<HTMLButtonElement>();
 
   return (
-    <div className={cx(styles.page, buyable && styles.withBottomBar)}>
+    <div className={styles.page}>
       <div className={styles.breadcrumb}>
         <Breadcrumb items={[{ label: "Store", to: "/store" }, { label: game.title }]} />
       </div>
@@ -55,7 +50,7 @@ export function ProductView({ detail }: { detail: ProductDetail }) {
       </ul>
 
       <div className={styles.aside}>
-        {buyable ? <BuyBox detail={detail} buttonRef={buyButtonRef} /> : <OutOfStockBox detail={detail} />}
+        {buyable ? <BuyBox detail={detail} /> : <OutOfStockBox detail={detail} />}
       </div>
 
       <div className={styles.main}>
@@ -63,8 +58,6 @@ export function ProductView({ detail }: { detail: ProductDetail }) {
         <VariantList variants={detail.variants} />
         <ProductDetails detail={detail} />
       </div>
-
-      {buyable && <StickyBuyBar detail={detail} hidden={buyButtonVisible} />}
     </div>
   );
 }

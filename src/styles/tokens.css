@@ -172,7 +172,6 @@
   --product-cover-width-sm: 4.5rem; /* 72px: the same cover on phones and tablets */
   --buy-box-width: 21.875rem; /* 350px: the buy box column (desktop) */
   --avatar-size: 2.5rem; /* 40px: seller avatar in an offer row */
-  --sticky-bar-height: 3.75rem; /* 60px: phone "Add to cart" bar at the bottom of the product page (10 + 40 + 10) */
 }
 
 /*

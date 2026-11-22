@@ -1,5 +1,4 @@
 import { ShoppingCart, Star } from "lucide-react";
-import type { Ref } from "react";
 import { Link } from "react-router";
 import type { ProductDetail } from "../../api/types.ts";
 import { Button, ButtonLink } from "../../components/Button.tsx";
@@ -13,18 +12,12 @@ import styles from "./BuyBox.module.css";
 import { ratingText } from "./sellerText.ts";
 import { variantName } from "./variantName.ts";
 
-interface BuyBoxProps {
-  detail: ProductDetail;
-  /** The "Add to cart" button; the phone bar watches it to know when the box is scrolled away. */
-  buttonRef?: Ref<HTMLButtonElement>;
-}
-
 /**
  * The box on the right (P1): the CHEAPEST buyable offer = offers[0] (the API sorts them).
  * Eneba's box has "Buy now" + a cart icon; we have no checkout yet, so the one main action is "Add to cart".
  * Only rendered when there is at least one offer (otherwise OutOfStockBox).
  */
-export function BuyBox({ detail, buttonRef }: BuyBoxProps) {
+export function BuyBox({ detail }: { detail: ProductDetail }) {
   const offer = detail.offers[0];
   const msrp = detail.product.msrpCents;
   const others = detail.offers.length - 1;
@@ -49,7 +42,7 @@ export function BuyBox({ detail, buttonRef }: BuyBoxProps) {
           {ratingText(offer.seller)}
         </span>
       </p>
-      <Button ref={buttonRef} className={styles.button} onClick={() => addToCart(itemFromOffer(detail, offer))}>
+      <Button className={styles.button} onClick={() => addToCart(itemFromOffer(detail, offer))}>
         <ShoppingCart className={styles.buttonIcon} aria-hidden="true" />
         Add to cart
       </Button>

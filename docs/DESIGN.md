@@ -172,7 +172,7 @@ Added / changed in Task 11b (S4): `--chip-height` 30px (active-filter chip), `--
 `--list-cover-width` 70px (cover of the phone list card), `--radio-dot-size` 10px (checked radio). **Changed:** `--grid-gap` 22px → **20px** (re-measured: 4 × 225px cards in 960px) and
 `--cover-aspect-ratio` 5 / 7 → **223 / 303** (the measured cover box, strip included).
 Added in Task 12 (S5, product page): `--product-cover-width` 224px (72px = `--product-cover-width-sm` ≤930px), `--buy-box-width` 350px, `--avatar-size` 40px (seller avatar),
-`--icon-size-lg` 40px (fact icons next to the cover), `--sticky-bar-height` 60px (phone buy bar: 10 + 40 + 10; the page keeps this much free space at the bottom and the toast sits above it).
+`--icon-size-lg` 40px (fact icons next to the cover).
 
 ---
 
@@ -280,12 +280,11 @@ Desktop ≥931                                       Mobile ≤600
 - **Buy box:** `--color-surface`, padding `20 20 15`, `--shadow-card`; "BEST PRICE" (10px bold uppercase accent, Eneba "FEATURED OFFER"); old price + discount line and the 28px price (22px ≤600px);
   "Sold by {seller} ★ {rating}"; one full-width **primary "Add to cart"** (Eneba: "Buy now" + a cart icon button — we have no checkout); "+N more offers" (14px accent, centred under a divider) jumps to `#offers`.
   The struck-through price in the box is `--color-text-muted` (Eneba does the same here; `--color-price-old` fails on the panel, see 5.1).
-- **Out of stock (P6):** the same box with "Out of stock" (`h2`), one line of text and the **in-stock versions** as rows (name + price), or a secondary "Browse the store" when there are none. No offers section, no phone bar.
+- **Out of stock (P6):** the same box with "Out of stock" (`h2`), one line of text and the **in-stock versions** as rows (name + price), or a secondary "Browse the store" when there are none. No offers section.
 - **Details:** genre tags (`--color-surface-row`, `--radius-lg`, 14px medium subtle); the description in a `--color-bg-deep` panel (padding 20, 14/21 `--color-text-nav`) under a static "Description" heading drawn like Eneba's active tab;
   "Other details" = a `<dl>` in the same panel, labels `--color-text-subtle` in a `max-content` column, 20px gap (stacked ≤600px). Unknown values are left out.
 - **≤930px:** one column. `--product-cover-width-sm` cover next to the 16px title, then the buy box **edge to edge**, the facts (1 column), the rest. ≤600px the breadcrumb is hidden (Eneba) and offer rows are edge to edge.
-- **Phone buy bar (P5, ≤600px, D — Eneba has none):** fixed to the bottom, `--sticky-bar-height`, `--color-bg-deep`, 1px `--color-border` top line, `--shadow-toast`; "BEST PRICE" + price (20px bold) and a primary "Add to cart".
-  It is shown only while the buy box's button is scrolled out of view (IntersectionObserver); hidden = `visibility: hidden` + slid down. `data-bottom-bar` lifts the toast above it.
+- **No sticky buy bar on phones.** Eneba has none (S5), so after the owner's review the P5 bar was removed (parity wins). The buy box near the top and every offer row have their own "Add to cart".
 - **Loading:** a skeleton in the same grid; the route wrapper is at least one screen tall and always wide, so neither the width nor the footer moves when the data, a 404 or an error replaces it (CLS 0.0001).
 
 ### 3.4 Home page (for reference, not part of this scope)
@@ -514,7 +513,7 @@ Small notification, bottom of the screen: desktop bottom-right (offset `--space-
 
 **As built in Task 12:** `showToast()` (`src/lib/toast.ts`) + `<Toaster />` in the layout. ONE toast at a time (a new one replaces the old one). Types built: success (mint bar + check icon) and info (yellow bar + info icon);
 no error toast yet. Content: icon, message, optional yellow bold link ("View cart"; following it closes the toast), × button (40×40, ghost). Enter: fade + `--space-2` slide (10px, nearest token); no leave animation.
-The toast and the "waking up" notice share one fixed column in the bottom corner (`Layout.module.css`, `.notices`), so they stack and never overlap; on phones it is lifted above the product page's buy bar.
+The toast and the "waking up" notice share one fixed column in the bottom corner (`Layout.module.css`, `.notices`), so they stack and never overlap.
 The live regions stay in the DOM while empty (0px tall) — hiding them would stop announcements.
 
 ### 4.12 Pagination (Task 11b, S4)

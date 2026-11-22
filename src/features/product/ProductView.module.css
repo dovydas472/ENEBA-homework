@@ -125,13 +125,6 @@
   }
 }
 
-/* Phones: room at the bottom for the sticky bar, so it never covers the end of the page (or the footer). */
-@media (max-width: 600px) {
-  .withBottomBar {
-    padding-bottom: var(--sticky-bar-height);
-  }
-}
-
 /* ---- skeleton (same grid, so nothing jumps when the data arrives) ---- */
 .skeletonCover {
   aspect-ratio: var(--cover-aspect-ratio);

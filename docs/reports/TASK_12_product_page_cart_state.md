@@ -18,8 +18,9 @@ Task file: [`docs/tasks/TASK_12_product_page_cart_state.md`](../tasks/TASK_12_pr
 
 **Product page**
 - `src/pages/ProductPage.tsx` / `.module.css` / `.test.tsx`.
-- `src/features/product/`: `ProductView.tsx` / `.module.css` (grid, facts, skeleton), `BuyBox.tsx` (buy box + `OutOfStockBox`) / `.module.css`, `OfferList.tsx` / `.module.css`, `VariantList.tsx` / `.module.css`, `ProductDetails.tsx` / `.module.css`, `StickyBuyBar.tsx` / `.module.css`, `sellerText.ts` (+ test), `variantName.ts`, `fixtures.ts`.
-- Shared pieces: `src/components/Breadcrumb.tsx` / `.module.css`, `src/components/Price.tsx` / `.module.css` (new `row` size, 22px buy-box price on phones), `src/lib/discount.ts`, `src/lib/formatDate.ts`, `src/lib/useInView.ts` (each helper has a test).
+- `src/features/product/`: `ProductView.tsx` / `.module.css` (grid, facts, skeleton), `BuyBox.tsx` (buy box + `OutOfStockBox`) / `.module.css`, `OfferList.tsx` / `.module.css`, `VariantList.tsx` / `.module.css`, `ProductDetails.tsx` / `.module.css`, `sellerText.ts` (+ test), `variantName.ts`, `fixtures.ts`.
+- Shared pieces: `src/components/Breadcrumb.tsx` / `.module.css`, `src/components/Price.tsx` / `.module.css` (new `row` size, 22px buy-box price on phones), `src/lib/discount.ts`, `src/lib/formatDate.ts` (each helper has a test).
+- After the owner's review: the phone sticky bar was **removed** (`StickyBuyBar.tsx` / `.module.css`, `src/lib/useInView.ts`, the `--sticky-bar-height` token, the `data-bottom-bar` toast offset, its test and screenshot). See §5.
 - `src/api/types.ts` (`CheapestOffer`), `src/styles/tokens.css` (new tokens, see DESIGN.md 2).
 
 **Store card**
@@ -38,19 +39,17 @@ Task file: [`docs/tasks/TASK_12_product_page_cart_state.md`](../tasks/TASK_12_pr
 | `go build ./...`, `go vet ./...`, `go test ./...` | pass. `go.mod` still `go 1.25.0`, no new module |
 | Go integration tests | Need `TEST_DATABASE_URL`, so they ran on CI only (no local Postgres; never Neon). The **same comparison was run against the `dev` branch through the local API** (read-only script, all 108 products): 97 with `cheapestOffer` (11 out of stock, as seeded), **0 mismatches** with the product page's first offer (id, stock, seller, price), `price_asc` order intact |
 | `npm run lint` | 0 problems |
-| `npm test` (PowerShell) | **27 files, 313 tests passed**. New: cart rules 29, cart store 12 (incl. tab sync), toaster 5, product page 19, card button 3, helpers 7 |
+| `npm test` (PowerShell) | **27 files, 312 tests passed** (313 before the phone bar and its test were removed). New: cart rules 29, cart store 12 (incl. tab sync), toaster 5, product page 18, card button 3, helpers 7 |
 | `npm run build` | pass |
-| **axe-core** (WCAG 2 A/AA, 2.1 AA, best practice), headless Edge, production build | **0 violations** on 12 states: multi-seller product, + toast, phone bar shown, out of stock, 404, Store (desktop and phone each). The first run found one: the struck-through price in the buy box (`#b3aac9` on the panel, 3.73:1). Fixed with `--color-text-muted` (4.79:1, also Eneba's colour there) |
+| **axe-core** (WCAG 2 A/AA, 2.1 AA, best practice), headless Edge, production build | **0 violations** on 12 states: multi-seller product, + toast, phone bar shown (bar since removed), out of stock, 404, Store (desktop and phone each). The first run found one: the struck-through price in the buy box (`#b3aac9` on the panel, 3.73:1). Fixed with `--color-text-muted` (4.79:1, also Eneba's colour there) |
 | **CLS** (production build, layout-shift observer) | Product / out of stock / unknown slug: **≤ 0.0001** desktop, 0.0000 phone. Store → product by card click (hover-prefetched): 0.0000, and no skeleton is seen at all. Before fixing: 0.046 (the footer was pushed down when data replaced a short skeleton) and 0.056 (`<main>` narrowed from 1440 to 1240 when the 404 replaced the skeleton). Fix: the route wrapper is one screen tall and always wide |
 | Horizontal overflow | none at 360 / 390 / 600 / 601 / 768 / 930 / 931 / 1024 / 1200 / 1440 on the product page, the out-of-stock page and the Store |
 | Tab sync (2 tabs, same browser) | 2 adds in tab A → both tabs show "Cart, 2 items". Tab B empties the stored cart → tab A shows "Cart, 0 items" |
-| Phone bar | hidden while the buy box's button is on screen, shown after scrolling to the offers (computed `visibility` hidden → visible) |
 | Keyboard (Store) | Tab from a card link goes to "Add to cart: Grand Theft Auto V". The card slides up on keyboard focus; Enter adds the item and shows the toast |
 
 **Screenshots (ours, production build against `dev`):** `docs/reports/assets/`:
 - multi-seller product with a New seller: `task12_product-desktop.png`, `-desktop-full.png`, `-mobile.png`, `-tablet.png`
 - out of stock: `task12_oos-desktop.png`, `-mobile.png`
-- phone bar + toast: `task12_stickybar-mobile.png`
 - toast: `task12_toast-desktop.png`, `-mobile.png`
 - Store card button: `task12_store-desktop.png` (hovered card), `task12_store-mobile.png` (cart icon)
 
@@ -105,7 +104,7 @@ What the reference shows:
 | Tabs "Description / Activation guide" (50px, `#351183`), panel `#351183` padding 20, 14/21 `#dcd8e6`, "Read more" | a static heading drawn like the active tab, same panel | One "tab" only (no activation guides); no "Read more" (IGDB summaries are short) |
 | "Other details": a table, label 14px `#b3aac9`, 20px gap; stacked on phones | `<dl>` grid, same colours, stacked on phones; rows: release date, developer, publisher, platform, region, edition | No languages / "Works on" (no data) |
 
-**Phone bar (P5)**: Eneba has none (checked by scrolling at 390px). Ours is built from tokens (DESIGN 3.3, D). It shows only while the buy box is scrolled away.
+**Phone bar (P5)**: Eneba has none (checked by scrolling at 390px). It was built, then **removed after the owner's review** (parity wins), so ours has none either.
 
 **Toast (C4)**: Eneba has no add-to-cart toast we could see (adding needs a session). Ours follows DESIGN 4.11.
 
@@ -129,7 +128,7 @@ What the reference shows:
   - category crumbs and genre links
 
 ## 3. What the owner must do manually
-1. Open the PR Preview and compare with eneba.com at laptop size and on your phone. On a product page: buy box, offers, "Other versions", the phone bar (it appears after you scroll past the buy box), and the toast. Then open an out-of-stock product, e.g. `/product/hades-psn-global`.
+1. Open the PR Preview and compare with eneba.com at laptop size and on your phone. On a product page: buy box, offers, "Other versions" and the toast. Then open an out-of-stock product, e.g. `/product/hades-psn-global`.
 2. Add items, then open a second tab. The header badge follows in both tabs. Reload: the cart is still there.
 3. In the Store, hover a card ("Add to cart" + "View offers") and tap the cart icon on a phone.
 4. Export the session log (`/export`) and save it as `ai-logs/2026-11-22_NN_product-page-cart.md`; Claude Code commits it on this branch if you ask (CLAUDE.md). This was a local session, so the remote-conversion procedure was not used.
@@ -139,7 +138,7 @@ What the reference shows:
 - **Product page.** Clicking a game now opens a real product page, laid out like Eneba's after measuring it with a script.
   - The cover, title and facts sit on the left, and a box on the right shows the cheapest offer with "Add to cart".
   - Below them come every seller's offer (the cheapest marked "Best price", low stock marked "Only 2 left", new sellers marked as such), the other versions of the same game, and the details.
-  - On phones everything is one column, and a bar with the price and "Add to cart" appears at the bottom once you scroll past the box. Eneba has no such bar; the owner asked for it.
+  - On phones everything is one column, like Eneba. There is no extra "Add to cart" bar at the bottom: Eneba has none, so the one built for P5 was removed after review.
   - An out-of-stock product shows where else the game can be bought. An unknown address shows the 404 page.
 - **Cart.** It now exists in the browser.
   - Every "Add to cart" (product page, offer rows, Store cards) adds one offer, up to 5 and never more than the seller has.
@@ -149,20 +148,21 @@ What the reference shows:
 
 ## 5. Deviations from the task and why
 - **`cheapestOffer` is one nested object** (`{offerId, stock, sellerName} | null`) instead of three separate fields. The three values are all present or all missing together, so one nullable object says that in the type, and the frontend checks one thing.
-- **Phone bar visibility:** P5 asks for a sticky bar. It is shown only while the buy box's "Add to cart" is off screen, so two identical buttons are never visible at once. It is always present in the DOM; the CSS hides it above 600px.
+- **No phone sticky bar (P5 dropped):** P5 asked for one "if Eneba has an equivalent, follow its look". Eneba has none. The bar was built first; in review the owner decided parity wins, so it was removed with its helper (`useInView`), token, test and screenshot.
 - **Buy box label "Best price"** instead of Eneba's "Featured offer", because ours is always the cheapest offer (P1).
 - **Values without a matching token:** row gap 10px (Eneba 8px) and toast slide 10px (DESIGN said 8px). The nearest token is used rather than a one-off value.
 - **Breadcrumb:** "Store › {title}" (P4) is hidden on phones, as on Eneba.
 - **Not built:** an error toast type (nothing uses it yet) and "Read more" on descriptions (IGDB summaries are short).
-- **Not unit-tested directly:** `useInView` and `Breadcrumb` (see §7).
+- **Not unit-tested directly:** `Breadcrumb` (see §7).
 - **Infrastructure changes outside the product page**, needed by it:
   - the toast and "waking up" notice share one positioned column (otherwise they would overlap);
   - `<main>` widens through `:has([data-wide-page])` instead of each page doing its own layout.
 
 ## 6. Open questions
-1. Eneba has no "other versions" list and no phone sticky bar. Both are built from our tokens (P3 and P5 required them). Is their look OK?
-2. Cart badge = number of pieces (2 × one offer = "2"), not the number of lines. Keep it?
-3. The card "Add to cart" uses Eneba's yellow primary button inside every card on hover. DESIGN 4.1 says "primary once per view area"; on Eneba it is per card. Kept as Eneba does. OK?
+None open. The owner answered the review questions:
+1. Eneba has no "other versions" list and no phone sticky bar. → **Remove the phone bar** (parity wins; done), **keep "Other versions"**.
+2. Cart badge = number of pieces (2 × one offer = "2"), not the number of lines. → **Keep.**
+3. The card "Add to cart" uses Eneba's yellow primary button inside every card on hover (DESIGN 4.1 says "primary once per view area"). → **Keep, like Eneba.**
 
 ## 7. Self-review (task-reviewer)
 The `task-reviewer` subagent got only the task number. It ran after the code and docs were committed and before this report existed.
@@ -174,6 +174,6 @@ The `task-reviewer` subagent got only the task number. It ran after the code and
 | The report must hold the comparison table, "intentionally not copied", the phone bar and other-versions as our decisions, and the token-gap deviations | Done: §2 and §5 |
 | Verification claims (axe 0 after the contrast fix, CLS 0.0001) must be repeated with real results | §2 has the numbers, including the failures found first and how they were fixed |
 | Scope items to justify: notices column, `Price` row size, `formatDate` / `discount` helpers, README, new tokens | §1 and §5: the notices column prevents overlap; the row size is a measured Eneba value; the helpers are needed by P1 / P4 and have tests; the README documents the API change; tokens are in DESIGN.md 2 |
-| `useInView` and `Breadcrumb` have no direct unit test | Not added. `useInView` depends on IntersectionObserver, which jsdom lacks, so a unit test would only test a mock. It was checked in the real browser instead (§2, phone bar hidden → visible). `Breadcrumb` is covered by the product page test (link + `aria-current`) |
+| `useInView` and `Breadcrumb` have no direct unit test | Not added. `useInView` was later removed together with the phone bar. `Breadcrumb` is covered by the product page test (link + `aria-current`) |
 | `.vscode/` is untracked; keep it out of the PR | Not committed |
 | Session log not committed | Owner step (§3, item 4) |

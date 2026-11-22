@@ -168,13 +168,6 @@ describe("ProductPage: content", () => {
       "Edition: Standard",
     ]);
   });
-
-  it("has the phone 'Add to cart' bar with the best price (CSS shows it only on phones)", async () => {
-    await mount();
-    const bar = $("[data-bottom-bar]")!;
-    expect(bar.textContent).toContain("€10.99");
-    expect(buttonIn(bar, "Add to cart")).toBeDefined();
-  });
 });
 
 describe("ProductPage: out of stock, 404, errors, loading", () => {
@@ -189,7 +182,6 @@ describe("ProductPage: out of stock, 404, errors, loading", () => {
     ]);
     expect(box.textContent).toContain("€29.99");
     expect($("#offers")).toBeNull();
-    expect($("[data-bottom-bar]")).toBeNull();
     expect($$("main button").filter((b) => b.textContent?.startsWith("Add to cart"))).toHaveLength(0);
   });
 
