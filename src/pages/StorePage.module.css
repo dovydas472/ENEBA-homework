@@ -6,13 +6,37 @@
   font-size: var(--font-size-4xl);
 }
 
-/* Info line for the header search (S10). It sits on the dark card colour so the muted text has enough contrast. */
-.notice {
-  margin-bottom: var(--space-4);
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface-card);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+/* With a search: "Results for 'q'" and "Clear search" on one line (the button wraps under a long title). */
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-4);
+  margin: var(--space-2) 0 var(--space-5);
+}
+
+.titleRow .title {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere; /* a long search text must not widen the page */
+}
+
+/* Ghost button: no side padding, so its text lines up with the title's left edge when it wraps. */
+.clearSearch {
+  padding: 0;
+}
+
+.clearSearchIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+/* "Clear search" (+ "Clear filters") under "No results for 'q'". */
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
 }
 
 /* sidebar (220px) | results (960px at 1440px), 20px apart */
