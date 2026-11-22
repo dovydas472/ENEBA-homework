@@ -16,10 +16,10 @@ func TestSuggest_ok(t *testing.T) {
 	cover := "https://img.example/gta.jpg"
 	alias := "GTA 5"
 	fake := &fakeCatalog{suggestions: []catalog.Suggestion{
-		{GameTitle: "Grand Theft Auto V", ProductSlug: "grand-theft-auto-v-steam-global",
+		{GameTitle: "Grand Theft Auto V", ProductSlug: "grand-theft-auto-v-steam-global", Edition: "Standard",
 			Platform: catalog.Ref{Slug: "steam", Name: "Steam"}, Region: catalog.Ref{Slug: "global", Name: "GLOBAL"},
 			CoverURL: &cover, PriceCents: &price, InStock: true, MatchedAlias: &alias},
-		{GameTitle: "Grand Theft Auto IV", ProductSlug: "grand-theft-auto-iv-steam-global",
+		{GameTitle: "Grand Theft Auto IV", ProductSlug: "grand-theft-auto-iv-steam-global", Edition: "Complete Edition",
 			Platform: catalog.Ref{Slug: "steam", Name: "Steam"}, Region: catalog.Ref{Slug: "global", Name: "GLOBAL"}},
 	}}
 	rec := get(t, fake, "/api/search/suggest?q=%20gta%20%205%20")
@@ -40,7 +40,7 @@ func TestSuggest_ok(t *testing.T) {
 		t.Fatalf("want 2 items, got %d", len(items))
 	}
 	want := map[string]any{
-		"gameTitle": "Grand Theft Auto V", "productSlug": "grand-theft-auto-v-steam-global",
+		"gameTitle": "Grand Theft Auto V", "productSlug": "grand-theft-auto-v-steam-global", "edition": "Standard",
 		"platform": map[string]any{"slug": "steam", "name": "Steam"},
 		"region":   map[string]any{"slug": "global", "name": "GLOBAL"},
 		"coverUrl": cover, "priceCents": float64(1099), "inStock": true, "matchedAlias": "GTA 5",
@@ -54,6 +54,9 @@ func TestSuggest_ok(t *testing.T) {
 		if v, ok := second[key]; !ok || v != nil {
 			t.Errorf("item 1 %s = %v (present: %v), want null", key, v, ok)
 		}
+	}
+	if second["edition"] != "Complete Edition" { // always a string (every product has an edition), never null
+		t.Errorf("item 1 edition = %v, want %q", second["edition"], "Complete Edition")
 	}
 	if second["inStock"] != false {
 		t.Errorf("item 1 inStock = %v, want false", second["inStock"])
