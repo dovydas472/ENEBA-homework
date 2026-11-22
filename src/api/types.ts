@@ -8,9 +8,14 @@ export interface Ref {
   name: string;
 }
 
-/** The allowed values of the `sort` query parameter of GET /api/products. */
+/** The sorts the Store's sort control offers (and accepts from the URL). */
 export const SORTS = ["popularity", "price_asc", "price_desc", "discount", "newest", "title"] as const;
-export type Sort = (typeof SORTS)[number];
+/**
+ * Every allowed value of the `sort` query parameter of GET /api/products: the Store's sorts plus
+ * "relevance" ("Best match"). The server uses relevance by default when `q` is set; without `q` it
+ * is the same order as popularity. It is not in SORTS yet: the search UI (Task 13b) decides where it is offered.
+ */
+export type Sort = (typeof SORTS)[number] | "relevance";
 
 /** One product card in the listing. */
 export interface ProductItem {
@@ -131,4 +136,25 @@ export interface ProductDetail {
   /** Cheapest first; empty when out of stock. */
   offers: Offer[];
   variants: Variant[];
+}
+
+/** One entry of the search-box dropdown: one per GAME, linking to one of its products. */
+export interface Suggestion {
+  gameTitle: string;
+  /** The game's cheapest in-stock product; if none is in stock, its first product (then inStock=false). */
+  productSlug: string;
+  /** Platform and region of that product. */
+  platform: Ref;
+  region: Ref;
+  coverUrl: string | null;
+  /** Price of that product in cents; null = no product of the game is in stock. */
+  priceCents: number | null;
+  inStock: boolean;
+  /** The alias that matched when the title did not ("GTA 5" for Grand Theft Auto V); null when the title matched. */
+  matchedAlias: string | null;
+}
+
+/** Response of GET /api/search/suggest?q=…: at most 6 items, best match first; [] when nothing matches. */
+export interface SuggestResponse {
+  items: Suggestion[];
 }
