@@ -1,7 +1,11 @@
 import { X } from "lucide-react";
 import { useRef } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
+import { displayName } from "../api/auth.ts";
+import { useCurrentUser } from "../features/auth/useCurrentUser.ts";
+import { useSignOut } from "../features/auth/useSignOut.ts";
 import { APP_NAME } from "../lib/appInfo.ts";
+import { authPageLink } from "../lib/safeNext.ts";
 import { useModalDialog } from "../lib/useModalDialog.ts";
 import styles from "./MenuDrawer.module.css";
 import { NAV_LINKS } from "./navLinks.ts";
@@ -14,11 +18,18 @@ interface MenuDrawerProps {
 
 /**
  * The phone menu behind the ☰ button (≤ 930 px, DESIGN.md 3.1): a full-screen native <dialog> with the same
- * links as the desktop nav strip. A click on a link closes it and the router navigates.
+ * links as the desktop nav strip, and under them the account part (Task 14): "Sign in" / "Create account", or
+ * "Signed in as …" with "Orders" and "Sign out" - the same choices as the header account menu.
+ * A click on a link closes it and the router navigates.
  */
 export function MenuDrawer({ open, onClose }: MenuDrawerProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   useModalDialog(dialog, open);
+  const { user } = useCurrentUser();
+  const { signOut } = useSignOut();
+  // Like the header's "Sign in": after signing in, come back to the page the menu was opened on.
+  const { pathname, search } = useLocation();
+  const here = pathname + search;
 
   return (
     // `onClose` also fires when the browser closed the dialog (Esc): then the state follows the DOM.
@@ -44,6 +55,51 @@ export function MenuDrawer({ open, onClose }: MenuDrawerProps) {
             ))}
           </ul>
         </nav>
+      )}
+      {open && (
+        <section className={styles.account} aria-label="Account">
+          {user && (
+            <p className={styles.who}>
+              Signed in as <span className={styles.whoName}>{displayName(user)}</span>
+            </p>
+          )}
+          <ul className={styles.list}>
+            {user ? (
+              <>
+                <li>
+                  <Link to="/orders" className={styles.link} onClick={onClose}>
+                    Orders
+                  </Link>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className={styles.link}
+                    onClick={() => {
+                      onClose();
+                      signOut();
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  <Link to={authPageLink("/login", here)} className={styles.link} onClick={onClose}>
+                    Sign in
+                  </Link>
+                </li>
+                <li>
+                  <Link to={authPageLink("/register", here)} className={styles.link} onClick={onClose}>
+                    Create account
+                  </Link>
+                </li>
+              </>
+            )}
+          </ul>
+        </section>
       )}
     </dialog>
   );

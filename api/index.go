@@ -6,6 +6,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/dovydas472/ENEBA-homework/pkg/auth"
 	"github.com/dovydas472/ENEBA-homework/pkg/catalog"
 	"github.com/dovydas472/ENEBA-homework/pkg/db"
 	"github.com/dovydas472/ENEBA-homework/pkg/server"
@@ -16,7 +17,7 @@ import (
 // Env vars come from the Vercel project settings (no .env loading here).
 var (
 	lazyDB = db.NewLazy()
-	router = server.NewRouter(server.Deps{DB: lazyDB, Catalog: catalog.NewStore(lazyDB)})
+	router = server.NewRouter(server.Deps{DB: lazyDB, Catalog: catalog.NewStore(lazyDB), Auth: auth.NewStore(lazyDB)})
 )
 
 // Handler is the entry point Vercel looks for.

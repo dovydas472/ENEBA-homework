@@ -59,6 +59,12 @@ describe("apiFetch", () => {
     expect(apiErr.body).toBeUndefined();
   });
 
+  it("resolves with undefined for 204 No Content (no body to parse)", async () => {
+    mockFetch(async () => new Response(null, { status: 204 }));
+
+    await expect(apiFetch("/api/auth/logout", { method: "POST" })).resolves.toBeUndefined();
+  });
+
   it("throws ApiError(parse) when a 2xx response is not valid JSON", async () => {
     mockFetch(async () => new Response("not json", { status: 200 }));
 

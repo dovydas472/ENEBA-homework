@@ -116,6 +116,62 @@ in the database before it charges anything.
 
 Typed frontend functions: `src/api/catalog.ts` (`getProducts`, `getProduct`, `getSuggestions`), types in `src/api/types.ts`.
 
+## Accounts and sign-in (Task 14)
+Email + password accounts, a one-click **demo user**, and pages that need a signed-in user (`/orders` now, `/checkout` later).
+
+| Endpoint | Body | Answers |
+|---|---|---|
+| `POST /api/auth/register` | `{"email","password"}` | `201 {"user"}` + session cookie · `400` invalid input (password 8–128 characters) · `409` "An account with this email already exists" |
+| `POST /api/auth/login` | `{"email","password"}` | `200 {"user"}` + cookie · `401` "Invalid email or password" (the same text for every reason) · `429` + `Retry-After` after 10 failures for that email in 15 minutes |
+| `POST /api/auth/logout` | – | `204`, cookie cleared (also when already signed out) |
+| `POST /api/auth/demo` | – | `201 {"user"}` + cookie: a **new** temporary demo account on every call |
+| `GET /api/auth/me` | – | `200 {"user"}` or `401` |
+
+`user` = `{"id", "email", "isDemo"}` – never a password hash. Every `/api/auth/*` answer is `Cache-Control: no-store`;
+the catalog endpoints never read the cookie and stay publicly cacheable.
+
+How it works, in short:
+- **Passwords:** argon2id (OWASP parameters: 19 MiB, 2 passes, 1 thread, 16-byte salt), stored as a PHC string. A sign-in
+  with an unknown email still runs one hash, so the response time does not reveal which emails exist.
+- **Session:** 32 random bytes in the cookie `session` (`HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`);
+  the database stores only its **SHA-256**. Expired sessions are rejected and deleted lazily. Browsers treat
+  `http://127.0.0.1` as secure, so the `Secure` cookie also works in local development.
+- **CSRF:** `SameSite=Lax` plus an `Origin` check on every `POST`/`PUT`/`PATCH`/`DELETE` of the whole API: the `Origin`
+  host must equal the request host (`X-Forwarded-Host` behind Vercel's proxy, and behind the Vite dev proxy). Missing or foreign → `403`.
+- **Rate limit:** counted in the database (`login_failures`), so it holds across serverless instances; each attempt is
+  counted before the password check, atomically, and a successful sign-in clears the count.
+- **Demo user:** "Sign in as demo user" creates `demo-<random>@demo.invalid` with no password (it cannot be signed in to
+  with a password), so every reviewer sees only their own orders. The UI shows it as "Demo user".
+- **`?next=`:** `/login?next=/orders` returns there after signing in. Only same-site paths are accepted (`/…`, not `//…`,
+  no scheme, no `\`); anything else goes to `/` (open-redirect protection).
+
+```bash
+# A POST from another site is refused (CSRF check):
+curl -i -X POST -H "Origin: https://evil.example" 127.0.0.1:8080/api/auth/demo   # -> 403 {"error":"cross-origin request blocked"}
+# The same request "from our own page" works:
+curl -i -X POST -H "Origin: http://127.0.0.1:8080" 127.0.0.1:8080/api/auth/demo  # -> 201 {"user":{...,"isDemo":true}} + Set-Cookie
+```
+
+**Rate limit trade-off (decided: keep per email).** The limit counts failures per *email*, so anyone who knows an email
+can send 10 wrong passwords and pause password sign-in for that email for 15 minutes. Nothing leaks and no account is taken
+over: sessions that are already signed in keep working, and the demo button always works. It is kept because it is simple,
+it cannot be bypassed by switching IP addresses, and this is a demo shop. **Production option:** key the counter on
+**email + client IP** (Vercel sends the client address in `X-Forwarded-For` / `X-Real-IP`). Then an attacker only locks
+out their own IP, while the owner can still sign in from theirs. The cost is that an attacker with many IPs gets 10 guesses
+per IP, so a production shop would add a per-account slow-down or a CAPTCHA after the limit.
+
+**Shortcuts (simulated parts of a real sign-up):**
+- no email verification: any well-formed address can register and is signed in at once;
+- no password reset ("forgot password") and no "sign out everywhere";
+- **demo accounts are never cleaned up (decided):** every "Sign in as demo user" click adds a row to `users`. That is
+  fine at demo scale. A real shop would delete old demo accounts (and decide what happens to their orders) with a
+  scheduled job.
+
+A real shop would add signed, single-use email links for verification and reset.
+
+Frontend: `src/api/auth.ts` (typed calls), `src/features/auth/` (`useCurrentUser`, the sign-in / sign-up page, `RequireAuth`),
+the header account menu in `src/app/AccountMenu.tsx`.
+
 ## Database migrations
 Migrations are SQL files in `migrations/` (numbered, [goose](https://github.com/pressly/goose) format) embedded into the `cmd/migrate` binary.
 

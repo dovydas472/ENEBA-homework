@@ -2,19 +2,23 @@ import { Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useLocation } from "react-router";
 import { Badge } from "../components/Badge.tsx";
+import { useCurrentUser } from "../features/auth/useCurrentUser.ts";
 import { SearchBox } from "../features/search/SearchBox.tsx";
 import { APP_NAME } from "../lib/appInfo.ts";
 import { cx } from "../lib/cx.ts";
+import { authPageLink } from "../lib/safeNext.ts";
 import { useCartCount } from "../lib/useCartCount.ts";
 import { useSlashShortcut } from "../lib/useSlashShortcut.ts";
 import { useStoreParams } from "../lib/useStoreParams.ts";
+import { AccountMenu } from "./AccountMenu.tsx";
 import styles from "./Header.module.css";
 import { MenuDrawer } from "./MenuDrawer.tsx";
 import { NAV_LINKS } from "./navLinks.ts";
 
 /**
  * Top of every page (DESIGN.md 3.1), laid out like eneba.com:
- *  - desktop (> 930 px): wordmark, search field, cart, Sign in; under it a full-width nav strip (Store + platforms);
+ *  - desktop (> 930 px): wordmark, search field, cart, Sign in (or the account menu when signed in, Task 14);
+ *    under it a full-width nav strip (Store + platforms);
  *  - phone / tablet (≤ 930 px): one 56 px row ☰ · wordmark · search icon · cart · account. The ☰ opens the menu
  *    with the nav links, the search icon opens the search field over the row.
  * The search field with its suggestions list is SearchBox (Task 13b).
@@ -26,8 +30,10 @@ export function Header() {
   const cartCount = useCartCount();
   // On the Store page the field shows the current search text (the URL is the source of truth); elsewhere it is empty.
   const { params } = useStoreParams();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const urlQuery = pathname === "/store" ? params.q : undefined;
+  // Signed in -> the account menu; signed out (or not known yet) -> "Sign in", which returns to this page afterwards.
+  const { user } = useCurrentUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -104,11 +110,15 @@ export function Header() {
               </Badge>
             )}
           </Link>
-          {/* aria-label keeps the name on phones, where the text is hidden and only the icon shows. */}
-          <Link to="/login" className={styles.iconLink} aria-label="Sign in">
-            <User className={styles.icon} aria-hidden="true" />
-            <span className={styles.signInText}>Sign in</span>
-          </Link>
+          {user ? (
+            <AccountMenu user={user} buttonClassName={styles.iconLink} />
+          ) : (
+            // aria-label keeps the name on phones, where the text is hidden and only the icon shows.
+            <Link to={authPageLink("/login", pathname + search)} className={styles.iconLink} aria-label="Sign in">
+              <User className={styles.icon} aria-hidden="true" />
+              <span className={styles.signInText}>Sign in</span>
+            </Link>
+          )}
         </nav>
       </div>
 

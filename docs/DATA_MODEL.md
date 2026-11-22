@@ -1,14 +1,15 @@
 # Data model
 
-The whole schema of the marketplace, designed once. Only the **catalog** tables exist today
-(migration `00002_catalog.sql`, plus `game_aliases` for search from `00003_search_aliases.sql`). The **auth** and **commerce** tables are *planned*: they are
-created in their own tasks and must follow this document (or update it in the same PR).
+The whole schema of the marketplace, designed once. The **catalog** tables exist
+(migration `00002_catalog.sql`, plus `game_aliases` for search from `00003_search_aliases.sql`), and so do the **auth** tables
+(`00004_auth.sql`, Task 14). The **commerce** tables are *planned*: they are
+created in their own task and must follow this document (or update it in the same PR).
 
 | Group | Tables | Status |
 |---|---|---|
 | Catalog | `platforms`, `regions`, `games`, `products`, `sellers`, `offers`, `keys` | **created** – migration `00002` |
 | Search | `game_aliases` | **created** – migration `00003` (Task 13a) |
-| Auth | `users`, `sessions` | planned – auth task |
+| Auth | `users`, `sessions`, `login_failures` | **created** – migration `00004` (Task 14) |
 | Commerce | `orders`, `order_items`, `payments` + column `keys.order_item_id` | planned – checkout task |
 
 Ground rules used everywhere:
@@ -96,18 +97,23 @@ erDiagram
         bigint order_item_id FK "PLANNED column, nullable"
         timestamptz created_at
     }
-    users["users (planned)"] {
+    users {
         bigint id PK
         citext email UK
-        text password_hash
+        text password_hash "argon2id; NULL only for demo"
+        boolean is_demo
         timestamptz created_at
     }
-    sessions["sessions (planned)"] {
-        bigint id PK
+    sessions {
+        bytea token_hash PK "SHA-256 of the token"
         bigint user_id FK
-        bytea token_hash UK "SHA-256 of the token"
-        timestamptz expires_at
         timestamptz created_at
+        timestamptz expires_at
+    }
+    login_failures {
+        citext email PK "typed email, no FK"
+        integer attempt_count
+        timestamptz window_start
     }
     orders["orders (planned)"] {
         uuid id PK
@@ -300,28 +306,46 @@ Constraints:
 - `reserved_until` is the second index column so the **stock count** can be answered from the index alone (verified: `Index Only Scan using keys_unsold_offer_idx`), without reading the table rows.
 - Sold keys are the vast majority over time and are never needed for stock, so they are left out – the index stays the size of the *current* stock.
 
-## Auth tables (planned – auth task)
+## Auth tables (created – migration `00004`, Task 14)
 
 ### `users`
 | Column | Type | Why |
 |---|---|---|
 | `id` | `bigint` identity, PK | |
-| `email` | `citext` NN, **UNIQUE** | `citext` = case-insensitive text: `Jon@x.com` and `jon@x.com` are the same account, and the UNIQUE index enforces it |
-| `password_hash` | `text` NN | argon2id/bcrypt hash; the password itself is never stored |
+| `email` | `citext` NN, **UNIQUE**, CHECK `length <= 254` and contains `@` after the first character | `citext` = case-insensitive text: `Jon@x.com` and `jon@x.com` are the same account, and the UNIQUE index enforces it (also against two sign-ups racing) |
+| `password_hash` | `text`, **NULL only for demo users** | argon2id PHC string `$argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>` (CHECK: starts with `$argon2id$`); the password itself is never stored |
+| `is_demo` | `boolean` NN, default `false` | a temporary account made by "Sign in as demo user" |
 | `created_at` | `timestamptz` NN, default `now()` | |
+
+- **CHECK `(password_hash IS NULL) = is_demo`:** a normal account always has a password, a demo account never has one – so a demo account can never be signed in to with a password (only the browser that created it holds its session).
+- **Demo accounts** get a random email `demo-<16 hex>@demo.invalid`. `.invalid` is a reserved top-level domain (RFC 2606): no real address ends with it, and sign-up refuses that domain, so a demo email cannot collide with a person's.
+- **Why argon2id and not SHA-256:** SHA-256 is fast – a GPU tries billions of guesses per second against a leaked hash. argon2id is slow and memory-hard on purpose (19 MiB and 2 passes per guess), and the random salt makes equal passwords hash differently.
 
 ### `sessions`
 | Column | Type | Why |
 |---|---|---|
-| `id` | `bigint` identity, PK | |
+| `token_hash` | `bytea` **PK**, CHECK 32 bytes | **SHA-256 of the session token** – the cookie holds the random 32-byte token, the DB only its hash. Every request looks the session up by it, so it is the key itself (no separate id) |
 | `user_id` | `bigint` NN, FK → `users` **ON DELETE CASCADE** | the one CASCADE (decided): sessions are disposable login state, not history |
-| `token_hash` | `bytea` NN, **UNIQUE** | **SHA-256 of the session token** (P5) – the cookie holds the random token, the DB only its hash |
-| `expires_at` | `timestamptz` NN | checked on every request (`expires_at > now()`) |
 | `created_at` | `timestamptz` NN, default `now()` | |
+| `expires_at` | `timestamptz` NN, CHECK `> created_at` | `now() + 7 days` (= the cookie's `Max-Age`); not extended on use |
 
-- **Why a hash (P5):** if the database (or a backup, or a log of a query) leaks, the attacker gets hashes that cannot be used as cookies.
-- **Why SHA-256 and not bcrypt:** the token is 32 random bytes (not a guessable password), so a fast hash is safe; and the lookup must be by exact value (`WHERE token_hash = $1`), which a salted bcrypt hash cannot do.
-- Index on `user_id` ("log out everywhere"). Expired rows are deleted lazily (on login) – no cron job.
+- **Why a hash:** if the database (or a backup, or a log of a query) leaks, the attacker gets hashes that cannot be used as cookies.
+- **Why SHA-256 and not argon2id/bcrypt:** the token is 256 random bits (not a guessable password), so a fast hash is safe; and the lookup must be by exact value (`WHERE token_hash = $1`), which a salted hash cannot do.
+- **Indexes:** `user_id` ("sessions of a user", the CASCADE delete) and `expires_at` (clean-up).
+- **Expiry is lazy (no cron job):** a lookup of an expired session rejects it and deletes that row; creating a session deletes **every** expired one in the same batch (cheap thanks to the `expires_at` index).
+
+### `login_failures` (rate limit)
+| Column | Type | Why |
+|---|---|---|
+| `email` | `citext` **PK** | the **typed** email – deliberately not a FK to `users`: unknown emails are counted too, otherwise "429 vs 401" would reveal which emails have an account |
+| `attempt_count` | `integer` NN, CHECK `> 0` | sign-in attempts in the current window |
+| `window_start` | `timestamptz` NN, default `now()` | when the current 15-minute window began (its first attempt). Index for the clean-up |
+
+- **Rule (owner decision A6):** at most **10 failed sign-ins per email per 15 minutes**; the 11th attempt gets `429` + `Retry-After` (seconds until the window ends), even with the right password.
+- **Why in the database:** on Vercel every request can run in a different function instance, so an in-memory counter would be per-instance and easy to bypass.
+- **Counted before the password check, atomically:** one `INSERT … ON CONFLICT (email) DO UPDATE SET attempt_count = attempt_count + 1 RETURNING attempt_count` numbers every attempt; over 10 → `429`; a **successful** sign-in deletes the row, so what stays counted are the failures. Counting *after* a failed check would let a burst of parallel requests all pass the check first (verified on `dev`: 30 parallel attempts → exactly 10 × `401`, 20 × `429`).
+- **Fixed window:** it starts at the first attempt; after 15 minutes the next attempt deletes the old row and starts again at 1. The same batch deletes every ended window, so the table does not keep rows for one-off typos.
+- **Trade-off (known):** anyone who knows an email can lock its password sign-in for 15 minutes (existing sessions keep working). See the Task 14 report, open questions.
 
 ## Commerce tables (planned – checkout task)
 
@@ -670,3 +694,4 @@ can trust the data without re-checking it.
 - **Real payment provider** with webhooks, idempotent payment intents and refunds; seller payouts, fees, VAT.
 - **Audit/history** tables (price history, key status changes), soft deletes, and partitioning or archiving of sold keys.
 - **Seller accounts** with their own auth, key upload API and per-seller stock limits.
+- **Accounts:** email verification and password reset (signed, single-use tokens with an expiry), "sign out everywhere" (delete all sessions of a user), a clean-up job for old demo accounts, and a per-IP limit next to the per-email one (or a CAPTCHA after a few failures) so a third party cannot lock someone out.

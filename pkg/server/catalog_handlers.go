@@ -44,13 +44,13 @@ type CatalogReader interface {
 // unavailable answers 503 with a generic message. The real error is only logged:
 // it may contain SQL, table names or connection details.
 func unavailable(w http.ResponseWriter, what string, err error) {
-	log.Printf("catalog: %s failed (database unavailable): %v", what, err)
+	log.Printf("api: %s failed (database unavailable): %v", what, err)
 	writeError(w, http.StatusServiceUnavailable, "service temporarily unavailable")
 }
 
 // internalError answers 500 with a generic message (real error: log only).
 func internalError(w http.ResponseWriter, what string, err error) {
-	log.Printf("catalog: %s failed (unexpected error): %v", what, err)
+	log.Printf("api: %s failed (unexpected error): %v", what, err)
 	writeError(w, http.StatusInternalServerError, "internal error")
 }
 

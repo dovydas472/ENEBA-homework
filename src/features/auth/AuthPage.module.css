@@ -1,0 +1,99 @@
+/*
+ * Sign-in / sign-up page: docs/DESIGN.md 3.6. A centred panel, 380px wide with 40px padding = a 300px column,
+ * as on my.eneba.com/login (measured in Task 14); full width on phones.
+ * The panel is --color-bg-deep, not --color-surface: error text (--color-error) passes 4.5:1 on deep (6.82)
+ * but fails on --color-surface (4.17), see DESIGN.md 5.1.
+ */
+.page {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-5);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: var(--auth-panel-width);
+  padding: var(--space-6);
+  background: var(--color-bg-deep);
+  box-shadow: var(--shadow-card);
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  font-size: var(--font-size-2xl);
+  line-height: var(--line-height-tight);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Full-width buttons (primary submit, secondary demo); the normal button height (35px, 40px on phones). */
+.wide {
+  width: 100%;
+}
+
+.demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.demoNote {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
+/* "or" between the two ways in: a line on each side of the text. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--color-border);
+}
+
+/* A server answer (wrong password, email taken, too many attempts, server down). Red outline + text, not colour alone. */
+.formError {
+  padding: var(--space-2) var(--space-3);
+  outline: 1px solid var(--color-error-border);
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+}
+
+.switch {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.switch a {
+  font-weight: var(--font-weight-bold);
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding-top: 0;
+  }
+
+  .panel {
+    padding: var(--space-4);
+  }
+}

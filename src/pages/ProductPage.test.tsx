@@ -17,6 +17,12 @@ vi.mock("../api/client.ts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/client.ts")>()),
   apiFetch: vi.fn(),
 }));
+// The header asks who is signed in (Task 14). These tests are about the product page: nobody is, and that
+// question never reaches the fake apiFetch, so the product requests can be counted exactly.
+vi.mock("../api/auth.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../api/auth.ts")>()),
+  getCurrentUser: vi.fn(async () => null),
+}));
 
 const fakeApi = vi.mocked(apiFetch);
 const witcherUrl = "/product/the-witcher-3-wild-hunt-steam-global";

@@ -85,3 +85,30 @@
 .link:hover {
   color: var(--color-accent);
 }
+
+/* Account part (Task 14): under the nav links, separated by a line. "Sign out" is a <button> that looks like a link row. */
+.account {
+  border-top: 1px solid var(--color-border);
+}
+
+button.link {
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.who {
+  padding: var(--space-3) var(--page-gutter) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.whoName {
+  display: block;
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

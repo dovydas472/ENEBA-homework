@@ -1,0 +1,99 @@
+/* Header account menu (Task 14): docs/DESIGN.md 3.1. The popup looks like the other popups (bg-deep, dropdown shadow). */
+.account {
+  position: relative;
+}
+
+.icon {
+  flex-shrink: 0;
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+/* Desktop: icon + name + chevron. The name is cut with "…" so a long email does not push the search field. */
+.name {
+  max-width: var(--account-name-max-width);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex-shrink: 0;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  transition: transform var(--transition-fast);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: var(--z-dropdown);
+  width: var(--account-menu-width);
+  background: var(--color-bg-deep);
+  box-shadow: var(--shadow-dropdown);
+}
+
+/* `hidden` must win over the display of any class. */
+.popup[hidden] {
+  display: none;
+}
+
+.who {
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.whoName {
+  display: block;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list {
+  padding: var(--space-1) 0;
+}
+
+/* One row per item, 40px tall; a link and a button look the same. */
+.item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--hit-target-min);
+  padding: 0 var(--space-4);
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+  transition: background-color var(--transition-fast);
+}
+
+.item:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* Inside the popup the outside ring would overlap the next row: draw it inside. */
+.item:focus-visible {
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
+/* Phones and tablets: icon only (like the cart), the name stays in the button's label and in the popup. */
+@media (max-width: 930px) {
+  .name,
+  .chevron {
+    display: none;
+  }
+}

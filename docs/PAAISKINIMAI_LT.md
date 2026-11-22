@@ -660,3 +660,76 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Ką daro:** kiekvienas pasiūlymas turi `edition` – to produkto leidimą, į kurį veda nuoroda (pigiausias turimas). UI rodo jį atskira pilka eilute po pavadinimu **tik kai jis ne „Standard"** (pvz. „Game of the Year Edition"), lygiai kaip Store kortelė.
 - **Kodėl:** žaidimas gali turėti kelis leidimus, o nuoroda veda į vieną. Pvz. „san" → „Grand Theft Auto: San Andreas" veda į GOTY produktą, nes Standard nėra sandėlyje – be šios eilutės vartotojas nesuprastų, kodėl atsidarė „Game of the Year". „Standard" nerodomas, nes tai įprastas atvejis (triukšmas).
 - **Gali paklausti:** „Kodėl `edition` visada string, o ne `null`?" – kiekvienas produktas turi leidimą (`products.edition NOT NULL`), todėl jokio „nėra" atvejo nėra; „Standard" yra tiesiog reikšmė.
+
+# Task 14 – paskyros: registracija, prisijungimas, atsijungimas, demo vartotojas, apsaugoti puslapiai
+
+## Duomenų bazė: `users`, `sessions`, `login_failures` (`migrations/00004_auth.sql`)
+- **Ką daro:** `users` – paskyros (`email citext UNIQUE`, `password_hash`, `is_demo`). `sessions` – prisijungimai: raktas yra **tokeno SHA-256** (`token_hash bytea PRIMARY KEY`), `user_id` → `users` su `ON DELETE CASCADE`, `expires_at`. `login_failures` – nesėkmingų bandymų skaitliukas pagal įvestą el. paštą.
+- **Kodėl taip:** `citext` – „Jon@x.com" ir „jon@x.com" yra ta pati paskyra, o `UNIQUE` tai užtikrina net kai du žmonės registruojasi vienu metu (sprendžia DB, ne ankstesnis `SELECT`). CHECK `(password_hash IS NULL) = is_demo`: paprasta paskyra visada turi slaptažodį, demo – niekada. `CASCADE` tik sesijoms: tai laikina prisijungimo būsena, ne istorija (visur kitur `RESTRICT`).
+- **Gali paklausti:** „Kodėl `login_failures.email` nėra FK į `users`?" – skaičiuojami ir **neegzistuojantys** el. paštai; kitaip 429 vs 401 atskleistų, kurie el. paštai užregistruoti.
+
+## argon2id ir kodėl ne paprastas SHA (`pkg/auth/password.go`)
+- **Ką daro:** `HashPassword` – atsitiktinė 16 baitų druska (`crypto/rand`) + `argon2.IDKey` su OWASP parametrais (m = 19 MiB, t = 2, p = 1), rezultatas – PHC eilutė `$argon2id$v=19$m=19456,t=2,p=1$<druska>$<hash>`. `VerifyPassword` iš eilutės perskaito parametrus ir druską, perskaičiuoja ir lygina `subtle.ConstantTimeCompare`.
+- **Kodėl ne SHA-256:** SHA-256 sukurtas būti **greitas** – vaizdo plokštė per sekundę išbando milijardus spėjimų prieš nutekėjusį hash'ą. argon2id specialiai **lėtas ir reikalauja daug atminties** (kiekvienas spėjimas – 19 MiB ir du perėjimai), todėl masinis spėjimas brangus. Druska: vienodi slaptažodžiai gauna skirtingus hash'us, viena iš anksto paruošta lentelė neatlaužia visų iš karto.
+- **Kodėl parametrai eilutėje:** vėliau juos galima padidinti nesugadinant jau saugomų hash'ų. **Bet** eilutė yra „įvestis", todėl `decodeHash` tikrina ribas (m ≤ 64 MiB, t ≤ 10, p ≤ 4, druskos ir hash'o ilgiai) – sugadinta eilutė su m = 4 GiB negali priversti serverio išskirti 4 GiB.
+- **Kodėl constant-time:** paprastas `==` sustoja ties pirmu skirtingu baitu; laiko skirtumas galėtų išduoti, kiek pradžios baitų sutapo.
+- **Gali paklausti:** „Kodėl ne bcrypt?" – owner sprendimas A2; argon2id yra OWASP rekomenduojamas pirmas pasirinkimas, atsparus GPU (dėl atminties); bcrypt dar ir nukerpa slaptažodį iki 72 baitų.
+
+## Kodėl DB laiko tik tokeno hash'ą (`pkg/auth/token.go`)
+- **Ką daro:** sesijos tokenas – 32 atsitiktiniai baitai (`crypto/rand`), slapuke – base64url (43 simboliai). DB saugo tik `sha256(tokenas)`. Kiekviena užklausa: slapukas → `HashSessionToken` → `SELECT … WHERE token_hash = $1`.
+- **Kodėl:** jei nutekės `sessions` lentelė (atsarginė kopija, log'as, SQL injekcija kitur), užpuolikas gaus hash'us, o hash'o į slapuką neįdėsi – sesijų pavogti nepavyks.
+- **Kodėl čia užtenka SHA-256 (ne argon2id):** tokenas yra 256 atsitiktinių bitų, ne žmogaus sugalvotas slaptažodis – spėti nėra ko. O paieškai reikia, kad ta pati įvestis duotų tą patį hash'ą (be druskos).
+- **Galiojimas:** 7 dienos (`SessionTTL`), nepratęsiamas. Pasibaigusi sesija atmetama ir ištrinama „tingiai": peržiūros metu (ta eilutė) ir kuriant naują sesiją (visos pasibaigusios; greita dėl `expires_at` indekso) – be cron darbo.
+- **Gali paklausti:** „Kas, jei slapukas sugadintas?" – `HashSessionToken` grąžina `ok = false` ir DB net neklausiama.
+
+## Slapuko vėliavėlės (`pkg/server/session.go` → `sessionCookie`)
+- **Ką daro:** `Set-Cookie: session=…; Path=/; Max-Age=604800; HttpOnly; Secure; SameSite=Lax`.
+- **Kodėl:** `HttpOnly` – JavaScript negali perskaityti (XSS klaida nepavogs tokeno; naršyklėje patikrinta: `document.cookie` tuščias). `Secure` – tik per HTTPS (naršyklės `http://127.0.0.1` laiko saugiu, todėl lokaliai irgi veikia – patikrinta su Edge). `SameSite=Lax` – nesiunčiamas su kitų svetainių POST/fetch užklausomis (CSRF), bet siunčiamas paspaudus paprastą nuorodą į mūsų puslapį. `Max-Age` = sesijos galiojimas DB. Atsijungiant siunčiamas tas pats slapukas su `Max-Age=0` – naršyklė jį ištrina.
+- **Gali paklausti:** „Kodėl ne `localStorage` + `Authorization` antraštė?" – `localStorage` pasiekiamas JavaScript'ui, t. y. bet kuri XSS klaida pavogtų tokeną; `HttpOnly` slapukas – ne.
+
+## CSRF: SameSite + Origin patikra (`pkg/server/origin.go` → `requireSameOrigin`)
+- **Ką daro:** visas API apgaubtas `requireSameOrigin`. Kiekvienai `POST`/`PUT`/`PATCH`/`DELETE` užklausai `Origin` antraštės host'as turi sutapti su užklausos host'u (už Vercel proxy – `X-Forwarded-Host`, kitaip `r.Host`). Nėra `Origin` arba svetimas (ar `null`) → `403`. GET netikrinamas – jis nieko nekeičia.
+- **Kodėl dviese:** CSRF = kita svetainė priverčia lankytojo naršyklę siųsti užklausą mums, o naršyklė automatiškai prideda mūsų slapuką. `SameSite=Lax` tai jau stabdo moderniose naršyklėse; `Origin` patikra – antras, nepriklausomas sluoksnis (naršyklė visada siunčia `Origin` su POST, puslapis jo suklastoti negali). Ji sustabdo ir „login CSRF" (kai užpuolikas prijungia tave prie **savo** paskyros – ten slapuko dar nėra, tad SameSite nepadeda).
+- **Kodėl galima pasitikėti `X-Forwarded-Host`:** kita svetainė negali priversti naršyklės siųsti savos `X-Forwarded-Host` antraštės (tam reikia CORS pre-flight, o mūsų API jo neleidžia). `curl` gali siųsti bet ką, bet jis neturi lankytojo slapuko – tai ne CSRF.
+- **Vite proxy pataisa (`vite.config.ts`):** trumpasis užrašas `"/api": "http://127.0.0.1:8080"` įjungia `changeOrigin`, kuris `Host` pakeičia į `127.0.0.1:8080`, o naršyklės `Origin` – `127.0.0.1:5173` → visi lokalūs POST gaudavo 403 (rasta naršyklės teste). Dabar objektas `{ target, xfwd: true }`: `Host` paliekamas, pridedamas `X-Forwarded-Host` – kaip Vercel.
+- **Gali paklausti:** „Kodėl ne CSRF tokenas formoje?" – API yra JSON + `fetch`; `SameSite` + `Origin` – paprastesnė, OWASP aprašyta apsauga be papildomos būsenos.
+
+## Bandymų riba DB'je (serverless) (`pkg/auth/store.go` → `CountLoginAttempt`)
+- **Ką daro:** daugiausia 10 nesėkmingų prisijungimų vienam el. paštui per 15 min.; 11-as bandymas → `429` + `Retry-After` (sekundės iki lango pabaigos), **net su teisingu slaptažodžiu**. Sėkmingas prisijungimas skaitliuką išvalo.
+- **Kodėl DB, ne atmintyje:** Vercel'yje kiekviena užklausa gali patekti į kitą funkcijos egzempliorių; skaitliukas atmintyje būtų kiekvienam egzemplioriui atskiras ir lengvai apeinamas.
+- **Kodėl skaičiuojama PRIEŠ slaptažodžio tikrinimą (saugumo peržiūros radinys):** pirma versija buvo „patikrink ribą → tikrink slaptažodį → užrašyk nesėkmę". Tada 50 lygiagrečių užklausų visos praeina patikrą, kol dar nė viena nesėkmė neužrašyta – 50 spėjimų. Dabar vienas atominis `INSERT … ON CONFLICT DO UPDATE SET attempt_count = attempt_count + 1 RETURNING attempt_count` sunumeruoja kiekvieną bandymą; daugiau nei 10 → 429. Patikrinta `dev` šakoje: 30 lygiagrečių bandymų → lygiai 10 × 401 ir 20 × 429.
+- **Langas fiksuotas:** prasideda nuo pirmo bandymo; po 15 min. kitas bandymas seną eilutę ištrina ir pradeda nuo 1 (tas pats batch'as ištrina ir visus kitus pasibaigusius langus).
+- **Gali paklausti:** „Ar kas nors gali užrakinti svetimą paskyrą?" – taip, 15 min. (tik prisijungimą slaptažodžiu; esamos sesijos veikia). Tai owner sprendimo A6 (riba pagal el. paštą) pasekmė; alternatyvos – riba pagal el. paštą + IP arba CAPTCHA (ataskaitos atviri klausimai).
+
+## Bendri klaidų pranešimai ir laikas (`pkg/server/auth_handlers.go` → `loginHandler`, `passwordMatches`)
+- **Ką daro:** bet kokia prisijungimo nesėkmė (nėra tokio el. pašto, blogas slaptažodis, demo paskyra) → tas pats `401 "Invalid email or password"`. Kai tikrinti nėra ko (nežinomas el. paštas, demo), vis tiek atliekamas vienas argon2id skaičiavimas su `dummyHash` (`BurnPasswordCheck`).
+- **Kodėl:** skirtingi tekstai arba greitesnis atsakymas nežinomam el. paštui leistų sužinoti, kas užsiregistravęs (el. paštų „surinkimas"). Registracijoje `409` neišvengiamas (A7) – kitaip nepasakysi, kodėl nepavyko.
+- **`dummyHash`:** tai tik suformatuota eilutė su **dabartiniais** parametrais (testas tai tikrina), todėl jos kaina tokia pati kaip tikro patikrinimo, o paleidžiant serverį nieko neskaičiuojama.
+- **Serverio klaidos:** DB nepasiekiama → 503, kita → 500, abiem atvejais bendras tekstas (tikroji klaida tik log'e) – ta pati taisyklė kaip katalogo.
+
+## Demo paskyros (`pkg/auth/store.go` → `CreateDemoUser`, `POST /api/auth/demo`)
+- **Ką daro:** kiekvienas „Sign in as demo user" paspaudimas sukuria **naują** paskyrą `demo-<16 hex>@demo.invalid` su `is_demo = true` ir be slaptažodžio, ir iškart prijungia. UI rodo „Demo user" (`displayName`).
+- **Kodėl nauja kiekvieną kartą:** kiekvienas vertintojas mato tik savo užsakymus (vėliau checkout'e), niekas nesimaišo. `.invalid` – rezervuotas domenas (RFC 2606): jokie tikri adresai juo nesibaigia, o registracija jį atmeta, todėl susidūrimo su tikru žmogumi nebus. Be slaptažodžio → prisijungti prie demo paskyros slaptažodžiu neįmanoma (atsakymas – tas pats bendras 401).
+- **Gali paklausti:** „O šiukšlės DB'je?" – demo paskyros kaupiasi; tikroje sistemoje būtų valymo darbas (README „Shortcuts").
+
+## `next` ir atviro peradresavimo apsauga (`src/lib/safeNext.ts` → `safeNextPath`)
+- **Ką daro:** `/login?next=/orders` po prisijungimo grąžina į `/orders`. Priimamas tik tos pačios svetainės kelias: prasideda vienu `/` (ne `//`), be `\` ir valdymo simbolių, ir `new URL(next, bazė)` lieka toje pačioje kilmėje; `/login` ir `/register` irgi atmetami (būtų ratas). Visa kita → `/`.
+- **Kodėl:** be patikros nuoroda `/login?next=https://evil.example` (ar `//evil.example`, ar `/\evil.example` – naršyklė `\` skaito kaip `/`) prijungtų žmogų **tikrame** mūsų puslapyje, o po to nusiųstų į netikrą kopiją, kuri „dar kartą" paprašytų slaptažodžio.
+- **Gali paklausti:** „Kodėl ne tik `startsWith('/')`?" – `//evil.example` irgi prasideda `/`, bet naršyklei tai kitas host'as.
+
+## Kas prisijungęs: `requireUser` (serveris) ir `useCurrentUser` / `RequireAuth` (naršyklė)
+- **Serveris (`pkg/server/session.go`):** `currentUser` iš slapuko gauna vartotoją; `requireUser(sessions, handler)` apgaubia apsaugotą endpoint'ą: neprisijungus → 401, DB klaida → 503/500, kitaip handler'is gauna `auth.User`. Jau naudojamas `GET /api/auth/me`; vėliau – checkout ir užsakymai. Handler'iai priklauso nuo mažų interfeisų (`SessionReader`, `AccountStore`, `SessionStore`, `LoginLimiter`), todėl testuose naudojama netikra saugykla atmintyje.
+- **Naršyklė (`src/features/auth/useCurrentUser.ts`):** vienas TanStack Query įrašas `["auth","me"]`: `useCurrentUser` jį skaito (`401` → `null`, ne klaida – `getCurrentUser`), o prisijungimo, registracijos ir demo mutacijos įrašo grąžintą vartotoją tiesiai į cache'ą (`setQueryData`), atsijungimas – `null`. Todėl header'is, telefono meniu ir `RequireAuth` persijungia tuo pačiu metu be papildomų užklausų.
+- **`RequireAuth` (`src/features/auth/RequireAuth.tsx`):** „layout route" – saugo visus įdėtus puslapius (`/orders`, vėliau `/checkout`): prisijungęs → puslapis; neprisijungęs → `/login?next=…` (`replace`, kad Back neatšoktų atgal); dar klausiama → spinner'is (be „blyksnio"); serveris nepasiekiamas → klaida su Retry („nežinome" ≠ „neprisijungęs").
+- **Gali paklausti:** „Ar `RequireAuth` – saugumas?" – ne, tai tik ką **rodyti**. Tikra apsauga serveryje: be galiojančios sesijos endpoint'as atsako 401.
+
+## Prisijungimo ir registracijos puslapis (`src/features/auth/AuthPage.tsx`, `TextField.tsx`, `PasswordField.tsx`)
+- **Ką daro:** vienas komponentas abiem puslapiams (skiriasi tekstai ir slaptažodžio taisyklė). Matomos etiketės, teisingas `autocomplete` (`email`, `current-password`, `new-password` – slaptažodžių tvarkyklės žino, ką siūlyti), „rodyti / slėpti slaptažodį" mygtukas, klaida po lauku atsiranda išėjus iš lauko arba paspaudus Submit (fokusas – į pirmą blogą lauką), serverio klaida – virš formos (`role="alert"`), mygtuke spinner'is, kol laukiama. Demo mygtukas prisijungimo puslapyje – pirmas.
+- **Peradresavimas po sėkmės:** vienas mechanizmas – jei vartotojas yra (ką tik prisijungė arba jau buvo), `<Navigate to={next} replace />`.
+- **Kodėl panelė `--color-bg-deep`:** klaidos tekstas `--color-error` ant `--color-surface` turi tik 4.17:1 kontrastą (reikia 4.5), ant deep – 6.82.
+
+## Header'io paskyros meniu ir atsijungimas (`src/app/AccountMenu.tsx`, `src/features/auth/useSignOut.ts`)
+- **Ką daro:** prisijungus vietoj „Sign in" – mygtukas su el. paštu (arba „Demo user"), atidaro „Signed in as …", „Orders", „Sign out". Tai **disclosure** (mygtukas + `aria-expanded`/`aria-controls`), ne ARIA `menu`: viduje paprasta nuoroda ir mygtukas, Tab veikia kaip visur. Esc uždaro ir grąžina fokusą į mygtuką; paspaudimas už ribų arba fokuso išėjimas – uždaro. Telefono meniu (☰) turi tuos pačius pasirinkimus.
+- **Atsijungimo seka:** pirma `navigate("/", { flushSync: true })`, tada `logout`. Be `flushSync` React Router naviguoja kaip žemo prioriteto „transition", o „vartotojas = null" atnaujinimas yra skubus – `/orders` puslapis dar spėdavo pamatyti „neprisijungęs" ir peradresuodavo į `/login?next=/orders` (testas tai pagavo; be `flushSync` jis krenta, su juo – praeina).
+- **`apiFetch` ir 204:** atsijungimas grąžina `204 No Content` be kūno; `apiFetch` dabar tokį atsakymą grąžina kaip `undefined`, o ne „neteisingas JSON".
+- **Krepšelis** lieka `localStorage` ir prisijungus, ir atsijungus (owner sprendimas).
