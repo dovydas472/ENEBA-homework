@@ -208,68 +208,60 @@ func (s *Store) DeleteSession(ctx context.Context, tokenHash []byte) error {
 }
 
 // ---------------------------------------------------------------------------
-// Failed sign-ins (rate limit). One row per typed email in login_failures:
-// failed_count failures since window_start. The window is FIXED: it starts at
-// the first failure and lasts FailureWindow; after that the next failure
-// starts a new window with count 1.
+// Failed sign-ins (rate limit, A6). One row per typed email in login_failures.
+// The window is FIXED: it starts at the first attempt and lasts FailureWindow;
+// after that the next attempt starts a new window with count 1.
+//
+// Every attempt is counted BEFORE its password is checked, in one atomic
+// statement, and a successful sign-in deletes the row. Counting first matters:
+// with "check, then verify, then count the failure", 50 parallel requests
+// would all pass the check before any failure was written, and get 50 guesses.
+// Counted first, request number 11 always sees 11, however many run at once.
 // ---------------------------------------------------------------------------
 
-// LoginBlocked reports whether the email has used up its failed attempts in
-// the current window. If so, retryAfter says when the window ends (>= 1 s),
-// for the Retry-After header.
-func (s *Store) LoginBlocked(ctx context.Context, email string) (retryAfter time.Duration, blocked bool, err error) {
+// CountLoginAttempt counts one sign-in attempt for the email and returns its
+// number in the current window. attempt > MaxFailedLogins means "refuse with
+// 429"; retryAfter is then the time until the window ends (at least 1 s).
+//
+// The batch first deletes every window that has ended (also this email's old
+// one), so the INSERT starts a fresh window with count 1 and the table does
+// not keep rows for emails that someone mistyped once. INSERT ... ON CONFLICT
+// DO UPDATE locks the row, so two attempts at the same moment get 1 and 2,
+// never 1 and 1.
+func (s *Store) CountLoginAttempt(ctx context.Context, email string) (attempt int, retryAfter time.Duration, err error) {
 	conn, err := s.src.Acquire(ctx)
 	if err != nil {
-		return 0, false, err
+		return 0, 0, err
 	}
 	defer conn.Release()
 
-	var secondsLeft float64
-	err = conn.QueryRow(ctx, `
-		SELECT extract(epoch FROM window_start + make_interval(secs => $2::integer) - now())::float8
-		FROM login_failures
-		WHERE email = $1
-		  AND failed_count >= $3::integer
-		  AND window_start > now() - make_interval(secs => $2::integer)`,
-		email, int(FailureWindow.Seconds()), MaxFailedLogins).Scan(&secondsLeft)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, false, nil // no row, an old window, or still under the limit
+	window := int(FailureWindow.Seconds())
+	batch := &pgx.Batch{}
+	batch.Queue(`DELETE FROM login_failures WHERE window_start <= now() - make_interval(secs => $1::integer)`, window)
+	batch.Queue(`
+		INSERT INTO login_failures AS f (email, attempt_count) VALUES ($1, 1)
+		ON CONFLICT (email) DO UPDATE SET attempt_count = f.attempt_count + 1
+		RETURNING f.attempt_count,
+		          extract(epoch FROM f.window_start + make_interval(secs => $2::integer) - now())::float8`,
+		email, window)
+	br := conn.SendBatch(ctx, batch)
+	defer br.Close()
+
+	if _, err := br.Exec(); err != nil {
+		return 0, 0, fmt.Errorf("auth: clean up login windows: %w", err)
 	}
-	if err != nil {
-		return 0, false, fmt.Errorf("auth: login blocked: %w", err)
+	var secondsLeft float64
+	if err := br.QueryRow().Scan(&attempt, &secondsLeft); err != nil {
+		return 0, 0, fmt.Errorf("auth: count login attempt: %w", err)
 	}
 	retryAfter = time.Duration(secondsLeft * float64(time.Second))
 	if retryAfter < time.Second {
 		retryAfter = time.Second
 	}
-	return retryAfter, true, nil
+	return attempt, retryAfter, br.Close()
 }
 
-// RecordLoginFailure adds one failure for the email. The same batch first
-// deletes every window that has ended (also this email's old one), so the
-// INSERT starts a fresh window with count 1 and the table does not keep rows
-// for emails that someone mistyped once. INSERT ... ON CONFLICT is atomic:
-// two failures arriving at the same time are both counted.
-func (s *Store) RecordLoginFailure(ctx context.Context, email string) error {
-	conn, err := s.src.Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Release()
-
-	batch := &pgx.Batch{}
-	batch.Queue(`DELETE FROM login_failures WHERE window_start <= now() - make_interval(secs => $1::integer)`,
-		int(FailureWindow.Seconds()))
-	batch.Queue(`
-		INSERT INTO login_failures (email, failed_count) VALUES ($1, 1)
-		ON CONFLICT (email) DO UPDATE SET failed_count = login_failures.failed_count + 1`, email)
-	if err := conn.SendBatch(ctx, batch).Close(); err != nil {
-		return fmt.Errorf("auth: record login failure: %w", err)
-	}
-	return nil
-}
-
-// ClearLoginFailures forgets the failures of an email after a successful sign-in (A6).
+// ClearLoginFailures forgets the attempts of an email after a successful sign-in (A6).
 func (s *Store) ClearLoginFailures(ctx context.Context, email string) error {
 	conn, err := s.src.Acquire(ctx)
 	if err != nil {

@@ -44,12 +44,15 @@ CREATE INDEX sessions_expires_at_idx ON sessions (expires_at);
 -- every request may hit a different function instance.
 -- The key is the TYPED email, not users.id: unknown emails are counted too,
 -- otherwise "429" vs "401" would reveal which emails have an account.
+-- attempt_count counts every sign-in attempt in the window BEFORE its password
+-- is checked; a successful sign-in deletes the row. So what stays counted are
+-- the failures - and parallel attempts cannot slip past the limit together.
 CREATE TABLE login_failures (
-    email        citext      PRIMARY KEY,
-    failed_count integer     NOT NULL,
-    -- When the current 15-minute window started (the first failure in it).
-    window_start timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT login_failures_count_positive CHECK (failed_count > 0)
+    email         citext      PRIMARY KEY,
+    attempt_count integer     NOT NULL,
+    -- When the current 15-minute window started (the first attempt in it).
+    window_start  timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT login_failures_count_positive CHECK (attempt_count > 0)
 );
 -- Lets the clean-up delete expired windows without reading the whole table.
 CREATE INDEX login_failures_window_start_idx ON login_failures (window_start);

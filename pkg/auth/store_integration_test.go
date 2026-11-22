@@ -211,43 +211,35 @@ func TestStore_deletingAUserDeletesItsSessions(t *testing.T) {
 	}
 }
 
-func TestStore_loginFailureCounter(t *testing.T) {
+func TestStore_loginAttemptCounter(t *testing.T) {
 	s, pool := newStore(t)
 	ctx := context.Background()
 	email := uniqueEmail(t) // the counter works for emails without an account too
 
-	blocked := func() (time.Duration, bool) {
+	attempt := func(e string) (int, time.Duration) {
 		t.Helper()
-		d, b, err := s.LoginBlocked(ctx, email)
+		n, d, err := s.CountLoginAttempt(ctx, e)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return d, b
+		return n, d
 	}
-	for i := 1; i < auth.MaxFailedLogins; i++ {
-		if err := s.RecordLoginFailure(ctx, email); err != nil {
-			t.Fatal(err)
+	for want := 1; want <= auth.MaxFailedLogins; want++ {
+		if n, _ := attempt(email); n != want {
+			t.Fatalf("attempt number = %d, want %d", n, want)
 		}
 	}
-	if _, b := blocked(); b {
-		t.Fatalf("blocked after %d failures, the limit is %d", auth.MaxFailedLogins-1, auth.MaxFailedLogins)
-	}
-	_ = s.RecordLoginFailure(ctx, strings.ToUpper(email)) // the 10th, in other letter case: same counter
-	d, b := blocked()
-	if !b || d <= 0 || d > auth.FailureWindow {
-		t.Fatalf("after %d failures: blocked=%v retryAfter=%v", auth.MaxFailedLogins, b, d)
+	n, d := attempt(strings.ToUpper(email)) // other letter case: same counter
+	if n != auth.MaxFailedLogins+1 || d <= 0 || d > auth.FailureWindow {
+		t.Fatalf("11th attempt: n=%d retryAfter=%v", n, d)
 	}
 
-	// The window ended: not blocked any more, and the next failure starts a new window at 1.
+	// The window ended: the next attempt starts a new window at 1.
 	if _, err := pool.Exec(ctx, `UPDATE login_failures SET window_start = now() - interval '16 minutes' WHERE email = $1`, email); err != nil {
 		t.Fatal(err)
 	}
-	if _, b := blocked(); b {
-		t.Fatal("still blocked after the window ended")
-	}
-	_ = s.RecordLoginFailure(ctx, email)
-	if n := count(t, pool, `SELECT failed_count FROM login_failures WHERE email = $1`, email); n != 1 {
-		t.Fatalf("failed_count = %d after a new window, want 1", n)
+	if n, _ := attempt(email); n != 1 {
+		t.Fatalf("first attempt of a new window = %d, want 1", n)
 	}
 
 	if err := s.ClearLoginFailures(ctx, email); err != nil {
@@ -255,5 +247,34 @@ func TestStore_loginFailureCounter(t *testing.T) {
 	}
 	if n := count(t, pool, `SELECT count(*) FROM login_failures WHERE email = $1`, email); n != 0 {
 		t.Fatal("ClearLoginFailures left the row")
+	}
+}
+
+// Parallel attempts are numbered 1..N without gaps or repeats (no lost updates),
+// so a burst cannot get more than MaxFailedLogins password checks.
+func TestStore_parallelAttemptsAreAllCounted(t *testing.T) {
+	s, _ := newStore(t)
+	email := uniqueEmail(t)
+	const n = 20
+	got := make(chan int, n)
+	errs := make(chan error, n)
+	for range n {
+		go func() {
+			a, _, err := s.CountLoginAttempt(context.Background(), email)
+			got <- a
+			errs <- err
+		}()
+	}
+	seen := map[int]bool{}
+	for range n {
+		if err := <-errs; err != nil {
+			t.Fatal(err)
+		}
+		seen[<-got] = true
+	}
+	for i := 1; i <= n; i++ {
+		if !seen[i] {
+			t.Fatalf("attempt numbers %v: %d is missing", seen, i)
+		}
 	}
 }

@@ -136,7 +136,7 @@ jobs:
             exit 1
           fi
           # The auth integration tests by name, so a rename cannot silently drop them from the count.
-          for name in TestStore_loginFailureCounter TestAuthFlow_eleventhFailureIs429; do
+          for name in TestStore_loginAttemptCounter TestAuthFlow_eleventhFailureIs429; do
             grep -q -e "^--- PASS: $name" db-test.log || { echo "::error::$name did not pass"; exit 1; }
           done
 

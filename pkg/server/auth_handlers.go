@@ -33,8 +33,7 @@ type SessionStore interface {
 
 // LoginLimiter is the failed sign-in counter (rate limit, owner decision A6).
 type LoginLimiter interface {
-	LoginBlocked(ctx context.Context, email string) (retryAfter time.Duration, blocked bool, err error)
-	RecordLoginFailure(ctx context.Context, email string) error
+	CountLoginAttempt(ctx context.Context, email string) (attempt int, retryAfter time.Duration, err error)
 	ClearLoginFailures(ctx context.Context, email string) error
 }
 
@@ -173,6 +172,10 @@ func registerHandler(store AuthStore) http.HandlerFunc {
 //   - 401 "Invalid email or password" - the same text for every reason (A7)
 //   - 429 + Retry-After: 10 failures for this email in the current 15 minutes (A6)
 //
+// Rate limit: the attempt is counted BEFORE the password is checked (one atomic
+// statement, see auth.Store.CountLoginAttempt), and a success clears the count.
+// So the 11th attempt is refused even when many attempts arrive at once.
+//
 // Timing (A2): an unknown email (or a demo account) still costs one argon2id
 // check, so a quick 401 cannot reveal that the email has no account.
 func loginHandler(store AuthStore) http.HandlerFunc {
@@ -198,13 +201,14 @@ func loginHandler(store AuthStore) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
 		defer cancel()
 
-		// 1. Rate limit first: a blocked email is not even checked, so guessing stops.
-		retryAfter, blocked, err := store.LoginBlocked(ctx, email)
+		// 1. Rate limit first: count this attempt; over the limit it is not even
+		// checked (also not with the right password), so guessing stops.
+		attempt, retryAfter, err := store.CountLoginAttempt(ctx, email)
 		if err != nil {
 			storeFailed(w, "login: rate limit", err)
 			return
 		}
-		if blocked {
+		if attempt > auth.MaxFailedLogins {
 			w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(retryAfter.Seconds()))))
 			writeError(w, http.StatusTooManyRequests, msgTooMany)
 			return
@@ -219,16 +223,13 @@ func loginHandler(store AuthStore) http.HandlerFunc {
 		}
 
 		// 3. Check the password - or burn the same work when there is nothing to check.
+		// A failure stays counted (step 1 already did it).
 		if !passwordMatches(hash, creds.Password) {
-			if err := store.RecordLoginFailure(ctx, email); err != nil {
-				storeFailed(w, "login: record failure", err)
-				return
-			}
 			writeError(w, http.StatusUnauthorized, msgInvalidLogin)
 			return
 		}
 
-		// 4. Success: forget the failures (A6) and sign in.
+		// 4. Success: forget the counted attempts (A6) and sign in.
 		if err := store.ClearLoginFailures(ctx, email); err != nil {
 			storeFailed(w, "login: clear failures", err)
 			return

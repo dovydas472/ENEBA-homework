@@ -29,13 +29,13 @@ type fakeAuth struct {
 	accounts map[string]fakeAccount // key: lower-case email
 	sessions map[string]int64       // key: string(token hash) -> user id
 	expired  map[string]bool        // token hashes whose session has expired
-	failures map[string]int         // key: lower-case email
+	failures map[string]int         // attempts in the window; key: lower-case email
 	nextID   int64
 	err      error // when set, every method returns it
 	calls    int
 
 	createdHashes []string // password hashes passed to CreateUser
-	recorded      []string // emails passed to RecordLoginFailure
+	counted       []string // emails passed to CountLoginAttempt
 	cleared       []string // emails passed to ClearLoginFailures
 	lookedUp      []string // emails passed to UserByEmail
 }
@@ -125,25 +125,15 @@ func (f *fakeAuth) DeleteSession(_ context.Context, hash []byte) error {
 	return nil
 }
 
-func (f *fakeAuth) LoginBlocked(_ context.Context, email string) (time.Duration, bool, error) {
+// CountLoginAttempt counts like the real store: every attempt, before the password check.
+func (f *fakeAuth) CountLoginAttempt(_ context.Context, email string) (int, time.Duration, error) {
 	f.calls++
 	if f.err != nil {
-		return 0, false, f.err
+		return 0, 0, f.err
 	}
-	if f.failures[strings.ToLower(email)] >= auth.MaxFailedLogins {
-		return 89500 * time.Millisecond, true, nil // 89.5 s -> "Retry-After: 90"
-	}
-	return 0, false, nil
-}
-
-func (f *fakeAuth) RecordLoginFailure(_ context.Context, email string) error {
-	f.calls++
-	if f.err != nil {
-		return f.err
-	}
-	f.recorded = append(f.recorded, email)
+	f.counted = append(f.counted, email)
 	f.failures[strings.ToLower(email)]++
-	return nil
+	return f.failures[strings.ToLower(email)], 89500 * time.Millisecond, nil // 89.5 s -> "Retry-After: 90"
 }
 
 func (f *fakeAuth) ClearLoginFailures(_ context.Context, email string) error {
@@ -401,14 +391,14 @@ func TestLogin_failuresAreGenericAndCounted(t *testing.T) {
 	var bodies []string
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
-			before := len(store.recorded)
+			before := len(store.counted)
 			rec := post(t, store, "/api/auth/login", body, "")
 			assertJSONStatus(t, rec, http.StatusUnauthorized, "Invalid email or password")
 			if sessionCookieFrom(rec) != nil {
 				t.Fatal("a failed sign-in must not set a cookie")
 			}
-			if len(store.recorded) != before+1 {
-				t.Fatal("the failure was not recorded")
+			if len(store.counted) != before+1 {
+				t.Fatal("the attempt was not counted")
 			}
 			bodies = append(bodies, rec.Body.String())
 		})
