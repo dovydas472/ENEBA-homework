@@ -87,6 +87,7 @@ describe("getSuggestions", () => {
         {
           gameTitle: "Grand Theft Auto V",
           productSlug: "grand-theft-auto-v-steam-global",
+          edition: "Standard",
           platform: { slug: "steam", name: "Steam" },
           region: { slug: "global", name: "GLOBAL" },
           coverUrl: null,

@@ -63,6 +63,8 @@ export function SuggestionOption({ item, id, query, active, onChoose, onPrefetch
         <div className={styles.title}>
           <Highlighted text={item.gameTitle} query={query} />
         </div>
+        {/* "Standard" is the normal edition: only a special edition is worth a line (same rule as the Store card). */}
+        {item.edition !== "Standard" && <div className={styles.edition}>{item.edition}</div>}
         {/* Found through another name ("gta" -> Grand Theft Auto V): show which one, so the row makes sense. */}
         {item.matchedAlias && (
           <div className={styles.alias}>

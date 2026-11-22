@@ -143,6 +143,8 @@ export interface Suggestion {
   gameTitle: string;
   /** The game's cheapest in-stock product; if none is in stock, its first product (then inStock=false). */
   productSlug: string;
+  /** Edition of that product: "Standard" or a special one such as "Game of the Year Edition" (the row shows only the special ones). */
+  edition: string;
   /** Platform and region of that product. */
   platform: Ref;
   region: Ref;
