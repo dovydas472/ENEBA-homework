@@ -1,0 +1,6 @@
+/* While RequireAuth asks the server who is signed in: a small spinner where the page will appear. */
+.checking {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-6) 0;
+}

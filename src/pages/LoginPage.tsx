@@ -1,7 +1,6 @@
-import { useDocumentTitle } from "../lib/useDocumentTitle.ts";
-import { PlaceholderPage } from "./PlaceholderPage.tsx";
+import { AuthPage } from "../features/auth/AuthPage.tsx";
 
+/** /login (Task 14): the shared sign-in / sign-up form in "sign in" mode. */
 export function LoginPage() {
-  useDocumentTitle("Sign in");
-  return <PlaceholderPage title="Sign in" />;
+  return <AuthPage mode="login" />;
 }

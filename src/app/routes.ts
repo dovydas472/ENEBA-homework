@@ -1,6 +1,7 @@
 // The route table: which component shows for which URL. It is a plain array (not JSX) so tests can
 // build a memory router from the very same routes that the real app uses (see main.tsx).
 import type { RouteObject } from "react-router";
+import { RequireAuth } from "../features/auth/RequireAuth.tsx";
 import { CartPage } from "../pages/CartPage.tsx";
 import { HomePage } from "../pages/HomePage.tsx";
 import { LoginPage } from "../pages/LoginPage.tsx";
@@ -29,7 +30,12 @@ export const routes: RouteObject[] = [
           { path: "cart", Component: CartPage },
           { path: "login", Component: LoginPage },
           { path: "register", Component: RegisterPage },
-          { path: "orders", Component: OrdersPage },
+          // Pages for signed-in users only (Task 14). RequireAuth sends everyone else to /login?next=...
+          // The checkout page joins this group later.
+          {
+            Component: RequireAuth,
+            children: [{ path: "orders", Component: OrdersPage }],
+          },
           // "*" matches everything that is left -> 404 page.
           { path: "*", Component: NotFoundPage },
         ],

@@ -1,0 +1,68 @@
+/* Text input with label, hint and error: docs/DESIGN.md 4.2. The focus ring is drawn on the wrapper (.control),
+   so it also surrounds a trailing button inside the field (same idea as the header search field). */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height);
+  background: var(--color-surface-inset);
+  box-shadow: var(--shadow-inset);
+  transition: background-color var(--transition-fast);
+}
+
+.control:hover {
+  background: var(--color-surface-inset-hover);
+}
+
+.control:focus-within {
+  background: var(--color-surface-inset-focus);
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Error: a red outline (non-text, 3:1 is enough) - the message under the field says what is wrong. */
+.invalid {
+  outline: 1px solid var(--color-error-border);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 var(--space-2) 0 var(--space-4);
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+}
+
+/* The ring is on .control; the input itself must not draw a second one. */
+.input:focus-visible {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--color-text-subtle);
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* --color-error passes 4.5:1 on the page and on --color-bg-deep, NOT on --color-surface (DESIGN.md 5.1). */
+.error {
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
+}
