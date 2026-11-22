@@ -14,7 +14,10 @@ import (
 // If it changes, the seeded data changes: either the snapshot or a rule was changed
 // on purpose (then update this value), or something broke determinism (for example
 // a different random number sequence) - which this test exists to catch.
-const goldenHash = "c2a7beea4dbe41b1388c33cee11cec647116c0bd9e0b248da5a4e7d0942c8437"
+//
+// History: Task 13a changed it on purpose (search aliases added to Game; the rest
+// of the catalog is proven unchanged by TestAliasesDoNotChangeTheRestOfTheCatalog).
+const goldenHash = "13c04c516f803ece6120a4e389eb81806f1ea62b6187fd22792ac272e1b91359"
 
 func realCatalog(t *testing.T) Catalog {
 	t.Helper()
@@ -22,7 +25,11 @@ func realCatalog(t *testing.T) Catalog {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, err := Generate(snap)
+	extra, err := ParseExtraAliases(seed.ExtraAliasesJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := Generate(snap, extra)
 	if err != nil {
 		t.Fatal(err)
 	}

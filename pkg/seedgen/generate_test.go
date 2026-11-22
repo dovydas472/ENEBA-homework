@@ -36,18 +36,18 @@ func fakeSnapshot(n int) igdb.Snapshot {
 }
 
 func TestGenerateIsDeterministic(t *testing.T) {
-	a, err := Generate(fakeSnapshot(50))
+	a, err := Generate(fakeSnapshot(50), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, _ := Generate(fakeSnapshot(50))
+	b, _ := Generate(fakeSnapshot(50), nil)
 	if !reflect.DeepEqual(a, b) {
 		t.Fatal("two runs with the same snapshot produced different catalogs")
 	}
 }
 
 func TestGenerateShape(t *testing.T) {
-	c, err := Generate(fakeSnapshot(50))
+	c, err := Generate(fakeSnapshot(50), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestGenerateShape(t *testing.T) {
 }
 
 func TestGenerateTimestampsComeFromTheSnapshot(t *testing.T) {
-	c, _ := Generate(fakeSnapshot(50))
+	c, _ := Generate(fakeSnapshot(50), nil)
 	epochEnd := "2026-11-20"
 	for _, k := range c.Keys {
 		if k.CreatedAt.Format("2006-01-02") >= epochEnd {
@@ -104,7 +104,7 @@ func TestGenerateTimestampsComeFromTheSnapshot(t *testing.T) {
 }
 
 func TestValidateRejectsBrokenData(t *testing.T) {
-	c, _ := Generate(fakeSnapshot(50))
+	c, _ := Generate(fakeSnapshot(50), nil)
 	c.Products[0].Slug = "Bad Slug"
 	if _, err := Validate(c); err == nil {
 		t.Fatal("expected an error for a bad slug")
@@ -114,7 +114,7 @@ func TestValidateRejectsBrokenData(t *testing.T) {
 func TestGenerateRejectsBadFetchDate(t *testing.T) {
 	s := fakeSnapshot(1)
 	s.Header.FetchedAt = "yesterday"
-	if _, err := Generate(s); err == nil {
+	if _, err := Generate(s, nil); err == nil {
 		t.Fatal("expected an error")
 	}
 }

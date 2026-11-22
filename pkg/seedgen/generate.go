@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dovydas472/ENEBA-homework/pkg/igdb"
@@ -35,14 +36,22 @@ func NewRNG() *rand.Rand {
 	return rand.New(rand.NewPCG(rngSeed1, rngSeed2))
 }
 
-// Generate builds the whole catalog from the snapshot. It does not touch the
-// database and has no hidden inputs: no time.Now(), no map iteration order, only
-// the snapshot and the fixed RNG. All timestamps are derived from the snapshot's
-// fetch date, so even they are identical on every run.
-func Generate(s igdb.Snapshot) (Catalog, error) {
+// Generate builds the whole catalog from the snapshot and the hand-written extra
+// search aliases (seed/search_aliases_extra.json; nil = none). It does not touch
+// the database and has no hidden inputs: no time.Now(), no map iteration order,
+// only the inputs and the fixed RNG. All timestamps are derived from the
+// snapshot's fetch date, so even they are identical on every run.
+//
+// Aliases do not use the RNG, so adding or changing an alias never changes the
+// generated products, offers or keys.
+func Generate(s igdb.Snapshot, extra []ExtraAlias) (Catalog, error) {
 	fetched, err := time.Parse(time.RFC3339, s.Header.FetchedAt)
 	if err != nil {
 		return Catalog{}, errors.New("snapshot header.fetched_at is not an RFC 3339 time")
+	}
+	extras, err := extrasByGame(s, extra)
+	if err != nil {
+		return Catalog{}, err
 	}
 	epoch := fetched.UTC().Truncate(24 * time.Hour) // "today" of the snapshot, 00:00 UTC
 
@@ -53,6 +62,9 @@ func Generate(s igdb.Snapshot) (Catalog, error) {
 
 	for gi, sg := range s.Games {
 		game := gameRow(sg, usedGameSlugs)
+		if game.Aliases, err = aliasesFor(sg, extras[sg.IGDBID]); err != nil {
+			return Catalog{}, err
+		}
 		c.Games = append(c.Games, game)
 		year := 0
 		if game.ReleaseDate != nil {
@@ -199,6 +211,7 @@ type Stats struct {
 	OutOfStockProducts, ZeroKeyOffers, InactiveOffers int
 	AvailableKeys, ExpiredReservedKeys, SoldKeys      int
 	NewSellers                                        int
+	Aliases                                           int
 }
 
 var (
@@ -219,6 +232,17 @@ func Validate(c Catalog) (Stats, error) {
 			return st, fmt.Errorf("bad or duplicate game slug %q", s.Slug)
 		}
 		slugs["g:"+s.Slug] = true
+		// Same rules as the game_aliases table: not blank, once per game whatever
+		// the case (unique index on game_id, lower(alias)); and never the title itself.
+		seen := map[string]bool{strings.ToLower(s.Title): true}
+		for _, a := range s.Aliases {
+			key := strings.ToLower(a)
+			if strings.TrimSpace(a) == "" || seen[key] {
+				return st, fmt.Errorf("game %s: blank, duplicate or title-equal alias %q", s.Slug, a)
+			}
+			seen[key] = true
+			st.Aliases++
+		}
 	}
 	offersPerProduct := map[string]int{}
 	for _, p := range c.Products {

@@ -9,7 +9,7 @@ import (
 
 // CatalogTables in dependency order: children first. Deleting in this order never
 // breaks a foreign key (all FKs are ON DELETE RESTRICT); inserting goes the other way.
-var CatalogTables = []string{"keys", "offers", "products", "sellers", "games", "regions", "platforms"}
+var CatalogTables = []string{"keys", "offers", "products", "game_aliases", "sellers", "games", "regions", "platforms"}
 
 // TableCount is the number of rows in one table.
 type TableCount struct {
@@ -21,7 +21,7 @@ type TableCount struct {
 // "is it empty?" check and the inserts cannot race with a second seed run
 // (the second one waits, then sees the data and refuses). Readers are not blocked.
 func Lock(ctx context.Context, tx pgx.Tx) error {
-	_, err := tx.Exec(ctx, "LOCK TABLE platforms, regions, games, products, sellers, offers, keys IN SHARE ROW EXCLUSIVE MODE")
+	_, err := tx.Exec(ctx, "LOCK TABLE platforms, regions, games, game_aliases, products, sellers, offers, keys IN SHARE ROW EXCLUSIVE MODE")
 	return err
 }
 
@@ -115,6 +115,18 @@ func Insert(ctx context.Context, tx pgx.Tx, c Catalog) error {
 	gameID, err := idsBySlug(ctx, tx, "games")
 	if err != nil {
 		return err
+	}
+
+	// search aliases (game order, then alias order: the ids are deterministic too)
+	var aliasRows [][]any
+	for _, g := range c.Games {
+		for _, a := range g.Aliases {
+			aliasRows = append(aliasRows, []any{gameID[g.Slug], a})
+		}
+	}
+	if _, err := tx.CopyFrom(ctx, pgx.Identifier{"game_aliases"},
+		[]string{"game_id", "alias"}, pgx.CopyFromRows(aliasRows)); err != nil {
+		return fmt.Errorf("copy game aliases: %w", err)
 	}
 
 	// products
@@ -223,6 +235,8 @@ FROM (
                          extract(epoch FROM reserved_until)::bigint,
                          extract(epoch FROM sold_at)::bigint,
                          extract(epoch FROM created_at)::bigint) FROM keys
+    UNION ALL
+    SELECT 8, id, format('%L|%L|%L', id, game_id, alias) FROM game_aliases
 ) AS rows_as_text`
 
 // Checksum returns an MD5 of the ordered catalog content. Two databases with the

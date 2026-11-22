@@ -1,0 +1,20 @@
+{
+  "note": "Hand-written search aliases that IGDB alternative_names does not have (Task 13a). Keep it short, one reason per entry. If IGDB starts listing one of them, the seed fails with a clear message: then delete the entry here.",
+  "aliases": [
+    {
+      "igdb_id": 11156,
+      "alias": "HZD",
+      "reason": "The usual abbreviation of Horizon Zero Dawn; IGDB only lists \"Horizon\"."
+    },
+    {
+      "igdb_id": 26758,
+      "alias": "SMO",
+      "reason": "The usual abbreviation of Super Mario Odyssey; IGDB lists no alternative name for it at all."
+    },
+    {
+      "igdb_id": 7346,
+      "alias": "Zelda BotW",
+      "reason": "How players write it; it mixes a title word and an alias word, so neither the title nor \"TLoZ BotW\" matches it on its own."
+    }
+  ]
+}
