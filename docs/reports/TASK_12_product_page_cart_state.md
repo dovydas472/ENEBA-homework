@@ -131,7 +131,7 @@ What the reference shows:
 1. Open the PR Preview and compare with eneba.com at laptop size and on your phone. On a product page: buy box, offers, "Other versions" and the toast. Then open an out-of-stock product, e.g. `/product/hades-psn-global`.
 2. Add items, then open a second tab. The header badge follows in both tabs. Reload: the cart is still there.
 3. In the Store, hover a card ("Add to cart" + "View offers") and tap the cart icon on a phone.
-4. Export the session log (`/export`) and save it as `ai-logs/2026-11-22_NN_product-page-cart.md`; Claude Code commits it on this branch if you ask (CLAUDE.md). This was a local session, so the remote-conversion procedure was not used.
+4. Session log: done. You asked for it after the review, so Claude Code converted the session transcript (`/export` is a user command it cannot run), redacted it and committed it as `ai-logs/2026-11-22_01_product-page-cart.md`.
 5. Note: during the browser check your older `cmd/local` (:8080) and Vite (:5173) from 2026-11-21 were still running. I left them alone and used :8081 / :4174 instead.
 
 ## 4. Plain-language explanation
@@ -176,4 +176,4 @@ The `task-reviewer` subagent got only the task number. It ran after the code and
 | Scope items to justify: notices column, `Price` row size, `formatDate` / `discount` helpers, README, new tokens | §1 and §5: the notices column prevents overlap; the row size is a measured Eneba value; the helpers are needed by P1 / P4 and have tests; the README documents the API change; tokens are in DESIGN.md 2 |
 | `useInView` and `Breadcrumb` have no direct unit test | Not added. `useInView` was later removed together with the phone bar. `Breadcrumb` is covered by the product page test (link + `aria-current`) |
 | `.vscode/` is untracked; keep it out of the PR | Not committed |
-| Session log not committed | Owner step (§3, item 4) |
+| Session log not committed | Done after the review: `ai-logs/2026-11-22_01_product-page-cart.md` (§3, item 4) |
