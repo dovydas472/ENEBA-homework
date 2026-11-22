@@ -173,6 +173,7 @@ Added / changed in Task 11b (S4): `--chip-height` 30px (active-filter chip), `--
 `--cover-aspect-ratio` 5 / 7 → **223 / 303** (the measured cover box, strip included).
 Added in Task 12 (S5, product page): `--product-cover-width` 224px (72px = `--product-cover-width-sm` ≤930px), `--buy-box-width` 350px, `--avatar-size` 40px (seller avatar),
 `--icon-size-lg` 40px (fact icons next to the cover).
+Added in Task 13b (header search suggestions, measured on eneba.com): `--suggestion-cover-width` 72px (cover in a suggestion row, 4.13).
 
 ---
 
@@ -213,6 +214,11 @@ Categories move into the hamburger drawer. Every icon button is at least 40×40.
   The search icon opens the field **over the row** (with a × close; Esc also closes and returns focus to the icon). ☰ opens a full-screen menu
   (native `<dialog>`, page colour, header row = wordmark + ×, links 16px regular, 40px rows with 10px 20px padding).
 - No locale/currency switch, no wishlist heart, no "Categories" item and no promo pill: we have no such features (see the Task 11b report, "intentionally not copied").
+
+**As built in Task 13b (search suggestions):** the field is a **combobox** with a suggestions list under it (4.13); it shows the current `?q=` only on `/store` (empty on other pages).
+While the list is open the page is dimmed with `--color-overlay` (Eneba: `rgba(0,0,0,.55)`): on desktop everything except the field and the list, on phones only the page **under** the
+header row (the row with the field and its × stays bright). The phone search row sits on `--z-dropdown` while open, so the list is above the cards' cover badges.
+Esc order on phones: 1) closes the list, 2) clears the field, 3) closes the search row (focus back to the search icon).
 
 ### 3.2 Store page (catalog with filters)
 
@@ -261,6 +267,15 @@ Desktop ≥931                                       Mobile ≤600
     then a footer on `--color-surface` with a full-width primary "Show N results".
   - **Phones (≤600px): one column of horizontal list cards** (replaces the 2 columns of S7), 15px apart; see 4.3.
   - Pagination: see 4.12.
+
+  **As built in Task 13b (owner decisions Q3/Q5): the Store with a search text `?q=…`**
+  - h1 "Results for 'q'" (`overflow-wrap: anywhere`, so a long text cannot widen the page) and, on the same baseline 20px to the right, a **ghost button "× Clear search"**
+    (14px medium, 20px icon; it wraps under the title when there is no room). It removes only `q`; filters and a non-default sort stay. The tab title is "Results for 'q'".
+  - The count ("N results") and the bar stay as they are. The sort offers **"Best match" first, only while `q` is set**, and it is then the default (left out of the URL).
+  - **No results:** the empty state (4.9) "No results for 'q'" + "Check the spelling or try other words." (+ "or remove a filter" when one is active), secondary buttons
+    "Clear search" (+ "Clear filters" when a filter is active); 30px under it **"Popular right now"** (h2 18px bold, 20px above the cards): the first 8 products of the
+    default listing in the normal grid. If that request fails, the block is simply not shown.
+  - The old "Text search arrives in a later task" note is gone.
 
 ### 3.3 Product page
 
@@ -340,6 +355,7 @@ Disabled and loading as above. A primary button is allowed **once per view area*
 - **Label:** `--font-size-sm`, medium; required marker `*` in `--color-accent` (C).
 - **Error:** `outline: 1px solid var(--color-error-border)` and a message under the field, `--font-size-xs`, `--color-error`, `role="alert"` or `aria-describedby` (the outline alone is not enough).
 - **Search field (header):** see 3.1 — wrapper has the 1px white border; on `:focus-within` the **wrapper** gets the focus ring (`outline` on the wrapper, none on the inner input) so the ring surrounds the whole field (**D**).
+  Since Task 13b the field is part of `SearchBox` (`src/features/search/`, it replaced `SearchField`); its background is `--color-bg` (not transparent), so it stays bright above the dimmed page.
 - Number input (price range): two 77px-wide inputs with a bold "–" between, spin buttons hidden (C).
 
 ### 4.3 Product card
@@ -522,6 +538,29 @@ The live regions stay in the DOM while empty (0px tall) — hiding them would st
 hover = secondary-button hover; disabled = `opacity: .5`), named "Previous page" / "Next page" for screen readers. Page numbers are plain 16px bold white text in a
 `--button-height` tap area; the **current page is `--color-accent`** (no box) and has `aria-current="page"`; hover → accent. The ellipsis is `aria-hidden`.
 
+### 4.13 Search suggestions (header, Task 13b)
+
+**Eneba (measured 2026-11-22 at 1440 and 390, see section 6):** a popup exactly under the field and as wide (550px desktop; full width under the 56px row on phones),
+background `#4618ac` (= `--color-bg`), page behind dimmed `rgba(0,0,0,.55)` (= `--color-overlay`). First up to 5 *query* rows (40px, magnifier + text), then up to 6 *product* rows:
+padding `5px 0 5px 20px`, cover 72×102, 15px gap, a mint outlined "Digital good" pill, title 14px extra-bold (line 17px), right column "From €x" (12px) over the price (18px bold),
+"Sold out" 12px `#dcd8e6` with an icon. The active / hovered row is `#351183` (= `--color-bg-deep`); the input keeps the focus and points at it with `aria-activedescendant`
+(`role=combobox` + `role=listbox`, options with `aria-selected`). Last: an outlined "Show all N results" button (35px, 20px from the sides). No matches: a ghost illustration,
+"Sorry, no matches found", a hint and a yellow "View popular products" button.
+
+**Ours:**
+- Popup: `--color-bg`, `--shadow-dropdown`, 10px padding top and bottom, `max-height` = screen height minus the header row, scrolls inside (`overscroll-behavior: contain`).
+  The page behind: `--color-overlay` (see 3.1 for what is dimmed on phones).
+- Game row (up to 6, one per game): `grid: --suggestion-cover-width | 1fr | auto`, gap `--space-3`, padding `--space-1 --space-4`; cover = `CoverImage` (ratio `--cover-aspect-ratio`).
+  Middle: title 14px bold (`--line-height-tight`), the typed part in `--color-accent` (a `<mark>` without background); "Also known as GTA V" (12px `--color-text-muted`, the alias,
+  shown only when an alias matched and the title did not); "Platform · Region" 12px `--color-secondary` (instead of Eneba's "Digital good" pill). Right: `Price` size `row`
+  ("From" + 20px price, right-aligned) or "Out of stock" (12px medium `--color-text-nav`, like Eneba's "Sold out").
+  Hover and keyboard-active rows: `--color-bg-deep`.
+- Last row "See all results for 'q'": looks like the secondary button (1px `--color-border-strong`, 14px bold, `--button-height`), margin `15px 20px 10px`;
+  hover / active = `--color-bg-deep`, and the active one also gets the focus ring (the outline alone does not show "active").
+- No matches: one row "No matches for 'q'" (14px, padding `15px 20px`), no "See all results". (No illustration and no button: we keep it to one line, owner decision Q2.)
+- Loading: a `Spinner` (16px, `--color-text-muted`) at the right end of the field while a request runs; the previous rows stay on screen meanwhile.
+- **Not copied:** the query-text rows (we have no search-term data, it would be dead UI), the "Digital good" pill, the ⓘ next to the old price (suggestions have no old price), the ghost illustration.
+
 ---
 
 ## 5. Accessibility
@@ -565,6 +604,7 @@ Minimums for every screen: text contrast **≥ 4.5:1**, non-text UI (borders of 
 | Offer row (`rgba(0,0,0,.3)` over page): `--color-discount` / `--color-warning` / `--color-secondary` / `--color-text-muted` / `--color-text-subtle` | 9.21 / 6.86 / 6.24 / 7.46 / 6.41 | pass (Task 12: "BEST PRICE", "Only N left", "NEW SELLER", reviews, genre tags) |
 | `--color-text-nav` / `--color-accent` on `--color-surface` (buy box seller line, "+N more offers") | 5.88 / 5.64 | pass (Task 12) |
 | `--color-text-nav` / `--color-text-subtle` on `--color-bg-deep` (description, detail labels) | 9.62 / 6.10 | pass (Task 12) |
+| Suggestion row on `--color-bg` / on `--color-bg-deep` (active): `--color-accent` (typed part) / `--color-text-muted` (alias) / `--color-secondary` (platform · region) / `--color-text-nav` ("Out of stock") / `--color-text-subtle` ("From") | 7.25 / 5.83 / 4.65 / 7.55 / 4.79 · 9.23 / 7.14 / 5.93 / 9.62 / 6.10 | pass (Task 13b; axe 0 violations with the list open and a row active) |
 
 Disabled controls (`opacity: .5`) are exempt from the contrast rule (WCAG), but the disabled state must still be recognisable.
 The numbers were computed with a small script (sRGB → relative luminance → `(L1+.05)/(L2+.05)`); re-check whenever a color token changes.
@@ -610,3 +650,7 @@ DOM before the screenshots (no consent was given). Reference screenshots are kep
 screenshots plus computed styles of the breadcrumb, cover, title, facts, buy box, offer rows, section headings, genre tags, description panel and details table; the phone page was scrolled
 to look for a sticky buy bar (**there is none**, only the sticky header). Eneba shows **no "other versions" list** on the product page. Reference screenshots stay outside the repo; the
 comparison is in `docs/reports/TASK_12_product_page_cart_state.md`.
+
+**Task 13b search suggestions (2026-11-22):** headless Edge at 1440×900 and 390×844 on the home page: the field focused, then `witcher` typed (normal list), `qwertyzz` (Eneba still
+found one product by similarity) and `xqzjvwkq` (no matches); computed styles of the popup, rows, cover, pill, title, price, "Show all" button; ARIA of the input and options; ↓↓ to see the
+active row. Cookie / location pop-ups removed from the DOM (no consent given). Reference screenshots stay outside the repo; the comparison is in `docs/reports/TASK_13b_search_ui.md`.

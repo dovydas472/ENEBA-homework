@@ -596,3 +596,48 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **`matchedAlias`** – tik kai **pavadinimas nesutapo** („gta 5" → „GTA 5"). Jei pavadinimas sutapo („arkham asylum"), `null` – nėra prasmės rodyti alias šalia pavadinimo, kuris jau matosi.
 - **Cache:** `s-maxage=300, stale-while-revalidate=600` – pasiūlymai keičiasi tik kartu su katalogu; kaina čia gali būti 5 min. sena, produkto puslapis rodo tikrą.
 - **Gali paklausti:** „Kodėl `q` validuojamas serveryje, jei frontend'as irgi tikrina?" – API viešas, kiekvienas gali jį kviesti tiesiogiai. 2–100 simbolių (ne baitų: „é" – vienas), `%` ir `_` pabėgami Go'e, kad „%%" nerastų **visko** (integracinis testas tai tikrina), o tekstas SQL'ą pasiekia **tik kaip parametras**.
+
+# Task 13b – paieškos UI: pasiūlymai header'yje ir paieškos rezultatai Store puslapyje
+
+## Combobox + listbox (ARIA 1.2) – kaip veikia ir kodėl (`src/features/search/SearchBox.tsx`)
+- **Ką daro:** paieškos laukas header'yje turi `role="combobox"`, o sąrašas po juo – `role="listbox"` su eilutėmis `role="option"`. Laukas su sąrašu susietas: `aria-controls` = sąrašo `id`, `aria-expanded` = ar sąrašas rodomas, `aria-autocomplete="list"`. Rodyklėmis ↓/↑ pasirenkama eilutė („aktyvi"), bet **fokusas lieka lauke**: laukas per `aria-activedescendant` pasako ekrano skaitytuvui, kurios eilutės `id` dabar aktyvi, o pati eilutė gauna `aria-selected="true"`.
+- **Kodėl fokusas lieka lauke:** vartotojas gali toliau rašyti; jei fokusas šokinėtų į eilutes, kiekviena raidė ten nueitų niekur. Todėl eilutės ne Tab eilėje (`tabIndex={-1}`), o pelės paspaudimas ant eilutės daro `preventDefault` ant `mousedown` – fokusas neišeina iš lauko.
+- **Klaviatūra (owner sprendimas Q2):** ↓/↑ – kita / ankstesnė eilutė, ratu (nuo paskutinės į pirmą; logika – gryna funkcija `moveActive.ts` su testais). Enter ant žaidimo eilutės → produkto puslapis; Enter be aktyvios eilutės arba ant „See all results" → `/store?q=…`. Esc – uždaro sąrašą, antras Esc – išvalo lauką (abiem atvejais `preventDefault`, kad nesimaišytų naršyklės „Esc išvalo search lauką", ir `stopPropagation`, kad telefone paieškos eilutė neužsidarytų per anksti; trečias Esc telefone uždaro paieškos eilutę). Tab ir paspaudimas už sąrašo ribų – uždaro.
+- **Eilutė – tikra nuoroda (`<a role="option">`):** veikia vidurinis pelės mygtukas ir „atidaryti naujame skirtuke". HTML leidžia `<a href>` turėti `role="option"`.
+- **„No matches":** kai atsakymas tuščias, rodoma viena eilutė „No matches for 'q'", bet `aria-expanded="false"` – nes listbox'e nėra nė vieno pasirinkimo. Ekrano skaitytuvui apie rezultatą praneša atskiras, **visada DOM'e esantis** `role="status"` regionas („6 games found…" / „No matches for 'q'") – ta pati priežastis kaip toast'o (Task 12): skaitytuvas praneša tik apie pokyčius jau esamame regione.
+- **Gali paklausti:** „Kodėl ne `<datalist>`?" – `<datalist>` neleidžia viršelių, kainų, nuorodų ir stiliaus; ARIA combobox yra standartinis W3C APG modelis tokiam sąrašui. „Kodėl listbox visada DOM'e?" – `aria-controls` turi rodyti į egzistuojantį elementą; uždarytas jis tiesiog `hidden`.
+
+## Debounce ir pasenę atsakymai (`useDebouncedValue.ts`, `queries.ts` → `suggestionsQuery`)
+- **Ką daro:** `useDebouncedValue(text, 200)` grąžina tekstą tik tada, kai jis **200 ms nesikeitė** (kiekviena nauja raidė iš naujo paleidžia laikmatį). Greitai surinkus „witcher" išsiunčiama **viena** užklausa, ne septynios (patikrinta testu su netikrais laikmačiais).
+- **Nuo 2 simbolių:** `cleanQuery` (tos pačios taisyklės kaip API: apkarpyta, 2–100 simbolių); trumpesniam tekstui užklausa neišsiunčiama ir sąrašas nerodomas.
+- **Pasenę atsakymai:** kiekvienas tekstas turi savo TanStack Query raktą `["suggestions", q]`. UI rodo **tik** dabartinio rakto duomenis, todėl lėtas atsakymas į „wit", atėjęs po „witcher" atsakymo, patenka į savo („wit") cache'o vietą ir niekada nepakeičia „witcher" sąrašo (patikrinta testu). Be to, kai raktas pasikeičia, senoji užklausa nebeturi stebėtojų ir TanStack Query ją **nutraukia** per `signal` (`apiFetch` jį perduoda `fetch`'ui).
+- **`keepPreviousData`:** kol keliauja naujas atsakymas, rodomos senos eilutės (o lauke sukasi mažas spinner'is), todėl sąrašas nemirga ir nešokinėja. „No matches" rodomas tik **tikram** atsakymui (ne senam, laikinai rodomam tuščiam sąrašui).
+- **Kada neklausiama:** užklausa įjungta tik kai sąrašas norimas (`enabled: open && …`), todėl atidarius `/store?q=witcher` pasiūlymų užklausa savaime neišsiunčiama.
+- **Gali paklausti:** „Kodėl ne `AbortController` ranka?" – TanStack Query tai jau daro per `signal`; rankinis kodas tik dubliuotų. „Kodėl 200 ms?" – owner sprendimas: pakankamai greita, kad atrodytų „gyvai", ir pakankamai ilga, kad greitas rašymas neišsiųstų užklausos po kiekvienos raidės.
+
+## Paryškinimas (`highlight.ts`)
+- **Ką daro:** `highlightParts("The Witcher 3", "witch")` → `["The ", "Witch" (paryškinta), "er 3"]`. Ieško **pirmos** vietos, ignoruodama didžiąsias / mažąsias raides, bet paryškintoje dalyje palieka pavadinimo rašybą („Witch", ne „witch"). Komponentas paryškintą dalį deda į `<mark>` (geltonas tekstas be fono).
+- **Kada neparyškina:** jei įvestas tekstas nėra paprastas pavadinimo fragmentas – pvz. klaida „witchr" (serveris rado pagal panašumą) ar alias'as „gta" (rado pagal kitą pavadinimą). Tada visas pavadinimas paprastas, o eilutė rodo „Also known as GTA V" (su paryškintu „GTA") – kad būtų aišku, kodėl žaidimas sąraše. Retas atvejis: jei raidė, ją sumažinus, pakeičia ilgį (pvz. „İ"), pozicijos nesutaptų – tada irgi neparyškinama.
+- **Kodėl ne `dangerouslySetInnerHTML` su `<mark>`:** dalys – paprasti tekstai, React juos pats saugiai „escape'ina"; jokio HTML iš duomenų.
+
+## Kodėl URL laiko `q` (`storeParams.ts`, `useStoreParams.ts`)
+- **Ką daro:** paieška yra Store puslapis su `?q=…` (`/store?q=witcher&platform=steam`). Tas pats principas kaip filtrų (Task 11): **URL – vienintelis tiesos šaltinis**, todėl perkrovus, Back/Forward ar pasidalinus nuoroda rodomi tie patys rezultatai. `q` dabar siunčiamas į API kartu su filtrais (API filtruoja ir prekes, ir facet'us).
+- **Valymas (sanitizer):** `cleanQuery` – apkarpo, `< 2` simbolių → išmeta, `> 100` → nukerpa iki 100 (skaičiuojant simbolius `[...text]`, kad emoji nebūtų perkirptas per pusę). Ranka įrašytas `?q=a` niekada nesukels 400 – tiesiog rodomas Store be paieškos.
+- **Header'io laukas** rodo `q` **tik** `/store` puslapyje (kituose – tuščias). Kai URL'o `q` pasikeičia, pasikeičia ir laukas: React'o „adjust state when a prop changes" būdas (palyginama su ankstesne reikšme renderio metu), o ne `useEffect` – efektas pirmiau nupieštų seną tekstą, o ankstesnis `key` būdas iš naujo sukurdavo lauką ir prarasdavo fokusą.
+- **„Clear search"** pašalina tik `q` – filtrai ir kitas rūšiavimas lieka.
+- **Gali paklausti:** „Kodėl paieška ne atskiras `/search` puslapis?" – rezultatai yra tas pats katalogas su tais pačiais filtrais, rūšiavimu ir puslapiavimu; atskiras puslapis būtų to paties kodo kopija.
+
+## „Best match" tik su `q` (`sortLabels.ts` → `sortOptions`, `defaultSort`; `storeParams.ts` → `withoutOrphanRelevance`)
+- **Ką daro:** naujas rūšiavimas `relevance` („Best match") rikiuoja pagal tai, kaip gerai prekė atitinka tekstą (tikslus pavadinimas > pradžia > fragmentas > panašumas, tada populiarumas – 13a backend'o taisyklė). Be teksto jis neturi prasmės, todėl:
+  - select'e ir telefono radio mygtukuose „Best match" rodomas **tik kai yra `q`**, ir tada jis numatytasis (URL'e nerašomas, kaip „Most popular" be `q`);
+  - jei `q` pašalinamas, kai rūšiuota „Best match", `sort=relevance` išmetamas ir puslapis grįžta prie „Most popular" – taisyklė vienoje vietoje (`withoutOrphanRelevance`), naudojama ir skaitant URL (ranka įrašytas `?sort=relevance`), ir rašant (`mergeStoreParams`).
+- **Gali paklausti:** „O jei kas nors API'ui atsiųs `sort=relevance` be `q`?" – API (13a) tai leidžia ir elgiasi kaip `popularity`; mūsų UI to tiesiog nesiunčia.
+
+## „No results for 'q'" ir „Popular right now" (`StorePage.tsx`, `PopularProducts.tsx`)
+- **Ką daro:** jei paieška nieko nerado: antraštė „No results for 'q'", patarimas, „Clear search" (ir „Clear filters", jei filtras aktyvus), o po jais – 8 populiariausios prekės (`GET /api/products?pageSize=8`, numatytasis rūšiavimas).
+- **Kodėl:** tuščias puslapis – aklavietė; populiarios prekės duoda kur eiti toliau (Eneba siūlo „View popular products"). Jei ši papildoma užklausa nepavyksta, blokas tiesiog nerodomas – svarbiausia žinutė jau yra viršuje.
+
+## Užtamsinimas po sąrašu ir sluoksniai (`SearchBox.module.css`, `Header.module.css`)
+- **Ką daro:** kai sąrašas atidarytas, puslapis užtamsinamas `--color-overlay` (kaip Eneba). Kompiuteryje dėžutė su lauku ir sąrašu gauna `z-index: var(--z-dropdown)`, o užtamsinimas jos viduje turi `z-index: -1`: jis piešiamas **virš** viso puslapio, bet **po** lauku ir sąrašu.
+- **Telefone kitaip:** dėžutė yra flex elementas, o flex elementas su `z-index` sukuria savo sluoksnį net ir nepozicionuotas – tada užtamsinimas uždengdavo ir „Close search" ×. Todėl telefone dėžutė be `z-index`, o užtamsinimas prasideda **po** header'io eilute (kaip Eneba telefone). Atidaryta telefono paieškos eilutė yra `--z-dropdown` sluoksnyje, kad sąrašas būtų virš kortelių ženklelių (`--z-raised`).
+- **Gali paklausti:** „Kaip radai tą klaidą?" – naršyklės ekrano kopijoje telefone × buvo pilkas; jsdom testai CSS sluoksnių nemato.
