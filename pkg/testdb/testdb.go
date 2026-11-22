@@ -1,5 +1,6 @@
 // Package testdb gives database integration tests a ready-to-use Postgres:
-// migrated and filled with the deterministic demo catalog (pkg/seedgen).
+// migrated and filled with the deterministic demo catalog (pkg/seedgen) - Pool -
+// or only migrated - Migrated (the auth tests need the schema, not the catalog).
 //
 // The database comes from TEST_DATABASE_URL. When it is empty the test is
 // skipped, so `go test ./...` works on any machine; CI provides a throw-away
@@ -26,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" database/sql driver (goose needs database/sql)
 	"github.com/pressly/goose/v3"
+	"github.com/pressly/goose/v3/lock"
 
 	"github.com/dovydas472/ENEBA-homework/migrations"
 	"github.com/dovydas472/ENEBA-homework/pkg/igdb"
@@ -43,27 +45,52 @@ var (
 	once sync.Once
 	pool *pgxpool.Pool
 	err  error
+
+	migratedOnce sync.Once
+	migratedPool *pgxpool.Pool
+	migratedErr  error
 )
 
 // Pool returns a connection pool to the migrated and seeded test database.
 // When TEST_DATABASE_URL is empty it skips the test - or fails it if REQUIRE_TEST_DB=1.
 func Pool(t testing.TB) *pgxpool.Pool {
 	t.Helper()
-	url := os.Getenv(envName)
-	if url == "" {
-		missingURL(t, os.Getenv(requireName))
-		return nil // unreachable: Skip/Fatal stop the test (the line only satisfies the compiler)
-	}
-	// Safety net: the seed wipes the catalog tables, so refuse a Neon host.
-	if strings.Contains(url, "neon.tech") {
-		t.Fatal(envName + " points at Neon. Use a throw-away local/CI Postgres, never a Neon branch")
-	}
-
+	url := testURL(t)
 	once.Do(func() { pool, err = setup(url) })
 	if err != nil {
 		t.Fatalf("test database set-up failed: %v", err)
 	}
 	return pool
+}
+
+// Migrated returns a pool to the test database with every migration applied,
+// WITHOUT touching the catalog (no reset, no seed). For tests that only need
+// the schema, e.g. the auth tests: they create their own users with unique emails.
+// Same skip / REQUIRE_TEST_DB rules as Pool.
+func Migrated(t testing.TB) *pgxpool.Pool {
+	t.Helper()
+	url := testURL(t)
+	migratedOnce.Do(func() { migratedPool, migratedErr = setupMigrated(url) })
+	if migratedErr != nil {
+		t.Fatalf("test database set-up failed: %v", migratedErr)
+	}
+	return migratedPool
+}
+
+// testURL reads TEST_DATABASE_URL: it skips (or fails) when it is empty and
+// refuses a Neon host.
+func testURL(t testing.TB) string {
+	t.Helper()
+	url := os.Getenv(envName)
+	if url == "" {
+		missingURL(t, os.Getenv(requireName))
+		return "" // unreachable: Skip/Fatal stop the test (the line only satisfies the compiler)
+	}
+	// Safety net: the seed wipes the catalog tables, so refuse a Neon host.
+	if strings.Contains(url, "neon.tech") {
+		t.Fatal(envName + " points at Neon. Use a throw-away local/CI Postgres, never a Neon branch")
+	}
+	return url
 }
 
 // missingURL is the "no database" decision: skip locally, fail where a
@@ -77,24 +104,53 @@ func missingURL(t testing.TB, require string) {
 	t.Skip(envName + " is empty: skipping database integration test")
 }
 
+// migrate applies every migration. The SQL files are embedded in the binary
+// (migrations.FS). Up is idempotent: on a database that is already migrated it
+// does nothing. Go tests several packages at the same time, each in its own
+// process, so goose takes a Postgres advisory lock (session locker): only one
+// process migrates, the others wait and then find nothing left to do.
+func migrate(ctx context.Context, url string) error {
+	sqlDB, err := sql.Open("pgx", url)
+	if err != nil {
+		return fmt.Errorf("open database/sql handle: %w", err)
+	}
+	defer sqlDB.Close()
+	locker, err := lock.NewPostgresSessionLocker()
+	if err != nil {
+		return fmt.Errorf("create migration lock: %w", err)
+	}
+	provider, err := goose.NewProvider(goose.DialectPostgres, sqlDB, migrations.FS, goose.WithSessionLocker(locker))
+	if err != nil {
+		return fmt.Errorf("create migration provider: %w", err)
+	}
+	if _, err := provider.Up(ctx); err != nil {
+		return fmt.Errorf("apply migrations: %w", err)
+	}
+	return nil
+}
+
+// setupMigrated applies every migration and opens a pool (no seed).
+func setupMigrated(url string) (*pgxpool.Pool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	if err := migrate(ctx, url); err != nil {
+		return nil, err
+	}
+	p, err := pgxpool.New(ctx, url)
+	if err != nil {
+		return nil, fmt.Errorf("create pool: %w", err)
+	}
+	return p, nil
+}
+
 // setup applies every migration, then resets and seeds the catalog.
 func setup(url string) (*pgxpool.Pool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	// 1. Migrations: the SQL files are embedded in the binary (migrations.FS).
-	// Up is idempotent: on a database that is already migrated it does nothing.
-	sqlDB, err := sql.Open("pgx", url)
-	if err != nil {
-		return nil, fmt.Errorf("open database/sql handle: %w", err)
-	}
-	defer sqlDB.Close()
-	provider, err := goose.NewProvider(goose.DialectPostgres, sqlDB, migrations.FS)
-	if err != nil {
-		return nil, fmt.Errorf("create migration provider: %w", err)
-	}
-	if _, err := provider.Up(ctx); err != nil {
-		return nil, fmt.Errorf("apply migrations: %w", err)
+	// 1. Migrations.
+	if err := migrate(ctx, url); err != nil {
+		return nil, err
 	}
 
 	// 2. Seed: the same deterministic generator as cmd/seed, in one transaction.
