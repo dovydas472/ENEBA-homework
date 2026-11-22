@@ -33,6 +33,7 @@
 .primary:hover,
 .primary:focus-visible {
   background: var(--color-accent-hover);
+  color: var(--color-text-on-accent); /* ButtonLink: global.css turns a hovered link amber */
 }
 
 .primary:active {
@@ -48,6 +49,7 @@
 .secondary:hover {
   background: var(--color-control-hover);
   border-color: var(--color-accent);
+  color: var(--color-text); /* ButtonLink: global.css turns a hovered link amber */
 }
 
 .secondary:active,

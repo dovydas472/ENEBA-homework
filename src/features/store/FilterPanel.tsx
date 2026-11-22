@@ -15,15 +15,15 @@ interface FilterPanelProps {
 }
 
 /**
- * The three filter groups: Platform, Region, Price range. The desktop sidebar and the mobile drawer
- * both show this same component, so the two can never differ.
+ * The three filter groups, in Eneba's order: Price range first, then Platform and Region.
+ * The desktop sidebar and the mobile drawer both show this same component, so the two can never differ.
  */
 export function FilterPanel({ facets, params, onChange }: FilterPanelProps) {
   // First load: three grey bars instead of checkboxes (DESIGN.md 4.8, "Loading").
   if (!facets) {
     return (
       <>
-        {["Platform", "Region", "Price range (EUR)"].map((title) => (
+        {["Price range (EUR)", "Platform", "Region"].map((title) => (
           <FilterGroup key={title} title={title}>
             <div className={styles.skeleton} aria-hidden="true">
               <Skeleton />
@@ -38,27 +38,6 @@ export function FilterPanel({ facets, params, onChange }: FilterPanelProps) {
 
   return (
     <>
-      {/* An empty group is hidden (DESIGN.md 4.8): e.g. no regions when the platform has no products. */}
-      {facets.platforms.length > 0 && (
-        <FilterGroup title="Platform">
-          <CheckboxFilter
-            label="Platform"
-            options={facets.platforms}
-            selected={params.platform ?? []}
-            onChange={(selected) => onChange({ platform: selected })}
-          />
-        </FilterGroup>
-      )}
-      {facets.regions.length > 0 && (
-        <FilterGroup title="Region">
-          <CheckboxFilter
-            label="Region"
-            options={facets.regions}
-            selected={params.region ?? []}
-            onChange={(selected) => onChange({ region: selected })}
-          />
-        </FilterGroup>
-      )}
       <FilterGroup title="Price range (EUR)">
         <PriceFilter
           range={facets.priceRange}
@@ -68,6 +47,27 @@ export function FilterPanel({ facets, params, onChange }: FilterPanelProps) {
           onApply={(minPrice, maxPrice) => onChange({ minPrice, maxPrice }, { replace: true })}
         />
       </FilterGroup>
+      {/* An empty group is hidden (DESIGN.md 4.8): e.g. no regions when the platform has no products. */}
+      {facets.platforms.length > 0 && (
+        <FilterGroup title="Platform" selectedCount={params.platform?.length}>
+          <CheckboxFilter
+            label="Platform"
+            options={facets.platforms}
+            selected={params.platform ?? []}
+            onChange={(selected) => onChange({ platform: selected })}
+          />
+        </FilterGroup>
+      )}
+      {facets.regions.length > 0 && (
+        <FilterGroup title="Region" selectedCount={params.region?.length}>
+          <CheckboxFilter
+            label="Region"
+            options={facets.regions}
+            selected={params.region ?? []}
+            onChange={(selected) => onChange({ region: selected })}
+          />
+        </FilterGroup>
+      )}
     </>
   );
 }

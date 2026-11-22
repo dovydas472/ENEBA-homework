@@ -1,34 +1,85 @@
-/* Footer: see docs/DESIGN.md 3.5. */
+/* Footer: see docs/DESIGN.md 3.5 (measured on eneba.com in Task 11b: columns, 14px bold headings, 12px links, 12px legal line). */
 .footer {
   background: var(--color-footer-bg);
   color: var(--color-text-nav);
-  font-size: var(--font-size-sm);
 }
 
 .inner {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
   max-width: var(--page-max-width);
   margin: 0 auto;
-  padding: var(--space-5) var(--page-gutter);
+  padding: var(--space-7) var(--page-gutter) var(--space-7);
 }
 
-/* Links inside text are underlined, so they do not rely on color alone. */
-.footer a {
-  display: inline-block;
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5) var(--space-7);
+}
+
+.heading {
+  padding-bottom: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+/* A link in a column: one per row, no underline (it is clearly a link list, not text). */
+.link {
+  display: block;
+  padding: var(--space-half) 0;
+  color: var(--color-text-nav);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+}
+
+.link:hover {
+  color: var(--color-accent);
+}
+
+/* A link inside a sentence is underlined, so it does not rely on colour alone. */
+.text {
+  max-width: var(--toast-max-width);
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+}
+
+.text a {
   color: var(--color-text-nav);
   text-decoration: underline;
 }
 
-.footer a:hover {
+.text a:hover {
   color: var(--color-accent);
 }
 
-/* Tap height of at least 40px for the link rows on phones. */
+.legal {
+  margin-top: var(--space-6);
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-snug);
+}
+
+/* Phones: the columns stack, and every link row is a 40px tap target. */
 @media (max-width: 600px) {
-  .footer a {
+  .inner {
+    padding: var(--space-5) var(--page-gutter);
+  }
+
+  .columns {
+    flex-direction: column;
+  }
+
+  .link,
+  .text a {
+    display: inline-block;
     min-height: var(--hit-target-min);
     line-height: var(--hit-target-min);
+  }
+
+  .link {
+    display: block;
+    padding: 0;
   }
 }

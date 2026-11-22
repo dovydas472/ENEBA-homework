@@ -1,51 +1,44 @@
-import { ChevronDown } from "lucide-react";
+import { ArrowDownWideNarrow, ChevronDown } from "lucide-react";
 import { useId } from "react";
 import { SORTS, type Sort } from "../../api/types.ts";
+import { cx } from "../../lib/cx.ts";
+import { SORT_LABELS } from "./sortLabels.ts";
 import styles from "./SortSelect.module.css";
-
-/** The words for each sort value (owner decision S9). `Record<Sort, string>` makes TypeScript complain if a sort has no label. */
-const LABELS: Record<Sort, string> = {
-  popularity: "Most popular",
-  price_asc: "Price: low to high",
-  price_desc: "Price: high to low",
-  discount: "Biggest discount",
-  newest: "Newest",
-  title: "Name A–Z",
-};
 
 interface SortSelectProps {
   value: Sort;
   onChange: (sort: Sort) => void;
+  className?: string;
 }
 
 /**
- * The sort dropdown. It is a native <select> (DESIGN.md 4.6 prefers it): keyboard, screen readers and the
- * phone's own picker work without any code of ours. The chevron is only decoration drawn over it.
+ * The desktop sort control. It LOOKS like Eneba's text button (sort icon, bold text, chevron), but it is a
+ * native <select> (DESIGN.md 4.6): keyboard, screen readers and the browser's own list work without code of ours.
+ * The "Sort by" label is for screen readers only; the icon says it visually. On phones the sort is in the drawer.
  */
-export function SortSelect({ value, onChange }: SortSelectProps) {
+export function SortSelect({ value, onChange, className }: SortSelectProps) {
   const id = useId();
 
   return (
-    <div className={styles.sort}>
+    <div className={cx(styles.sort, className)}>
       <label htmlFor={id} className={styles.label}>
         Sort by
       </label>
-      <div className={styles.wrapper}>
-        <select
-          id={id}
-          className={styles.select}
-          value={value}
-          // The option values come from SORTS, so the cast is safe.
-          onChange={(event) => onChange(event.target.value as Sort)}
-        >
-          {SORTS.map((sort) => (
-            <option key={sort} value={sort}>
-              {LABELS[sort]}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className={styles.chevron} aria-hidden="true" />
-      </div>
+      <ArrowDownWideNarrow className={styles.sortIcon} aria-hidden="true" />
+      <select
+        id={id}
+        className={styles.select}
+        value={value}
+        // The option values come from SORTS, so the cast is safe.
+        onChange={(event) => onChange(event.target.value as Sort)}
+      >
+        {SORTS.map((sort) => (
+          <option key={sort} value={sort}>
+            {SORT_LABELS[sort]}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className={styles.chevron} aria-hidden="true" />
     </div>
   );
 }

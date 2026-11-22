@@ -7,16 +7,17 @@
   line-height: var(--line-height-none);
 }
 
-.label {
-  color: var(--color-text-subtle);
+/* "From €29.99 -60%": 12px bold, 3px apart (Eneba). */
+.was {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-half);
   font-size: var(--font-size-xs);
 }
 
-.was {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  font-size: var(--font-size-xs);
+.label {
+  color: var(--color-text-subtle);
 }
 
 .old {
@@ -34,4 +35,11 @@
 
 .large .current {
   font-size: var(--font-size-3xl);
+}
+
+/* Phones: the price on the list card is 20px (measured on Eneba at 390px). */
+@media (max-width: 600px) {
+  .card .current {
+    font-size: var(--font-size-lg);
+  }
 }

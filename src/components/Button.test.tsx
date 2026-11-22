@@ -4,7 +4,8 @@
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "../test-utils.tsx";
-import { Button } from "./Button.tsx";
+import { MemoryRouter } from "react-router";
+import { Button, ButtonLink } from "./Button.tsx";
 
 let cleanup: (() => void) | undefined;
 afterEach(() => cleanup?.());
@@ -55,5 +56,20 @@ describe("Button", () => {
 
   it("is type=button by default, so it never submits a form by accident", () => {
     expect(mount(<Button>Buy</Button>).type).toBe("button");
+  });
+});
+
+describe("ButtonLink", () => {
+  it("is a real link (an <a> with the href), not a button", () => {
+    const view = render(
+      <MemoryRouter>
+        <ButtonLink to="/store">Browse the store</ButtonLink>
+      </MemoryRouter>,
+    );
+    cleanup = view.unmount;
+    const link = view.container.querySelector("a")!;
+    expect(link.getAttribute("href")).toBe("/store");
+    expect(link.textContent).toBe("Browse the store");
+    expect(view.container.querySelector("button")).toBeNull();
   });
 });

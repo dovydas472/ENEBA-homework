@@ -14,10 +14,12 @@ function renderPagination(page: number, totalPages: number, onPageChange = vi.fn
   return {
     ...view,
     onPageChange,
-    /** The visible items in order: "Prev", "1", "2", "…", "Next". */
-    items: [...view.container.querySelectorAll("li")].map((li) => li.textContent?.trim()),
-    prev: buttons.find((b) => b.textContent?.includes("Prev"))!,
-    next: buttons.find((b) => b.textContent?.includes("Next"))!,
+    /** The items in order: "Previous page", "1", "2", "…", "Next page" (the arrows have no text: their accessible name is used). */
+    items: [...view.container.querySelectorAll("li")].map(
+      (li) => li.textContent?.trim() || li.querySelector("button")?.getAttribute("aria-label"),
+    ),
+    prev: buttons.find((b) => b.getAttribute("aria-label") === "Previous page")!,
+    next: buttons.find((b) => b.getAttribute("aria-label") === "Next page")!,
     pageButton: (n: number) => buttons.find((b) => b.getAttribute("aria-label") === `Page ${n}`)!,
   };
 }
@@ -30,22 +32,22 @@ describe("Pagination", () => {
 
   it("shows every page number when there are few pages", () => {
     const { items } = renderPagination(1, 5);
-    expect(items).toEqual(["Prev", "1", "2", "3", "4", "5", "Next"]);
+    expect(items).toEqual(["Previous page", "1", "2", "3", "4", "5", "Next page"]);
   });
 
   it("first page of many: first pages, ellipsis, last page", () => {
-    expect(renderPagination(1, 10).items).toEqual(["Prev", "1", "2", "3", "4", "5", "…", "10", "Next"]);
+    expect(renderPagination(1, 10).items).toEqual(["Previous page", "1", "2", "3", "4", "5", "…", "10", "Next page"]);
   });
 
   it("middle page: ellipsis on both sides", () => {
-    expect(renderPagination(5, 10).items).toEqual(["Prev", "1", "…", "4", "5", "6", "…", "10", "Next"]);
+    expect(renderPagination(5, 10).items).toEqual(["Previous page", "1", "…", "4", "5", "6", "…", "10", "Next page"]);
   });
 
   it("last page of many: first page, ellipsis, last pages", () => {
-    expect(renderPagination(10, 10).items).toEqual(["Prev", "1", "…", "6", "7", "8", "9", "10", "Next"]);
+    expect(renderPagination(10, 10).items).toEqual(["Previous page", "1", "…", "6", "7", "8", "9", "10", "Next page"]);
   });
 
-  it("disables Prev on the first page and Next on the last page", () => {
+  it("disables the previous arrow on the first page and the next arrow on the last page", () => {
     const first = renderPagination(1, 5);
     expect(first.prev.disabled).toBe(true);
     expect(first.next.disabled).toBe(false);
@@ -68,7 +70,7 @@ describe("Pagination", () => {
     expect(current[0].textContent).toBe("3");
   });
 
-  it("asks for the right page when a number, Prev or Next is clicked", () => {
+  it("asks for the right page when a number or an arrow is clicked", () => {
     const { onPageChange, prev, next, pageButton } = renderPagination(3, 5);
     act(() => pageButton(5).click());
     act(() => prev.click());

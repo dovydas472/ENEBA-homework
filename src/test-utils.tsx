@@ -45,6 +45,21 @@ export function fire(element: Element, event: Event) {
   });
 }
 
+/**
+ * jsdom has no <dialog> behaviour: showModal() and close() do nothing. Call this in beforeEach to get the two
+ * parts our components rely on: showModal() sets `open`, close() takes it away and fires `close` (as the browser does).
+ */
+export function polyfillDialog() {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function () {
+    if (!this.hasAttribute("open")) return;
+    this.toggleAttribute("open", false);
+    this.dispatchEvent(new Event("close"));
+  };
+}
+
 /** Presses and releases a key on an element. */
 export function pressKey(element: Element, key: string) {
   fire(element, new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));

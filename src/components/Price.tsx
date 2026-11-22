@@ -17,20 +17,23 @@ interface PriceProps {
   className?: string;
 }
 
-/** A price block (DESIGN.md 4.4): optional "old price -66%" line above the current price. */
+/** A price block (DESIGN.md 4.4): an optional "From €29.99 -60%" line above the current price. */
 export function Price({ cents, oldCents = null, discountPercent = null, label, size = "card", className }: PriceProps) {
   const showOld = oldCents !== null && cents !== null && oldCents > cents;
 
   return (
     <div className={cx(styles.price, styles[size], className)}>
-      {label && <div className={styles.label}>{label}</div>}
-      {showOld && (
+      {/* First line, as on Eneba: "From €29.99 -60%" (label, old price, discount), then the price below. */}
+      {(label || showOld) && (
         <div className={styles.was}>
-          <s className={styles.old}>
-            <VisuallyHidden>Original price </VisuallyHidden>
-            {formatPrice(oldCents)}
-          </s>
-          {discountPercent !== null && discountPercent > 0 && (
+          {label && <span className={styles.label}>{label}</span>}
+          {showOld && (
+            <s className={styles.old}>
+              <VisuallyHidden>Original price </VisuallyHidden>
+              {formatPrice(oldCents)}
+            </s>
+          )}
+          {showOld && discountPercent !== null && discountPercent > 0 && (
             <span className={styles.discount}>
               <VisuallyHidden>Discount </VisuallyHidden>-{discountPercent}%
             </span>

@@ -9,11 +9,14 @@ import { Spinner } from "../components/Spinner.tsx";
 import { VisuallyHidden } from "../components/VisuallyHidden.tsx";
 import { ActiveFilters } from "../features/store/ActiveFilters.tsx";
 import { FilterDrawer } from "../features/store/FilterDrawer.tsx";
+import { FilterGroup } from "../features/store/FilterGroup.tsx";
 import { FilterPanel } from "../features/store/FilterPanel.tsx";
 import { FilterSidebar } from "../features/store/FilterSidebar.tsx";
 import { Pagination } from "../features/store/Pagination.tsx";
 import { ProductGrid, ProductGridSkeleton } from "../features/store/ProductGrid.tsx";
+import { SortRadios } from "../features/store/SortRadios.tsx";
 import { SortSelect } from "../features/store/SortSelect.tsx";
+import { cx } from "../lib/cx.ts";
 import { useDocumentTitle } from "../lib/useDocumentTitle.ts";
 import { useStoreParams } from "../lib/useStoreParams.ts";
 import styles from "./StorePage.module.css";
@@ -24,8 +27,11 @@ function resultsText(total: number): string {
 }
 
 /**
- * The catalog (DESIGN.md 3.2): filters on the left (a drawer on phones), a bar with the result count,
- * active-filter chips and the sort, the product grid, and the pagination.
+ * The catalog (DESIGN.md 3.2), laid out like Eneba's store page (Task 11b):
+ *  - desktop: filters on the left; on the right the active-filter chips, a bar with the result count and the sort,
+ *    the product grid and the pagination;
+ *  - phones / tablets (≤ 930 px): the count, then a "Sort and filter (n)" pill (opens the drawer with the sort
+ *    and the filters) next to the chips, then the list.
  *
  * The URL is the single source of truth (useStoreParams): every filter / sort / page change writes the URL,
  * the URL gives new query params, and the new params give a new request. There is no filter state in React,
@@ -115,9 +121,12 @@ export function StorePage() {
   }
 
   const filterPanel = <FilterPanel facets={data?.facets} params={params} onChange={setParams} />;
+  const sort = params.sort ?? "popularity";
+  // "Most popular" is the default: it is left out of the URL.
+  const changeSort = (next: typeof sort) => setParams({ sort: next === "popularity" ? undefined : next });
 
   return (
-    <div className={styles.page}>
+    <div>
       <h1 className={styles.title}>Store</h1>
 
       {q && (
@@ -130,28 +139,34 @@ export function StorePage() {
         <FilterSidebar>{filterPanel}</FilterSidebar>
 
         <div className={styles.results}>
-          <div ref={resultsTop} className={styles.bar}>
-            {/* aria-live: a screen reader announces the new count after every filter change. */}
-            <p className={styles.count} aria-live="polite" aria-atomic="true">
-              {data ? resultsText(data.total) : ""}
-            </p>
-            {query.isPlaceholderData && (
-              <span className={styles.updating}>
-                <Spinner />
-                <VisuallyHidden>Updating results</VisuallyHidden>
-              </span>
-            )}
-            <Button variant="secondary" className={styles.filtersButton} onClick={() => setDrawerOpen(true)}>
-              <SlidersHorizontal aria-hidden="true" className={styles.filtersIcon} />
-              Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-            </Button>
-            <SortSelect
-              value={params.sort ?? "popularity"}
-              // "Most popular" is the default: it is left out of the URL.
-              onChange={(sort) => setParams({ sort: sort === "popularity" ? undefined : sort })}
-            />
-            <div className={styles.chips}>
-              <ActiveFilters params={params} facets={data?.facets} onChange={setParams} onClearAll={clearFilters} />
+          {/* scrollIntoView target after a page change: the top of the chips + bar. */}
+          <div ref={resultsTop} className={styles.head}>
+            {/* Desktop: the chips row (when a filter is active). Phones: the drawer pill + the chips in one row. */}
+            <div className={cx(styles.toolbar, activeFilterCount === 0 && styles.toolbarEmpty)}>
+              <button type="button" className={styles.filtersButton} onClick={() => setDrawerOpen(true)}>
+                <SlidersHorizontal aria-hidden="true" className={styles.filtersIcon} />
+                Sort and filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              </button>
+              {activeFilterCount > 0 && (
+                <div className={styles.chips}>
+                  <ActiveFilters params={params} facets={data?.facets} onChange={setParams} onClearAll={clearFilters} />
+                </div>
+              )}
+            </div>
+            {/* Count + sort. On phones CSS moves it above the pill row (the count is not focusable, so the tab order
+                still matches what is seen). */}
+            <div className={styles.bar}>
+              {/* aria-live: a screen reader announces the new count after every filter change. */}
+              <p className={styles.count} aria-live="polite" aria-atomic="true">
+                {data ? resultsText(data.total) : ""}
+              </p>
+              {query.isPlaceholderData && (
+                <span className={styles.updating}>
+                  <Spinner />
+                  <VisuallyHidden>Updating results</VisuallyHidden>
+                </span>
+              )}
+              <SortSelect className={styles.sort} value={sort} onChange={changeSort} />
             </div>
           </div>
 
@@ -163,6 +178,10 @@ export function StorePage() {
       </div>
 
       <FilterDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} resultCount={data?.total}>
+        {/* Sort first, as on Eneba; on desktop the sort is the select in the bar instead. */}
+        <FilterGroup title="Sort by">
+          <SortRadios value={sort} onChange={changeSort} />
+        </FilterGroup>
         {filterPanel}
       </FilterDrawer>
     </div>
