@@ -36,6 +36,7 @@ export type ApiOptions = Omit<RequestInit, "signal"> & {
 /**
  * fetch + JSON parsing + typed errors + timeout.
  * Resolves with the parsed JSON body of a 2xx response, otherwise throws ApiError.
+ * 204 No Content (e.g. sign out) has no body by definition: it resolves with `undefined`.
  * If the caller's own `signal` aborts, the original AbortError is rethrown.
  */
 export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -82,6 +83,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
     if (!res.ok) {
       throw new ApiError("http", `HTTP ${res.status}`, res.status, parsed ? json : undefined);
     }
+    if (res.status === 204) return undefined as T;
     if (!parsed) throw new ApiError("parse", "Response is not valid JSON", res.status);
     return json as T;
   } finally {

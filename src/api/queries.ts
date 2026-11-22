@@ -2,6 +2,7 @@
 // Store page (useQuery) and the card hover prefetch (queryClient.prefetchQuery) must use the SAME key
 // for the SAME data - that is why both call these helpers instead of writing keys by hand.
 import { queryOptions } from "@tanstack/react-query";
+import { getCurrentUser } from "./auth.ts";
 import { getProduct, getProducts, getSuggestions, type ProductsParams } from "./catalog.ts";
 
 /** The first part of every key: `invalidateQueries({ queryKey: queryKeys.products })` would reset all listings. */
@@ -13,6 +14,8 @@ export const queryKeys = {
   product: (slug: string) => ["product", slug] as const,
   /** Header search suggestions for one search text: every text has its own cache entry. */
   suggestions: (q: string) => ["suggestions", q] as const,
+  /** Who is signed in (Task 14): the user or null. Sign in / out write this entry directly. */
+  currentUser: ["auth", "me"] as const,
 };
 
 /** Key + function of the listing. `signal` lets TanStack Query cancel the request when it is no longer needed. */
@@ -40,5 +43,18 @@ export function suggestionsQuery(q: string) {
   return queryOptions({
     queryKey: queryKeys.suggestions(q),
     queryFn: ({ signal }) => getSuggestions(q, { signal }),
+  });
+}
+
+/**
+ * Key + function of "who is signed in" (GET /api/auth/me): the user, or null when signed out.
+ * staleTime 5 minutes: the answer only changes when THIS app signs in or out, and those actions write the
+ * new value into the cache themselves (useAuthMutations), so there is no need to ask the server often.
+ */
+export function currentUserQuery() {
+  return queryOptions({
+    queryKey: queryKeys.currentUser,
+    queryFn: ({ signal }) => getCurrentUser({ signal }),
+    staleTime: 5 * 60_000,
   });
 }
