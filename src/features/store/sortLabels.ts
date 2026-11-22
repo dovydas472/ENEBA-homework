@@ -12,7 +12,6 @@ export const SORT_LABELS: Record<Sort, string> = {
   discount: "Biggest discount",
   newest: "Newest",
   title: "Name A–Z",
-  relevance: "Best match", // the API's default with a search (Task 13a); not offered in the controls yet (Task 13b)
 };
 
 /**
@@ -20,7 +19,7 @@ export const SORT_LABELS: Record<Sort, string> = {
  * (and is the default) only while there is one; without `q` the list starts with "Most popular", as before.
  */
 export function sortOptions(hasQuery: boolean): readonly Sort[] {
-  return hasQuery ? SORTS : SORTS.filter((sort) => sort !== "relevance");
+  return hasQuery ? ["relevance", ...SORTS] : SORTS;
 }
 
 /** The sort used when the URL has none: "Best match" with a search text, otherwise "Most popular". */

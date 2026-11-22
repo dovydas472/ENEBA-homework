@@ -53,8 +53,11 @@ function parseInteger(value: string | null, min: number, max = Number.MAX_SAFE_I
   return Number.isSafeInteger(n) && n >= min && n <= max ? n : undefined;
 }
 
+/** Every sort the URL may hold: the Store's sorts plus "relevance" (kept only together with q, see below). */
+const URL_SORTS: readonly Sort[] = ["relevance", ...SORTS];
+
 function parseSort(value: string | null): Sort | undefined {
-  return SORTS.find((s) => s === value);
+  return URL_SORTS.find((s) => s === value);
 }
 
 /**
