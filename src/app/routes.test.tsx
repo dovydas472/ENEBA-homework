@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { polyfillDialog, render } from "../test-utils.tsx";
+import { polyfillDialog, render, setControlValue } from "../test-utils.tsx";
 import { createQueryClient } from "./queryClient.ts";
 import { routes } from "./routes.ts";
 
@@ -29,10 +29,8 @@ const searchInput = () => $("input[type=search]") as HTMLInputElement;
 
 /** Types into the search field and submits the form, like a user pressing Enter. */
 function search(text: string) {
-  act(() => {
-    searchInput().value = text;
-    ($("form[role=search]") as HTMLFormElement).requestSubmit();
-  });
+  setControlValue(searchInput(), text);
+  act(() => ($("form[role=search]") as HTMLFormElement).requestSubmit());
 }
 
 const urlOf = (router: ReturnType<typeof renderApp>["router"]) => router.state.location.pathname + router.state.location.search;
@@ -126,7 +124,7 @@ describe("header search", () => {
     const { router } = renderApp("/");
     search("half life");
     expect(urlOf(router)).toBe("/store?q=half%20life");
-    expect($("main h1")?.textContent).toBe("Store");
+    expect($("main h1")?.textContent).toBe("Results for 'half life'");
   });
 
   it("does nothing on an empty (or blank) submit", () => {
@@ -146,6 +144,18 @@ describe("header search", () => {
   it("shows the current search text in the field on the Store page", () => {
     renderApp("/store?q=zelda");
     expect(searchInput().value).toBe("zelda");
+  });
+
+  it("shows an empty field on other pages, even with a ?q= in their URL", () => {
+    renderApp("/?q=zelda");
+    expect(searchInput().value).toBe("");
+  });
+
+  it("is a combobox that controls the suggestions list", () => {
+    renderApp("/");
+    expect(searchInput().getAttribute("role")).toBe("combobox");
+    const listId = searchInput().getAttribute("aria-controls")!;
+    expect(document.getElementById(listId)?.getAttribute("role")).toBe("listbox");
   });
 
   it("the field has an accessible name", () => {

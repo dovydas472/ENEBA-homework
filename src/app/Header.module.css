@@ -169,11 +169,12 @@
     display: none;
   }
 
-  /* ...then it covers the whole row: field + a close button. */
+  /* ...then it covers the whole row: field + a close button. The suggestions list hangs under this row, full width,
+     so the row is on the dropdown layer (above the page and the cards' cover badges). */
   .searchOpen .search {
     position: absolute;
     inset: 0;
-    z-index: var(--z-raised);
+    z-index: var(--z-dropdown);
     display: flex;
     margin: 0;
     padding-left: var(--page-gutter);

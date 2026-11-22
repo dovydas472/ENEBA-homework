@@ -1,11 +1,10 @@
 import { Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Badge } from "../components/Badge.tsx";
-import { SearchField } from "../components/SearchField.tsx";
+import { SearchBox } from "../features/search/SearchBox.tsx";
 import { APP_NAME } from "../lib/appInfo.ts";
 import { cx } from "../lib/cx.ts";
-import { buildStoreSearch } from "../lib/storeParams.ts";
 import { useCartCount } from "../lib/useCartCount.ts";
 import { useSlashShortcut } from "../lib/useSlashShortcut.ts";
 import { useStoreParams } from "../lib/useStoreParams.ts";
@@ -18,15 +17,17 @@ import { NAV_LINKS } from "./navLinks.ts";
  *  - desktop (> 930 px): wordmark, search field, cart, Sign in; under it a full-width nav strip (Store + platforms);
  *  - phone / tablet (≤ 930 px): one 56 px row ☰ · wordmark · search icon · cart · account. The ☰ opens the menu
  *    with the nav links, the search icon opens the search field over the row.
+ * The search field with its suggestions list is SearchBox (Task 13b).
  * Which parts show is decided by CSS (Header.module.css); React only keeps "is the menu / phone search open".
  */
 export function Header() {
-  const navigate = useNavigate();
   const searchInput = useRef<HTMLInputElement>(null);
   const searchToggle = useRef<HTMLButtonElement>(null);
   const cartCount = useCartCount();
-  // On the Store page the field shows the current search text (the URL is the source of truth).
+  // On the Store page the field shows the current search text (the URL is the source of truth); elsewhere it is empty.
   const { params } = useStoreParams();
+  const { pathname } = useLocation();
+  const urlQuery = pathname === "/store" ? params.q : undefined;
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -42,15 +43,9 @@ export function Header() {
     searchToggle.current?.focus(); // keyboard users continue where they were
   }
 
+  // Esc reaches this only when the field has nothing left to close or clear (SearchBox stops it otherwise).
   function handleSearchKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Escape" && searchOpen) closeSearch();
-  }
-
-  function handleSearch(text: string) {
-    const q = text.trim();
-    if (!q) return; // an empty submit does nothing
-    setSearchOpen(false);
-    navigate({ pathname: "/store", search: buildStoreSearch({ q }) });
   }
 
   return (
@@ -71,14 +66,12 @@ export function Header() {
         </Link>
 
         <div className={styles.search} onKeyDown={handleSearchKeyDown}>
-          {/* `key` makes the (uncontrolled) field start over with the new text when ?q= changes. */}
-          <SearchField
-            key={params.q ?? ""}
-            defaultValue={params.q}
+          <SearchBox
+            urlQuery={urlQuery}
             inputRef={searchInput}
             label="Search games"
             placeholder="Search games"
-            onSearch={handleSearch}
+            onDone={() => setSearchOpen(false)}
           />
           {/* Phone only: closes the search row again. */}
           <button type="button" className={styles.searchClose} aria-label="Close search" onClick={closeSearch}>
