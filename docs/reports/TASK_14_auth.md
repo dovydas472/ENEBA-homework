@@ -44,7 +44,7 @@ Task file: [`docs/tasks/TASK_14_auth.md`](../tasks/TASK_14_auth.md) · Branch: `
 |---|---|
 | `gofmt -l .` | prints nothing |
 | `go build ./...`, `go vet ./...`, `go test ./...` | pass. `go.mod` still `go 1.25.0` |
-| Go integration tests (`pkg/auth`, `pkg/server`) | **skipped locally** (no Postgres on this machine, `TEST_DATABASE_URL` empty). They run in CI job `migrations` (`REQUIRE_TEST_DB=1`), and the "tests ran" step now checks these packages too. Result: see the PR's CI status |
+| Go integration tests (`pkg/auth`, `pkg/server`) | **skipped locally** (no Postgres on this machine, `TEST_DATABASE_URL` empty). **CI (PR #16, job `migrations`, Postgres 18): all passed** – the "tests ran" step reports `catalog + auth tests: 98 passed, 0 skipped`, incl. `TestAuthFlow_registerMeLogoutMe`, `…duplicateEmailIs409CaseInsensitive`, `…wrongPasswordIsGeneric401`, `…eleventhFailureIs429`, `…successClearsTheCounter`, `…twoDemoClicksAreTwoUsers`, `…expiredSessionIs401`, `TestStore_deletingAUserDeletesItsSessions`, `TestStore_loginAttemptCounter`, `TestStore_parallelAttemptsAreAllCounted`. Jobs `go`, `frontend` and the Vercel Preview also green |
 | `npm run lint` | 0 problems |
 | `npm test` (PowerShell) | **37 files, 460 tests passed**. New: `auth.test.ts`, `AuthPage.test.tsx` (18), `AccountMenu.test.tsx` (10), `RequireAuth.test.tsx` (4), `safeNext.test.ts`, `validation.test.ts`; `client.test.ts` +1, `routes.test.tsx` +3 |
 | `npm run build` | pass |
@@ -115,7 +115,6 @@ Eneba's logo and illustration, the "Hi! It's nice to see you!" greeting, the soc
 
    I recommend (a) for this demo, and (b) if you want it closer to production.
 2. **Demo accounts pile up** in the database (one per click). A clean-up of demo users older than e.g. 7 days could come with the checkout task, since their orders need a decision first.
-3. **The integration tests ran only in CI** (no local Postgres). See the PR's CI result.
 
 ## 7. Self-review (task-reviewer)
 The `task-reviewer` subagent got only the task number and the branch. It ran after the code and docs were committed and before this report was written. It is read-only and ran nothing.
