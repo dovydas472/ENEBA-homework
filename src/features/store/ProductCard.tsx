@@ -1,24 +1,33 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { ShoppingCart } from "lucide-react";
 import { Link } from "react-router";
 import { productQuery } from "../../api/queries.ts";
 import type { ProductItem } from "../../api/types.ts";
 import { Badge } from "../../components/Badge.tsx";
+import { Button, ButtonLink } from "../../components/Button.tsx";
 import { Price } from "../../components/Price.tsx";
 import { Skeleton } from "../../components/Skeleton.tsx";
+import { VisuallyHidden } from "../../components/VisuallyHidden.tsx";
 import { cx } from "../../lib/cx.ts";
+import { addToCart } from "../cart/addToCart.ts";
+import { itemFromListing } from "../cart/cart.ts";
 import { CoverImage } from "./CoverImage.tsx";
 import styles from "./ProductCard.module.css";
 
 /**
- * One product in the grid (DESIGN.md 4.3), laid out like Eneba's card. The WHOLE card is one link to the product page.
+ * One product in the grid (DESIGN.md 4.3), laid out like Eneba's card.
  *  - desktop/tablet: cover with a dark platform strip at the bottom, then title, region (mint), price.
- *    On hover the content slides up and shows "View offers" (Eneba also shows "Add to cart"; we have no cart yet).
- *  - phone (≤ 600 px): a horizontal list card, small cover on the left; the platform moves into the mint line,
- *    because a 70 px strip is too narrow for names like "Nintendo eShop" (Eneba shows a logo there).
+ *    On hover (or keyboard focus) the content slides up and shows "Add to cart" + "View offers", like Eneba.
+ *  - phone (≤ 600 px): a horizontal list card, small cover on the left, a cart icon button bottom-right;
+ *    the platform moves into the mint line, because a 70 px strip is too narrow for "Nintendo eShop".
+ * The card link and the "Add to cart" button are SIBLINGS: a button inside a link is invalid HTML
+ * (a click would mean two things). "Add to cart" adds the product's cheapest offer (Task 12);
+ * an out-of-stock card has no button.
  */
 export function ProductCard({ item }: { item: ProductItem }) {
   const queryClient = useQueryClient();
   const buyable = item.inStock && item.priceCents !== null;
+  const cartItem = itemFromListing(item); // null = nothing to add (out of stock)
 
   // Prefetch (S13): while the pointer is over the card (or it has keyboard focus) the product page data is
   // already requested, so by the time the user clicks it is usually in the cache. prefetchQuery does nothing
@@ -30,50 +39,65 @@ export function ProductCard({ item }: { item: ProductItem }) {
   }
 
   return (
-    <Link
-      to={`/product/${item.slug}`}
-      className={cx(styles.card, !buyable && styles.unavailable)}
-      onMouseEnter={prefetch}
-      onFocus={prefetch}
-    >
+    <div className={cx(styles.card, !buyable && styles.unavailable, cartItem && styles.withCart)}>
       <div className={styles.slide}>
-        <div className={styles.cover}>
-          <CoverImage url={item.coverUrl} title={item.title} />
-          {/* Desktop: the platform on a dark strip over the bottom of the cover (hidden on phones, see the CSS). */}
-          <span className={styles.platformStrip}>{item.platform.name}</span>
-        </div>
-        <div className={styles.body}>
-          <h3 className={styles.title}>{item.title}</h3>
-          {/* "Standard" is the normal edition: only special editions are worth a line. */}
-          {item.edition !== "Standard" && <p className={styles.edition}>{item.edition}</p>}
-          <p className={styles.meta}>
-            {/* Phones only: the platform joins the mint line (desktop shows it on the cover strip instead). */}
-            <Badge variant="text" className={styles.metaPlatform}>
-              {item.platform.name}
-            </Badge>
-            <Badge variant="text">{item.region.name}</Badge>
-          </p>
-          <div className={styles.priceArea}>
-            {buyable ? (
-              <Price
-                label="From"
-                cents={item.priceCents}
-                oldCents={item.msrpCents}
-                // The API sends null or 0 when there is no real discount; Price shows the badge only for > 0.
-                discountPercent={item.discountPercent}
-              />
-            ) : (
-              <p className={styles.outOfStock}>Out of stock</p>
-            )}
+        <Link to={`/product/${item.slug}`} className={styles.link} onMouseEnter={prefetch} onFocus={prefetch}>
+          <div className={styles.cover}>
+            <CoverImage url={item.coverUrl} title={item.title} />
+            {/* Desktop: the platform on a dark strip over the bottom of the cover (hidden on phones, see the CSS). */}
+            <span className={styles.platformStrip}>{item.platform.name}</span>
           </div>
+          <div className={styles.body}>
+            <h3 className={styles.title}>{item.title}</h3>
+            {/* "Standard" is the normal edition: only special editions are worth a line. */}
+            {item.edition !== "Standard" && <p className={styles.edition}>{item.edition}</p>}
+            <p className={styles.meta}>
+              {/* Phones only: the platform joins the mint line (desktop shows it on the cover strip instead). */}
+              <Badge variant="text" className={styles.metaPlatform}>
+                {item.platform.name}
+              </Badge>
+              <Badge variant="text">{item.region.name}</Badge>
+            </p>
+            <div className={styles.priceArea}>
+              {buyable ? (
+                <Price
+                  label="From"
+                  cents={item.priceCents}
+                  oldCents={item.msrpCents}
+                  // The API sends null or 0 when there is no real discount; Price shows the badge only for > 0.
+                  discountPercent={item.discountPercent}
+                />
+              ) : (
+                <p className={styles.outOfStock}>Out of stock</p>
+              )}
+            </div>
+          </div>
+        </Link>
+
+        {/* Revealed by the hover slide (desktop). */}
+        <div className={styles.actions}>
+          {cartItem && (
+            <Button className={styles.cartButton} onClick={() => addToCart(cartItem)}>
+              <ShoppingCart className={styles.cartIcon} aria-hidden="true" />
+              <span className={styles.cartLabel}>Add to cart</span>
+              {/* "Add to cart: The Witcher 3" - the visible words come first (WCAG 2.5.3), then which product. */}
+              <VisuallyHidden>: {item.title}</VisuallyHidden>
+            </Button>
+          )}
+          {/* Looks like a secondary button, but it is only part of the card's look: the card link already says
+              where it goes, so it is hidden from screen readers and from the Tab order. A click opens the product. */}
+          <ButtonLink
+            to={`/product/${item.slug}`}
+            variant="secondary"
+            className={styles.viewOffers}
+            tabIndex={-1}
+            aria-hidden="true"
+          >
+            View offers
+          </ButtonLink>
         </div>
-        {/* Revealed by the hover slide. Part of the link's look only: the link already says where it goes,
-            so screen readers skip it (aria-hidden) instead of reading "View offers" in every card name. */}
-        <span className={styles.action} aria-hidden="true">
-          <span className={styles.actionLabel}>View offers</span>
-        </span>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -82,13 +106,15 @@ export function ProductCardSkeleton() {
   return (
     <div className={styles.card} aria-hidden="true">
       <div className={styles.slide}>
-        <div className={styles.cover}>
-          <Skeleton variant="block" className={styles.skeletonCover} />
-        </div>
-        <div className={styles.body}>
-          <Skeleton className={styles.skeletonTitle} />
-          <Skeleton className={styles.skeletonMeta} />
-          <Skeleton className={styles.skeletonPrice} />
+        <div className={styles.link}>
+          <div className={styles.cover}>
+            <Skeleton variant="block" className={styles.skeletonCover} />
+          </div>
+          <div className={styles.body}>
+            <Skeleton className={styles.skeletonTitle} />
+            <Skeleton className={styles.skeletonMeta} />
+            <Skeleton className={styles.skeletonPrice} />
+          </div>
         </div>
       </div>
     </div>
