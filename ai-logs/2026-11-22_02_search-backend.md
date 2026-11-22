@@ -1,7 +1,7 @@
 # Claude Code session log – 2026-11-22_02_search-backend
 
 Converted from the session transcript (JSONL): `/export` is a user command that Claude Code cannot run itself.
-Session time range (UTC): 2026-11-22T17:28:59.787Z → 2026-11-22T18:07:06.182Z.
+Session time range (UTC): 2026-11-22T17:28:59.787Z → 2026-11-22T18:26:18.002Z.
 
 How to read this log:
 - It contains the user messages, Claude's replies and tool calls with **shortened** inputs and outputs.
@@ -5231,5 +5231,376 @@ File created successfully at: C:\Users\[USER]\AppData\Local\Temp\claude\27133936
 
 ```
 $ SP="C:/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/dd6bd0f1-9a91-4ee4-ad92-cf83a25b305e/scratchpad" && python -I "$SP/convert_log.py" "$HOME/.claude/projects/c--PROJEKTAI-ENEBA-ENEBA-homework/dd6bd0f1-9a91-4ee4-ad92-cf83a25b305e.jsonl" ai-logs/2026-11-22_02_search-backend.md 2026-11-22_02_search-backend && F=ai-logs/2026-11-22_02_search-backend.md && echo "leak check:" && grep -n -i -E "postgres(ql)?://[^\[]|npg_|neon\.tech|@gmail|[USER][^a]|dovydas472@|IGDB_CLIENT_SECRET=[REDACTED]" $F | grep -v "github.com/dovydas472" | head; grep -c "" $F; grep -o "[USER][a-z0-9]*" $F | sort | uniq -c
+```
+
+<details><summary>Tool result</summary>
+
+```
+messages 458 lines 2349
+leak check:
+11:- Secrets (connection strings, `npg_` tokens, Neon hosts, `.env` values), all e-mail addresses and the Windows user name are replaced with `[REDACTED]` / `[USER]`.
+5155:- Secrets (connection strings, `npg_` tokens, Neon hosts, `.env` values), all e-mail addresses and the Windows user name are replaced with `[REDACTED]` / `[USER]`.
+5215:    (re.compile(r"npg_[A-Za-z0-9]+"), "[REDACTED]"),
+5235
+     80 dovydas472
+```
+
+</details>
+
+**Tool: Bash**
+
+```
+$ F=ai-logs/2026-11-22_02_search-backend.md && grep -n "^## " $F | awk -F'·' '{print $1}' | sort | uniq -c; sed -n 16,24p $F; grep -c "s3cret" $F
+```
+
+<details><summary>Tool result</summary>
+
+```
+1 1002:## Claude 
+      1 105:## Claude 
+      1 1105:## Claude 
+      1 1128:## Claude 
+      1 1354:## Claude 
+      1 142:## Claude 
+      1 1468:## Claude 
+      1 1561:## Claude 
+      1 156:## Goal
+      1 159:## Decisions (made by the owner – do not change)
+      1 1666:## Claude 
+      1 16:## User 
+      1 1844:## Claude 
+      1 1885:## Claude 
+      1 1924:## Claude 
+      1 208:## Claude 
+      1 2199:## Claude 
+      1 2246:## Claude 
+      1 2521:## Claude 
+      1 2616:## Claude 
+      1 2634:## Claude 
+      1 2704:## Claude 
+      1 2757:## Claude 
+      1 2814:## Claude 
+      1 2918:## Claude 
+      1 29:## Claude 
+      1 3033:## Claude 
+      1 3160:## Claude 
+      1 3668:## Claude 
+      1 3770:## Claude 
+      1 3956:## Claude 
+      1 4046:## Claude 
+      1 4336:## Claude 
+      1 4423:## Claude 
+      1 4497:## Claude 
+      1 4510:## ER diagram
+      1 4688:## Claude 
+      1 4728:## Kodėl alias'ai (`game_aliases`, `cmd/igdb-snapshot --aliases-only`)
+      1 4747:## Claude 
+      1 4812:## Claude 
+      1 4944:## 1. Files changed
+      1 4996:## Claude 
+      1 5011:## Summary
+      1 5014:## Task and report
+      1 5018:## CI status
+      1 5021:## Manu
+… [truncated; original 1767 chars]
+```
+
+</details>
+
+## Claude · 2026-11-22T18:07:19.678Z
+
+The structure is fine: the `##` lines inside tool calls sit within fenced code blocks, and the task file appears as a preview. Committing the log and pushing, then waiting for CI on the final commit.
+
+**Tool: Bash**
+
+```
+$ git add ai-logs/2026-11-22_02_search-backend.md && git commit -q -m "Task 13a: session log (converted from the transcript, redacted)
+
+Co-Authored-By: Claude Opus 5.5 <[REDACTED]>" && git push -q 2>&1 | tail -1; git status --short; sleep 20; gh pr checks 13 --watch --interval 20 2>&1 | grep -E "^(go|migrations|frontend)\s" | sort -u
+```
+
+<details><summary>Tool result</summary>
+
+```
+warning: in the working copy of 'ai-logs/2026-11-22_02_search-backend.md', CRLF will be replaced by LF the next time Git touches it
+?? .vscode/
+frontend	pass	37s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45053268057/job/137302853831	
+frontend	pending	0	https://github.com/dovydas472/ENEBA-homework/actions/runs/45053268057/job/137302853831	
+go	pass	47s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45053268057/job/137302853780	
+go	pending	0	https://github.com/dovydas472/ENEBA-homework/actions/runs/45053268057/job/137302853780	
+migrations	pass	36s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45053268057/job/137302853572	
+migrations	pending	0	https://github.com/dovydas472/ENEBA-homework/actions/runs/45053268057/job/137302853572
+```
+
+</details>
+
+## Claude · 2026-11-22T18:08:37.939Z
+
+Task 13a is done: PR #13 is open and CI is green on the final commit (`go`, `migrations`, `frontend` and the Vercel Preview deploy).
+
+- **Search:** `GET /api/products?q=…` now matches game titles and aliases, including partial names and typos ("witchr 3", "eldn ring"), and the platform/region counts follow the search. With `q` the default sort is the new `relevance` ("Best match"). Spaces-only `q` returns 400, following the task's wording.
+- **Suggestions:** `GET /api/search/suggest?q=…` returns up to 6 games, one per game, each linking to its cheapest in-stock product and showing `matchedAlias` ("GTA 5" → Grand Theft Auto V).
+- **Aliases:** 131 come from IGDB for the existing 50 games, plus 3 hand-written ones (HZD, SMO, Zelda BotW), stored in the new table `game_aliases` (migration `00003`). A test shows products, offers, keys and ids are unchanged. The seed checksum is now `4e94565d904cc1698b65cce04cbff8d9`, identical on two runs.
+- **Threshold:** I lowered the typo threshold from Postgres's default 0.6 to 0.55, because 0.6 missed "witchr 3". It applies to one request only, and I confirmed through the Neon pooler that it doesn't leak to other requests.
+- **Frontend:** types and `getSuggestions` only; the Store looks and behaves exactly as before.
+- **Tests:** everything passes locally and in CI, including the 32 catalog integration tests in CI's Postgres. I couldn't check the Vercel Preview's endpoints (no Preview URL came back from the API), so that check is on your list in the PR.
+- **One risk at merge:** the new code needs `game_aliases`. If Vercel goes live before the production migration finishes, listing requests return 500 for a few seconds. The report's open questions cover options if you want zero risk.
+
+**Your steps after merging:** Migrate production runs automatically. Then run **Actions → Seed production** with `reset` ticked and `confirm` = `seed-production`; the log should show `catalog checksum: 4e94565d904cc1698b65cce04cbff8d9`. The `dev` branch is already migrated and seeded.
+
+Report: [docs/reports/TASK_13a_search_backend.md](docs/reports/TASK_13a_search_backend.md)
+PR: https://github.com/dovydas472/ENEBA-homework/pull/13
+
+## User · 2026-11-22T18:23:54.069Z
+
+Review answers: 1) Deploy/migration race – the owner runs "Migrate production" manually from this branch BEFORE merging, so the schema is ready before the code deploys. Add this as the documented procedure for any PR with a migration (CLAUDE.md migration rules + README). 2) 2-letter queries – keep as is for now, 13b will report how it looks. 3) IGDB alias oddities – keep. Update the report, push, wait for CI, then export this session log and commit it on this branch.
+
+## Claude · 2026-11-22T18:24:04.663Z
+
+I'll check that the workflow's manual run really migrates the branch you pick, then update CLAUDE.md, the README and the report.
+
+**Tool: Bash**
+
+```
+$ sed -n 40,80p .github/workflows/migrate-production.yml; grep -n "Migration rules" -A8 CLAUDE.md
+```
+
+<details><summary>Tool result</summary>
+
+```
+- uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+
+      - name: Apply migrations
+        run: go run ./cmd/migrate up
+
+      - name: Show migration status
+        run: go run ./cmd/migrate status
+30:## Migration rules
+31-- Create migrations only with `go run ./cmd/migrate create <name>`. Never edit a migration that is already merged - add a new one.
+32-- Migrations must be backward compatible with the code currently deployed (expand/contract: add first, remove in a later migration), because the Vercel deploy and the production migration run at the same time.
+33-- Never run migrations against `production` locally. Production is migrated only by the GitHub Actions workflow `migrate-production.yml` (after merge, or the manual "Run workflow" button).
+34-- `cmd/migrate` must never print the connection string, host, user or password (the Actions logs are public).
+35-
+36-## Seed data rules
+37-- `seed/igdb_snapshot.json` is generated **only locally by the owner** with `go run ./cmd/igdb-snapshot`. Never call IGDB from the app, `cmd/seed`, CI or Vercel.
+38-- IGDB credentials (`IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`) li
+… [truncated; original 1298 chars]
+```
+
+</details>
+
+**Tool: Edit**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\CLAUDE.md
+--- old
+- Create migrations only with `go run ./cmd/migrate create <name>`. Never edit a migration that is already merged - add a new one.
+- Migrations must be backward compatible with the code currently deployed (expand/contract: add first, remove in a later migration), because the Vercel deploy and the pr
+… [truncated; original 529 chars]
++++ new
+- Create migrations only with `go run ./cmd/migrate create <name>`. Never edit a migration that is already merged **or already applied to production** (see the pre-merge run below) - add a new one.
+- Migrations must be backward compatible with the code currently deployed (expand/contract: add first, remove in a later migration), because the old code keeps running against the new schema until the deploy finishes.
+- Never run migrations against `production` locally. Production is migrated only by 
+… [truncated; original 1258 chars]
+```
+
+**Tool: Edit**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\README.md
+--- old
+**Production** is migrated only by GitHub Actions (`.github/workflows/migrate-production.yml`):
+automatically after a merge to `main` that touches `migrations/` or `cmd/migrate/`, or manually via
+*Actions → Migrate production → Run workflow*. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
+… [truncated; original 413 chars]
++++ new
+**Production** is migrated only by GitHub Actions (`.github/workflows/migrate-production.yml`):
+manually via *Actions → Migrate production → Run workflow*, or automatically after a merge to `main` that touches
+`migrations/` or `cmd/migrate/`. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
+(Neon `production` branch, **direct** connection string). Never run migrations against production from a laptop.
+
+**Procedure for every PR that adds a migration** (schema first, code second):
+1. Revi
+… [truncated; original 1255 chars]
+```
+
+<details><summary>Tool result</summary>
+
+```
+The file c:\PROJEKTAI\ENEBA\ENEBA-homework\CLAUDE.md has been updated successfully.
+```
+
+</details>
+
+<details><summary>Tool result</summary>
+
+```
+The file c:\PROJEKTAI\ENEBA\ENEBA-homework\README.md has been updated successfully. (note: the file had been modified on disk since you last read it — the edit applied cleanly, but the file contains other changes not in your context. Read it before edits that depend on surrounding content.)
+```
+
+</details>
+
+## Claude · 2026-11-22T18:24:27.076Z
+
+The README edit applied cleanly. It reported the file had changed on disk, so I'll confirm the diff contains only my change before updating the report.
+
+**Tool: Bash**
+
+```
+$ git diff --stat && git diff README.md | head -40 && grep -n "^## 3\|^## 6\|^## 7\|^1\. Review\|^2\. \*\*Actions\|^3\. Then\|^4\. Nothing\|Deploy/migration race\|2-letter queries\|IGDB alias oddities\|storeParams.ts. still" docs/reports/TASK_13a_search_backend.md
+```
+
+<details><summary>Tool result</summary>
+
+```
+CLAUDE.md |  7 ++++---
+ README.md | 15 +++++++++++++--
+ 2 files changed, 17 insertions(+), 5 deletions(-)
+diff --git a/README.md b/README.md
+index e6cf8c6..01aa051 100644
+--- a/README.md
++++ b/README.md
+@@ -127,10 +127,21 @@ go run ./cmd/migrate create add_games  # new numbered file in migrations/ (no DB
+ ˋˋˋ
+ 
+ **Production** is migrated only by GitHub Actions (`.github/workflows/migrate-production.yml`):
+-automatically after a merge to `main` that touches `migrations/` or `cmd/migrate/`, or manually via
+-*Actions → Migrate production → Run workflow*. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
++manually via *Actions → Migrate production → Run workflow*, or automatically after a merge to `main` that touches
++`migrations/` or `cmd/migrate/`. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
+ (Neon `production` branch, **direct** connection string). Never run migrations against production from a laptop.
+ 
++**Procedure for every PR that adds a migration** (schema first, code second):
++1. Review the PR and wait for green CI.
++2. *Actions → Migrate production → Run workflow*, **"Use workflow from" = the PR branch**. The workflow checks out that
++   branch, so it a
+… [truncated; original 3611 chars]
+```
+
+</details>
+
+**Tool: Read**
+
+```
+{"file_path": "c:\\PROJEKTAI\\ENEBA\\ENEBA-homework\\docs\\reports\\TASK_13a_search_backend.md", "offset": 156, "limit": 9}
+```
+
+<details><summary>Tool result</summary>
+
+```
+156	## 3. What the owner must do manually
+157	
+158	1. Review and merge this PR (**before** Task 13b).
+159	2. **Actions → Migrate production** starts automatically after the merge (the PR touches `migrations/`). Check that the log shows `00003_search_aliases.sql` applied.
+160	   - The Vercel deploy runs at the same time. The new code reads `game_aliases`, so if the deploy finished *before* the migration, listing/search requests would answer 500 for that short window (seconds). The migration normally finishes first; if you see errors right after the merge, wait for the workflow.
+161	3. Then **Actions → Seed production → Run workflow** with **`reset` ticked** and `confirm` = `seed-production`, so production gets the aliases. The log must show `game_aliases 134`, `search aliases: 134 (IGDB + 3 hand-written)` and **`catalog checksum: 4e94565d904cc1698b65cce04cbff8d9`** (the same as `dev`).
+162	   - Until this runs, production search works on titles only (`game_aliases` is empty) – nothing breaks.
+163	4. Nothing to do for `dev`: I already migrated it and reseeded it (`--reset`, checksum above).
+164
+```
+
+</details>
+
+**Tool: Edit**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\docs\reports\TASK_13a_search_backend.md
+--- old
+1. Review and merge this PR (**before** Task 13b).
+2. **Actions → Migrate production** starts automatically after the merge (the PR touches `migrations/`). Check that the log shows `00003_search_aliases.sql` applied.
+   - The Vercel deploy runs at the same time. The new code reads `game_aliases`, so
+… [truncated; original 1034 chars]
++++ new
+Schema first, code second: the procedure now documented for every PR with a migration (CLAUDE.md "Migration rules", README "Database migrations").
+
+1. **Before merging** (PR reviewed, CI green): **Actions → Migrate production → Run workflow**, "Use workflow from" = **`task/13a-search-backend`**. Check that the log shows `00003_search_aliases.sql` applied. The workflow checks out the chosen branch, so this applies the new migration. It is backward compatible: the code live now never reads `game_a
+… [truncated; original 1276 chars]
+```
+
+**Tool: Edit**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\docs\reports\TASK_13a_search_backend.md
+--- old
+1. **Deploy/migration race (see section 3, step 2).** Zero risk would need the migration merged in its own PR first (pure expand/contract) or a manual *Migrate production* run before the code deploys. I kept one PR as the task describes; is the short window acceptable for the demo?
+2. **2-letter que
+… [truncated; original 823 chars]
++++ new
+Answered by the owner in review:
+
+1. ~~Deploy/migration race~~ → **Resolved:** the owner runs *Migrate production* manually from the PR branch **before** merging, so the schema is ready before the code deploys. Documented as the procedure for every PR with a migration in `CLAUDE.md` (Migration rules) and `README.md` (Database migrations); section 3 follows it.
+2. ~~2-letter queries~~ match any substring (`ac` also finds "Uncharted 4: El Desen**lac**e…" via an alias, at the bottom) → **kept as is
+… [truncated; original 877 chars]
+```
+
+<details><summary>Tool result</summary>
+
+```
+The file c:\PROJEKTAI\ENEBA\ENEBA-homework\docs\reports\TASK_13a_search_backend.md has been updated successfully.
+```
+
+</details>
+
+<details><summary>Tool result</summary>
+
+```
+The file c:\PROJEKTAI\ENEBA\ENEBA-homework\docs\reports\TASK_13a_search_backend.md has been updated successfully.
+```
+
+</details>
+
+## Claude · 2026-11-22T18:24:51.677Z
+
+Also adding CLAUDE.md to the report's changed-files list and moving the PR checklist to the new order.
+
+**Tool: Bash**
+
+```
+$ python - <<'EOF'
+p='docs/reports/TASK_13a_search_backend.md'
+s=open(p,encoding='utf-8').read()
+old='''- `docs/PAAISKINIMAI_LT.md` – Task 13a section. `README.md` – `q`, `relevance`, suggest endpoint, `--aliases-only`, new checksum.'''
+assert old in s
+s=s.replace(old,'''- `docs/PAAISKINIMAI_LT.md` – Task 13a section. `README.md` – `q`, `relevance`, suggest endpoint, `--aliases-only`, new checksum, and the pre-merge migration procedure.
+- `CLAUDE.md` – Migration rules: every PR with a migration is migrated on production from the PR branch **before** the merge (owner decision in review).''')
+open(p,'w',encoding='utf-8',newline='\n').write(s)
+p='C:/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/dd6bd0f1-9a91-4ee4-ad92-cf83a25b305e/scratchpad/pr_body.md'
+s=open(p,encoding='utf-8').read()
+old='''- [ ] After merge: **Migrate production** ran (`00003_search_aliases.sql` applied), then **Seed production** with `reset` ticked and `confirm` = `seed-production`; the log shows `catalog checksum: 4e94565d904cc1698b65cce04cbff8d9`'''
+assert old in s
+s=s.replace(old,'''- [ ] **Before merge:** Actions → Migrate production → Run workflow from **`task/13a-search-backend`**; the log shows `00003_search_aliases.sql` applied (procedure now in CLAUDE.md / README)
+- [ ] After merge: **Seed production** with `reset` ticked and `confirm` = `seed-production`; the log shows `catalog checksum: 4e94565d904cc1698b65cce04cbff8d9`''')
+open(p,'w',encoding='utf-8',newline='\n').write(s)
+EOF
+git add C
+… [truncated; original 2063 chars]
+```
+
+<details><summary>Tool result</summary>
+
+```
+pr updated
+frontend	pass	32s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45054964223/job/137308038442	
+frontend	pending	0	https://github.com/dovydas472/ENEBA-homework/actions/runs/45054964223/job/137308038442	
+go	pass	39s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45054964223/job/137308038458	
+go	pending	0	https://github.com/dovydas472/ENEBA-homework/actions/runs/45054964223/job/137308038458	
+migrations	pass	41s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45054964223/job/137308038178	
+migrations	pending	0	https://github.com/dovydas472/ENEBA-homework/actions/runs/45054964223/job/137308038178
+```
+
+</details>
+
+## Claude · 2026-11-22T18:26:13.557Z
+
+CI is green on the review commit. Last step: re-export the session log so it also covers this review round. I'll overwrite the same file from the current transcript, scan it for leaks and commit it.
+
+**Tool: Bash**
+
+```
+$ SP="C:/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/dd6bd0f1-9a91-4ee4-ad92-cf83a25b305e/scratchpad" && python -I "$SP/convert_log.py" "$HOME/.claude/projects/c--PROJEKTAI-ENEBA-ENEBA-homework/dd6bd0f1-9a91-4ee4-ad92-cf83a25b305e.jsonl" ai-logs/2026-11-22_02_search-backend.md 2026-11-22_02_search-backend && F=ai-logs/2026-11-22_02_search-backend.md && echo "leak check:" && grep -n -i -E "postgres(ql)?://[^\[]|npg_[a-z0-9]{4}|[a-z0-9-]+\.neon\.tech|@gmail|[USER][^a]|IGDB_CLIENT_SECRET=[REDACTED]" $F | grep -v "github.com/dovydas472" | grep -v 're.compile' | head; grep -c "Review answers" $F; git add $F && git commit -q -m "Task 13a: session log updated (includes the review round)
+
+Co-Authored-By: Claude Opus 5.5 <[REDACTED]>" && git push -q 2>&1 | tail -1; git status --short; sleep 20; gh pr checks 13 --watch --interval 20 2>&1 | grep -E "^(go|migrations|frontend)\s" | sort -u
 ```
 
