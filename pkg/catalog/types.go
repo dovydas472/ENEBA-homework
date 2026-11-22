@@ -168,6 +168,7 @@ type ProductDetail struct {
 type Suggestion struct {
 	GameTitle   string  `json:"gameTitle"`
 	ProductSlug string  `json:"productSlug"`
+	Edition     string  `json:"edition"`  // of that product ("Standard", "Game of the Year Edition", ...)
 	Platform    Ref     `json:"platform"` // of that product
 	Region      Ref     `json:"region"`   // of that product
 	CoverURL    *string `json:"coverUrl"`

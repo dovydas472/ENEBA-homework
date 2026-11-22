@@ -43,6 +43,13 @@
   color: var(--color-accent);
 }
 
+/* Special edition ("Game of the Year Edition"), muted like the Store card's edition line. */
+.edition {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-tight);
+}
+
 /* "Also known as GTA V": why this game is in the list although the title does not contain the text. */
 .alias {
   color: var(--color-text-muted);

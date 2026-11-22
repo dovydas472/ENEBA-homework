@@ -7,6 +7,7 @@ package catalog_test
 import (
 	"context"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/dovydas472/ENEBA-homework/pkg/catalog"
@@ -43,8 +44,12 @@ func TestSearch_queryTable(t *testing.T) {
 		{"portl", "Portal 2", ""}, // typo: both Portals tie -> more popular first
 		{"halflife", "Half-Life 2", ""},
 		{"hl2", "Half-Life 2", "HL2"},
-		{"hzd", "Horizon Zero Dawn", "HZD"},   // hand-written extra alias
-		{"gt", "Grand Theft Auto V", "GTA 5"}, // 2 characters
+		{"hzd", "Horizon Zero Dawn", "HZD"}, // hand-written extra alias
+		// 2 characters: word starts only (Task 13c)
+		{"gt", "Grand Theft Auto V", "GTA 5"}, // start of the alias "GTA 5"
+		{"ac", "Assassin's Creed", "AC"},      // the alias "AC"; the title has no word starting with "ac"
+		{"re", "Red Dead Redemption 2", ""},   // start of the title
+		{"li", "Life Is Strange", ""},         // title start = prefix tier, ranked above the two Half-Lifes where "Life" follows a "-" (contains tier)
 	}
 	for _, tc := range tests {
 		t.Run(tc.q, func(t *testing.T) {
@@ -68,6 +73,51 @@ func TestSearch_queryTable(t *testing.T) {
 			page := list(t, s, catalog.Filter{Query: q, Sort: catalog.SortRelevance})
 			if len(page.Items) == 0 || page.Items[0].Title != tc.top {
 				t.Errorf("listing top item = %+v, want a product of %q", page.Items, tc.top)
+			}
+		})
+	}
+}
+
+// Task 13c: a 2-character query matches only at the START of a word of the title or an alias
+// (the beginning, or right after a space or punctuation) - never in the middle of a word.
+// The want lists are complete: a hit in the middle of a word ("re" in "Dishonored",
+// "ro" in "Skyrim"...) would add a title and fail the test. Both the suggestions and the listing are checked.
+func TestSearch_twoCharactersMatchWordStarts(t *testing.T) {
+	s := newStore(t)
+	tests := []struct {
+		q    string
+		want []string // every game that must match, sorted
+	}{
+		{"re", []string{"Red Dead Redemption", "Red Dead Redemption 2"}},          // not Dishonored, Elden Ring, Call of Duty 4, ...
+		{"ha", []string{"Hades", "Half-Life", "Half-Life 2"}},                     // not Batman, Uncharted ("Thief's"), ...
+		{"li", []string{"Half-Life", "Half-Life 2", "Life Is Strange"}},           // "Life" after the "-" is a word start
+		{"ed", []string{"Far Cry 3", "Hollow Knight", "Minecraft: Java Edition"}}, // aliases "...: Classic Edition", "...: Voidheart Edition"
+		{"he", []string{"Max Payne"}},                                             // alias "Max Heat"; not "The"
+		{"ac", []string{"Assassin's Creed", "Assassin's Creed Brotherhood", "Assassin's Creed II", "Assassin's Creed IV Black Flag", "Batman: Arkham City"}}, // aliases "AC", "AC2", "Batman: AC", ...
+		{"ro", nil}, // "ro" only appears inside words (Horizon, Skyrim, Bloodborne, ...)
+		{".*", nil}, // regex characters are plain text, not a pattern
+	}
+	for _, tc := range tests {
+		t.Run(tc.q, func(t *testing.T) {
+			var gotSuggest []string
+			for _, sg := range suggest(t, s, tc.q) {
+				gotSuggest = append(gotSuggest, sg.GameTitle)
+			}
+			var gotList []string
+			seen := map[string]bool{}
+			for _, it := range allItems(t, s, catalog.Filter{Query: tc.q}) {
+				if !seen[it.Title] {
+					seen[it.Title] = true
+					gotList = append(gotList, it.Title)
+				}
+			}
+			sort.Strings(gotSuggest)
+			sort.Strings(gotList)
+			if !reflect.DeepEqual(gotSuggest, tc.want) {
+				t.Errorf("suggestions = %q, want %q", gotSuggest, tc.want)
+			}
+			if !reflect.DeepEqual(gotList, tc.want) {
+				t.Errorf("listing games = %q, want %q", gotList, tc.want)
 			}
 		})
 	}
@@ -165,7 +215,7 @@ func TestSearch_pagePastTheEndKeepsTheTotal(t *testing.T) {
 
 func TestSuggest_onePerGameAtMostSix(t *testing.T) {
 	s := newStore(t)
-	sg := suggest(t, s, "ac") // matches 14 products of many games
+	sg := suggest(t, s, "the") // matches many games, several products each
 	if len(sg) != catalog.MaxSuggestions {
 		t.Fatalf("got %d suggestions, want %d", len(sg), catalog.MaxSuggestions)
 	}
@@ -185,13 +235,15 @@ func TestSuggest_productChoice(t *testing.T) {
 	// the Epic Games Europe key 21.49.
 	rdr := suggest(t, s, "rdr2")[0]
 	if rdr.ProductSlug != "red-dead-redemption-2-epic-games-europe" || rdr.PriceCents == nil || *rdr.PriceCents != 2149 ||
-		!rdr.InStock || rdr.Platform.Slug != "epic-games" || rdr.Region.Slug != "europe" || rdr.CoverURL == nil {
+		!rdr.InStock || rdr.Platform.Slug != "epic-games" || rdr.Region.Slug != "europe" || rdr.CoverURL == nil ||
+		rdr.Edition != "Standard" {
 		t.Errorf("rdr2 suggestion = %+v", rdr)
 	}
 
 	// San Andreas: the Standard product is out of stock, the GOTY edition is not.
 	sa := suggest(t, s, "gta sa")[0]
-	if sa.ProductSlug != "grand-theft-auto-san-andreas-game-of-the-year-edition-steam-global" || !sa.InStock {
+	if sa.ProductSlug != "grand-theft-auto-san-andreas-game-of-the-year-edition-steam-global" || !sa.InStock ||
+		sa.Edition != "Game of the Year Edition" { // the edition of the PICKED product, not the game's Standard one
 		t.Errorf("gta sa suggestion = %+v", sa)
 	}
 

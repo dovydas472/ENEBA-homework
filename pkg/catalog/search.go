@@ -3,7 +3,9 @@ package catalog
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -22,6 +24,12 @@ import (
 // Both conditions are served by the GIN trigram indexes games_title_trgm_idx and
 // game_aliases_alias_trgm_idx (one index answers ILIKE and <%).
 //
+// EXCEPTION (Task 13c): a 2-character query is too short for "contains" - "re"
+// would be found inside "Dishonored" - so it matches only at the START OF A WORD
+// of the title or alias: the beginning of the text or right after a space or
+// punctuation ("re" -> "Red Dead Redemption", "Half-Life" matches "li" but
+// "Dishonored" does not match "re"). No trigram match for these either.
+//
 // Rank of one matching term (lower = better):
 //
 //	0 exact     the whole title/alias equals q ("portal" -> Portal)
@@ -38,6 +46,10 @@ const (
 	MinQueryLen = 2
 	MaxQueryLen = 100
 )
+
+// wordStartMaxLen: queries of up to this many characters use the word-start rule
+// instead of contains / similar (see the exception above).
+const wordStartMaxLen = 2
 
 // MaxSuggestions is the size of the search-box dropdown.
 const MaxSuggestions = 6
@@ -59,9 +71,22 @@ const searchThresholdSQL = `SELECT set_config('pg_trgm.word_similarity_threshold
 
 // searchCTEs: one row per matching game (game_matches). Parameters:
 //
-//	@q          text  the normalized query; NULL = no search (then no rows)
-//	@q_prefix   text  LIKE pattern "q%"   (wildcards in q escaped)
-//	@q_contains text  LIKE pattern "%q%"
+//	@q            text     the normalized query; NULL = no search (then no rows)
+//	@q_prefix     text     LIKE pattern "q%"   (wildcards in q escaped)
+//	@q_contains   text     LIKE pattern "%q%"
+//	@short_query  boolean  q has at most 2 characters: use the word-start rule
+//	@q_word_start text     regex "word start + q" (special characters escaped); NULL for longer queries
+//
+// The match step reads: short query -> word start only; otherwise contains OR similar.
+// `~*` is Postgres' case-insensitive regex match. The pattern
+// (^|[^[:alnum:]])re means: "re" at the start of the text, or right after one
+// character that is not a letter or digit (space, ":", "-", "'", ".", "(" ...).
+// The same GIN trigram indexes can also answer `~*` (pg_trgm extracts the
+// trigrams the pattern needs), so this condition stays index-friendly; on our
+// tiny tables the planner reads them sequentially anyway.
+// For longer queries @short_query is false: when the planner plans with the real
+// value (a custom plan) it drops the word-start half and the plan is the one
+// described above; a cached generic plan may keep both halves - same result.
 //
 // matched_alias is the alias of the best term, but only when the TITLE did not
 // match at all - so the UI can show "GTA 5 -> Grand Theft Auto V", and never an
@@ -70,17 +95,19 @@ const searchCTEs = `
 matched_terms AS (   -- every title and alias that matches; each half uses its own trigram index
     SELECT g.id AS game_id, g.title AS term, NULL::text AS alias
     FROM games g
-    WHERE g.title ILIKE @q_contains::text OR @q::text <% g.title
+    WHERE (@short_query::boolean AND g.title ~* @q_word_start::text)
+       OR (NOT @short_query::boolean AND (g.title ILIKE @q_contains::text OR @q::text <% g.title))
     UNION ALL
     SELECT a.game_id, a.alias, a.alias
     FROM game_aliases a
-    WHERE a.alias ILIKE @q_contains::text OR @q::text <% a.alias
+    WHERE (@short_query::boolean AND a.alias ~* @q_word_start::text)
+       OR (NOT @short_query::boolean AND (a.alias ILIKE @q_contains::text OR @q::text <% a.alias))
 ),
 ranked_terms AS (
     SELECT game_id, alias,
            CASE WHEN lower(term) = lower(@q::text) THEN 0  -- exact
                 WHEN term ILIKE @q_prefix::text    THEN 1  -- prefix
-                WHEN term ILIKE @q_contains::text  THEN 2  -- contains
+                WHEN term ILIKE @q_contains::text  THEN 2  -- contains (also a word start inside the text)
                 ELSE 3                                     -- similar (typo)
            END AS tier,
            word_similarity(@q::text, term) AS score,
@@ -107,14 +134,25 @@ func NormalizeQuery(q string) string {
 // default escape character, so it is escaped first.
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
+// wordStartPrefix is the regex for "the beginning of a word": the start of the
+// text, or one character that is not a letter or digit.
+const wordStartPrefix = `(^|[^[:alnum:]])`
+
 // searchArgs returns the search parameters for a normalized query. An empty
 // query gives NULLs: the search CTEs return no rows and base does not filter.
 func searchArgs(q string) pgx.NamedArgs {
 	if q == "" {
-		return pgx.NamedArgs{"q": nil, "q_prefix": nil, "q_contains": nil}
+		return pgx.NamedArgs{"q": nil, "q_prefix": nil, "q_contains": nil, "q_word_start": nil, "short_query": nil}
 	}
 	esc := likeEscaper.Replace(q)
-	return pgx.NamedArgs{"q": q, "q_prefix": esc + "%", "q_contains": "%" + esc + "%"}
+	args := pgx.NamedArgs{"q": q, "q_prefix": esc + "%", "q_contains": "%" + esc + "%",
+		"q_word_start": nil, "short_query": false}
+	if utf8.RuneCountInString(q) <= wordStartMaxLen { // characters, not bytes: "ü?" is 2
+		// QuoteMeta makes ".", "*", "(" ... plain characters; it never produces a letter escape like \d.
+		args["q_word_start"] = wordStartPrefix + regexp.QuoteMeta(q)
+		args["short_query"] = true
+	}
+	return args
 }
 
 // suggestSQL: the best matching games (at most @limit), each with ONE product to
@@ -124,7 +162,7 @@ func searchArgs(q string) pgx.NamedArgs {
 const suggestSQL = `
 WITH ` + statsCTEs + `,
 ` + searchCTEs + `
-SELECT g.title, p.slug, pl.slug, pl.name, r.slug, r.name, g.cover_url,
+SELECT g.title, p.slug, p.edition, pl.slug, pl.name, r.slug, r.name, g.cover_url,
        pick.min_price_cents, gm.matched_alias
 FROM game_matches gm
 JOIN games g ON g.id = gm.game_id
@@ -170,7 +208,7 @@ func (s *Store) Suggest(ctx context.Context, q string) ([]Suggestion, error) {
 	out := []Suggestion{} // never nil: the JSON must be [] not null
 	for rows.Next() {
 		var sg Suggestion
-		if err := rows.Scan(&sg.GameTitle, &sg.ProductSlug, &sg.Platform.Slug, &sg.Platform.Name,
+		if err := rows.Scan(&sg.GameTitle, &sg.ProductSlug, &sg.Edition, &sg.Platform.Slug, &sg.Platform.Name,
 			&sg.Region.Slug, &sg.Region.Name, &sg.CoverURL, &sg.PriceCents, &sg.MatchedAlias); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("catalog: scan suggestion: %w", err)

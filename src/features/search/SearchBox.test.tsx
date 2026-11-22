@@ -21,6 +21,7 @@ function makeSuggestion(overrides: Partial<Suggestion> = {}): Suggestion {
   return {
     gameTitle: "The Witcher 3: Wild Hunt",
     productSlug: "the-witcher-3-wild-hunt-steam-global",
+    edition: "Standard",
     platform: { slug: "steam", name: "Steam" },
     region: { slug: "global", name: "Global" },
     coverUrl: "https://images.example/witcher.jpg",
@@ -46,6 +47,13 @@ const gta = makeSuggestion({
   priceCents: 1499,
 });
 
+const sanAndreas = makeSuggestion({
+  gameTitle: "Grand Theft Auto: San Andreas",
+  productSlug: "gta-san-andreas-game-of-the-year-edition-steam-global",
+  edition: "Game of the Year Edition",
+  priceCents: 599,
+});
+
 /** The suggest requests made so far (the q of each). */
 const suggestCalls = () =>
   fakeApi.mock.calls
@@ -53,11 +61,12 @@ const suggestCalls = () =>
     .filter((path) => path.startsWith("/api/search/suggest"))
     .map((path) => new URL(path, "http://x").searchParams.get("q"));
 
-/** Answers by search text: "gta" -> GTA, "qwertyzz" -> nothing, anything else -> the two Witcher games. */
+/** Answers by search text: "gta" -> GTA, "san" -> a Game of the Year product, "qwertyzz" -> nothing, anything else -> the two Witcher games. */
 function answerFor(path: string): SuggestResponse | object {
   if (!path.startsWith("/api/search/suggest")) return {}; // product prefetch
   const q = new URL(path, "http://x").searchParams.get("q");
   if (q === "gta") return { items: [gta] };
+  if (q === "san") return { items: [sanAndreas] };
   if (q === "qwertyzz") return { items: [] };
   return { items: [witcher, witcher2] };
 }
@@ -228,6 +237,15 @@ describe("SearchBox: the list", () => {
     await typeAndWait("gta");
     expect(options()[0].textContent).toBe("Grand Theft Auto VAlso known as GTA VSteam · GlobalFrom€14.99");
     expect([...options()[0].querySelectorAll("mark")].map((m) => m.textContent)).toEqual(["GTA"]); // inside the alias
+  });
+
+  it("shows the edition only when it is not 'Standard' (like the Store card)", async () => {
+    mount();
+    await typeAndWait("san");
+    expect(options()[0].textContent).toBe("Grand Theft Auto: San AndreasGame of the Year EditionSteam · GlobalFrom€5.99");
+    // The Standard rows of the other tests (e.g. "The Witcher 3: Wild HuntSteam · Global...") carry no edition line.
+    await typeAndWait("witcher");
+    expect(options()[0].textContent).not.toContain("Standard");
   });
 
   it("no matches: one 'No matches' row, no 'See all results', and the list is not 'expanded'", async () => {

@@ -33,7 +33,7 @@ func TestSearchArgsEscapeLikeWildcards(t *testing.T) {
 }
 
 func TestSearchArgsWithoutQueryAreNull(t *testing.T) {
-	for _, k := range []string{"q", "q_prefix", "q_contains"} {
+	for _, k := range []string{"q", "q_prefix", "q_contains", "q_word_start", "short_query"} {
 		if v, ok := searchArgs("")[k]; !ok || v != nil {
 			t.Errorf("%s = %v (present %v), want an explicit nil (SQL NULL = no search)", k, v, ok)
 		}
@@ -50,5 +50,39 @@ func TestOrderByCoversEverySort(t *testing.T) {
 	}
 	if !strings.Contains(itemsSQL, orderPlaceholder) {
 		t.Error("itemsSQL lost its ORDER BY placeholder")
+	}
+}
+
+// 2-character queries (after normalising) use the word-start rule; 3+ keep contains/similar.
+func TestSearchArgsShortQueryUsesWordStart(t *testing.T) {
+	for _, tc := range []struct {
+		q     string
+		short bool
+	}{
+		{"re", true},
+		{"ü?", true}, // counted in characters, not bytes
+		{"gta", false},
+		{"re d", false},
+	} {
+		args := searchArgs(tc.q)
+		if args["short_query"] != tc.short {
+			t.Errorf("searchArgs(%q): short_query = %v, want %v", tc.q, args["short_query"], tc.short)
+		}
+		if tc.short && args["q_word_start"] == nil {
+			t.Errorf("searchArgs(%q): q_word_start must be set for a short query", tc.q)
+		}
+		if !tc.short && args["q_word_start"] != nil {
+			t.Errorf("searchArgs(%q): q_word_start = %v, want nil for a 3+ character query", tc.q, args["q_word_start"])
+		}
+	}
+}
+
+// The word-start pattern is a regex: the characters of the user's text must lose their special meaning.
+func TestWordStartPatternEscapesRegexCharacters(t *testing.T) {
+	if got, want := searchArgs(".*")["q_word_start"], `(^|[^[:alnum:]])\.\*`; got != want {
+		t.Errorf("q_word_start for %q = %v, want %v", ".*", got, want)
+	}
+	if got, want := searchArgs("re")["q_word_start"], `(^|[^[:alnum:]])re`; got != want {
+		t.Errorf("q_word_start for %q = %v, want %v", "re", got, want)
 	}
 }
