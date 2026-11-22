@@ -1,5 +1,6 @@
 /*
- * Sign-in / sign-up page: docs/DESIGN.md 3.6. A centred panel, 400px wide (full width on phones).
+ * Sign-in / sign-up page: docs/DESIGN.md 3.6. A centred panel, 380px wide with 40px padding = a 300px column,
+ * as on my.eneba.com/login (measured in Task 14); full width on phones.
  * The panel is --color-bg-deep, not --color-surface: error text (--color-error) passes 4.5:1 on deep (6.82)
  * but fails on --color-surface (4.17), see DESIGN.md 5.1.
  */
@@ -15,9 +16,15 @@
   gap: var(--space-4);
   width: 100%;
   max-width: var(--auth-panel-width);
-  padding: var(--space-5);
+  padding: var(--space-6);
   background: var(--color-bg-deep);
   box-shadow: var(--shadow-card);
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .title {
@@ -31,10 +38,9 @@
   gap: var(--space-4);
 }
 
-/* Full-width buttons (primary submit, secondary demo). */
+/* Full-width buttons (primary submit, secondary demo); the normal button height (35px, 40px on phones). */
 .wide {
   width: 100%;
-  height: var(--hit-target-min);
 }
 
 .demo {
@@ -76,7 +82,6 @@
 .switch {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  text-align: center;
 }
 
 .switch a {

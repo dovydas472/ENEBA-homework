@@ -116,9 +116,15 @@ export function AuthPage({ mode }: { mode: Mode }) {
   return (
     <div className={styles.page}>
       <section className={styles.panel} aria-labelledby={titleId}>
-        <h1 id={titleId} className={styles.title}>
-          {page.title}
-        </h1>
+        {/* Like Eneba: the way to the other page sits right under the title ("New user? Create account"). */}
+        <div className={styles.heading}>
+          <h1 id={titleId} className={styles.title}>
+            {page.title}
+          </h1>
+          <p className={styles.switch}>
+            {page.switchText} <Link to={authPageLink(page.switchTo, next)}>{page.switchLink}</Link>
+          </p>
+        </div>
 
         {/* Sign-in page: the demo button comes first, so a reviewer finds it at once. */}
         {mode === "login" && (
@@ -173,9 +179,6 @@ export function AuthPage({ mode }: { mode: Mode }) {
           </>
         )}
 
-        <p className={styles.switch}>
-          {page.switchText} <Link to={authPageLink(page.switchTo, next)}>{page.switchLink}</Link>
-        </p>
       </section>
     </div>
   );

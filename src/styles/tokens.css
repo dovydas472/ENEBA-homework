@@ -175,7 +175,7 @@
   /* Added in Task 13b (header search suggestions, measured on eneba.com): */
   --suggestion-cover-width: 4.5rem; /* 72px: cover in a search suggestion row */
   /* Added in Task 14 (auth): */
-  --auth-panel-width: 25rem; /* 400px: the sign-in / sign-up panel (D) */
+  --auth-panel-width: 23.75rem; /* 380px: the sign-in / sign-up panel = 300px column + 2 x 40px padding (S: my.eneba.com/login) */
   --account-menu-width: 15rem; /* 240px: the header account menu popup (D) */
   --account-name-max-width: 11.25rem; /* 180px: a long email in the header button is cut with "…" (D) */
 }
