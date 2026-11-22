@@ -504,3 +504,59 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 ## `ButtonLink` – nuoroda, kuri atrodo kaip mygtukas (`Button.tsx`, „Browse the store")
 - **Ką daro:** `<Link>` su `Button` klasėmis. Naudojamas Home puslapio „Browse the store".
 - **Kodėl ne `<button onClick={navigate}>`:** perėjimas į kitą puslapį yra navigacija – teisingas elementas yra `<a>`: galima atidaryti naujame skirtuke, ekrano skaitytuvas sako „link". Pridėta `color` taisyklė hover'iui, nes `global.css` užvestas nuorodas nudažo geltonai (geltonas tekstas ant geltono fono būtų nematomas).
+
+# Task 12 – produkto puslapis ir krepšelio būsena
+
+## Krepšelio taisyklės kaip „grynos" funkcijos (`src/features/cart/cart.ts`)
+- **Ką daro:** `addItem`, `setQuantity`, `removeLine`, `cartCount`, `cartTotalCents`, `parseCart` – gauna dabartines eilutes ir grąžina **naujas**, niekada nekeičia gautų ir neliečia nei `localStorage`, nei React. Viena eilutė = vienas **pasiūlymas** (`offerId`): tas pats žaidimas iš kito pardavėjo – kita eilutė (C1).
+- **Kiekio riba (C2):** `maxQuantity(stock) = min(stock, 5)`. Pridėjus tą patį pasiūlymą dar kartą kiekis +1, kol pasiekia ribą; tada rezultatas `"max"` ir rodomas „Maximum quantity reached". Jei pardavėjo atsargos sumažėjo, kiekis nuleidžiamas iki naujos ribos.
+- **Kodėl taip:** grynas funkcijas lengva testuoti (29 testai be naršyklės) ir lengva paaiškinti; saugykla (`cartStore.ts`) tik laiko dabartinę reikšmę ir ją įrašo.
+- **Gali paklausti:** „Kodėl suma skaičiuojama centais?" – pinigai visada sveiki centai, jokių `float` (CLAUDE.md). „Kas, jei kas nors į `localStorage` įrašo šiukšles?" – `parseCart` tikrina kiekvieną lauką (sveiki skaičiai, kiekis 1…riba, ne dublikatai); bet kas negerai → **tuščias krepšelis**, niekada ne klaida (C3). Papildomi laukai išmetami.
+
+## Kodėl `localStorage` ir kodėl kaina ten – tik rodymui
+- **Ką daro:** krepšelis saugomas naršyklėje po raktu `cart:v1`: `offerId`, `quantity` ir rodymo duomenys, užfiksuoti pridedant (pavadinimas, pardavėjas, kaina, atsargos…).
+- **Kodėl `localStorage`:** prisijungimo dar nėra, o krepšelis turi išlikti perkrovus puslapį. Serverio nereikia, nėra papildomų užklausų.
+- **Kodėl kaina tik rodymui:** `localStorage` gali pakeisti bet kas (naršyklės įrankiai). Todėl apmokėjimas (vėlesnė užduotis) **serveryje iš naujo patikrins** kainą ir atsargas duomenų bazėje – išsaugota kaina niekada nenulems, kiek mokama. Tai ta pati logika, kodėl katalogo API gali būti 60 s pasenęs (Task 09).
+- **Versija rakte (`:v1`):** jei kada keisis formatas, bus `cart:v2`; senas raktas tiesiog nebeskaitomas – nereikia migracijos kodo, o senas formatas niekada nesugriaus programos.
+- **Gali paklausti:** „O jei `localStorage` užblokuotas (privatus režimas, pilnas)?" – skaitymas ir rašymas apgaubti `try/catch`: krepšelis veikia atmintyje tame puslapyje, tik neišlieka.
+
+## `useSyncExternalStore`, o ne React kontekstas (`cartStore.ts`, `useCart.ts`, `useCartCount.ts`)
+- **Ką daro:** `createCartStore` – mažas objektas už React ribų: `getSnapshot()` grąžina dabartinį masyvą, `subscribe(listener)` praneša apie pokyčius, `add / setQuantity / remove / clear` keičia. Komponentai skaito per `useSyncExternalStore(cartStore.subscribe, cartStore.getSnapshot)`; header'io ženklelis (`useCartCount`) – tas pats.
+- **Kodėl ne kontekstas:** krepšelį keičia ir **ne React** – kitas naršyklės skirtukas. `useSyncExternalStore` yra React'o įrankis būtent „reikšmei, gyvenančiai už React": nereikia `Provider` aplink programą, persipiešia tik komponentai, kurie krepšelį skaito. `addToCart` galima kviesti iš bet kurio mygtuko be hook'ų.
+- **Svarbi smulkmena:** `getSnapshot` turi grąžinti **tą patį** masyvą, kol niekas nepasikeitė (React lygina `===`); naujas masyvas sukuriamas tik keičiant. Kitaip React piešia be galo.
+- **Gali paklausti:** „Kodėl `useCartCount` vardas nepasikeitė?" – Task 10 jį sukūrė kaip „stub'ą" su tuo pačiu vardu ir tipu, kad header'io nereikėtų keisti; dabar jo viduje tikras skaičius (vienetai, ne eilutės).
+
+## Sinchronizacija tarp skirtukų (`storage` įvykis)
+- **Ką daro:** kai vienas skirtukas įrašo į `localStorage`, naršyklė **kituose** to paties puslapio skirtukuose iššaukia `storage` įvykį. Saugykla jo klauso: jei raktas `cart:v1` (arba `null` = `localStorage.clear()`), perskaito iš naujo ir praneša komponentams – ženklelis kitame skirtuke atsinaujina iškart (patikrinta dviem skirtukais).
+- **Kodėl klausomasi tik kol kas nors užsiprenumeravęs:** pirmas prenumeratorius prijungia klausytoją, paskutinis atjungia; prisijungiant dar kartą perskaitoma saugykla (jei kas keitėsi, kol niekas neklausė).
+- **Gali paklausti:** „Ar įvykis ateina ir į tą patį skirtuką?" – ne, todėl savo pakeitimus saugykla praneša pati (`commit` → `notify`).
+
+## Pranešimas („toast") (`src/lib/toast.ts`, `src/app/Toaster.tsx`)
+- **Ką daro:** `showToast({ kind, message, action })` iš bet kur; `<Toaster />` layout'e rodo **vieną** pranešimą (naujas pakeičia seną), 5 s, sustabdo laikmatį, kol pelė ar fokusas ant jo; „View cart" nuoroda ir × mygtukas (40×40).
+- **Kodėl `role="status"` visada DOM'e:** ekrano skaitytuvas praneša tik apie tekstą, atsiradusį **jau esamame** „live region". Todėl tuščias regionas nepaslepiamas `display: none` (tai pašalintų jį iš prieinamumo medžio), jis tiesiog 0 px aukščio.
+- **Vieta:** apatinis kampas, tame pačiame stulpelyje kaip „Waking up the server…" pranešimas, kad jie niekada neužeitų vienas ant kito. Telefone su apatine juosta pranešimas pakeliamas virš jos (CSS `:has([data-bottom-bar])`).
+
+## Produkto puslapio duomenų kelias: prefetch → cache → puslapis (`ProductPage.tsx`, `queries.ts`)
+- **Ką daro:** `useQuery(productQuery(slug))` – tas pats raktas `["product", slug]`, kurį Store kortelė užpildo užvedus pelę (`prefetchQuery`, Task 11). Paspaudus kortelę duomenys dažniausiai jau cache'e → puslapis atsiranda iškart (patikrinta: perėjimas iš Store – skeleton'o nė nesimato, CLS 0).
+- **Būsenos:** duomenys → puslapis; 404 → 404 puslapis layout'o viduje; kita klaida → `ErrorState` su Retry (bendra žinutė, ne serverio klaida); kraunant → skeleton'as.
+- **Kodėl visos būsenos vienoje dėžutėje:** ji bent ekrano aukščio ir pažymėta `data-wide-page` (layout'as praplečia `<main>` iki 1440 px – `:has()` CSS). Kai skeleton'ą pakeičia puslapis ar 404, nei plotis, nei footer'io vieta nepasikeičia → nėra „šokinėjimo" (išmatuota CLS 0.0001; prieš pataisymą 0.046, o su 404 – 0.30).
+- **Gali paklausti:** „Kodėl skirtuko pavadinimą nustato ir `ProductPage`, ir `NotFoundPage`?" – vaiko efektas vykdomas prieš tėvo, todėl tėvas perrašytų; `ProductPage` 404 atveju pats nustato tą patį „Page not found".
+
+## Produkto puslapio išdėstymas kaip Eneba (`ProductView.tsx`, CSS grid sritys)
+- **Ką daro:** darbalaukyje: kelias „Store › pavadinimas", viršelis 224 px, pavadinimas (26 px), faktai (regionas, platforma, skaitmeninis raktas), dešinėje 350 px „pirkimo dėžutė" su **pigiausiu** pasiūlymu (`offers[0]` – API jau surūšiavo). Apačioje: visi pasiūlymai („Best price" pigiausiam, „Only N left" kai ≤ 3, „New seller" arba „Excellent 9.63 (9,875 reviews)"), kitos versijos, žanrai, aprašymas, kitos detalės.
+- **Kaip:** `grid-template-areas`. Telefone (≤930) keičiamos tik sritys: mažas viršelis šalia pavadinimo, dėžutė per visą plotį, tada faktai ir sąrašai – HTML tvarka nesikeičia, todėl Tab tvarka logiška.
+- **Išmatuota:** skaičiai paimti iš tikro eneba.com puslapio (`getComputedStyle`), pvz. dėžutės `padding 20 20 15`, šešėlis `0 3px 9px rgba(0,0,0,.25)`, eilutė `rgba(0,0,0,.3)` su 20 px paraštėmis. Naujos reikšmės tapo tokenais (DESIGN.md 2).
+- **Gali paklausti:** „Kodėl nėra „Buy now"?" – apmokėjimo dar nėra; mygtukas be funkcijos būtų „negyva sąsaja". „Kodėl dėžutėje perbraukta kaina 70 % balta, o ne kaip kortelėje?" – ant šviesesnio skydelio `#b3aac9` nepraeina 4.5:1 (axe rado); Eneba čia irgi naudoja 70 % baltą.
+
+## Apatinė „Add to cart" juosta telefone (`StickyBuyBar.tsx`, `useInView.ts`)
+- **Ką daro:** telefone (≤600 px) prie ekrano apačios – geriausia kaina ir „Add to cart". Rodoma tik kai pirkimo dėžutės mygtukas **nebematomas** ekrane, kad vienu metu nebūtų dviejų vienodų mygtukų.
+- **Kaip:** `IntersectionObserver` praneša, kai dėžutės mygtukas įeina į ekraną ar iš jo išeina (jokio `scroll` klausytojo). Paslėpta juosta – `visibility: hidden` + `transform`: ji išimama ir iš Tab eilės, ir iš ekrano skaitytuvo. Puslapio apačioje paliekama vietos (`--sticky-bar-height`), kad juosta neuždengtų turinio.
+- **Gali paklausti:** „Ar Eneba tokią turi?" – ne (patikrinta 390 px), todėl išvaizda sudėta iš mūsų tokenų. „Kodėl ne `position: sticky`?" – juosta turi būti visada ekrano apačioje, nepriklausomai nuo to, kur ji yra DOM'e – tai `fixed`.
+
+## Kortelės „Add to cart" ir `cheapestOffer` API (`ProductCard.tsx`, `pkg/catalog/store.go`)
+- **Ką daro:** Store kortelė užvedus pelę rodo „Add to cart" (geltonas) ir „View offers", telefone – kontūrinį krepšelio ikonos mygtuką. Prideda **pigiausią** pasiūlymą. Išparduotos kortelės mygtuko neturi.
+- **Kodėl reikėjo Go pakeitimo:** sąrašo API neturėjo `offerId`. Dabar kiekvienas elementas turi `cheapestOffer: { offerId, stock, sellerName } | null`. SQL: pirmiausia parenkamas puslapis (24 eilutės), tada **tik joms** `LEFT JOIN LATERAL … ORDER BY price, id LIMIT 1` – ta pati „perkamo rakto" taisyklė (`offerStock`) ir ta pati tvarka kaip produkto puslapio pasiūlymų. Integracinis testas patikrina visiems 108 produktams: `cheapestOffer` == produkto puslapio pirmas pasiūlymas (taip pat patikrinta ant `dev` šakos per vietinį API – 0 neatitikimų).
+- **Kodėl `row_number() OVER (ORDER BY …) AS pos`:** puslapis parenkamas CTE viduje, o po `JOIN` eilučių tvarka SQL'e negarantuota – `pos` išsaugo pasirinktą rūšiavimą (`ORDER BY pg.pos`).
+- **Kodėl mygtukas ne nuorodos viduje:** `<button>` `<a>` viduje – neteisingas HTML (vienas paspaudimas reikštų du veiksmus). Kortelė dabar yra `div` su dviem broliais: nuoroda ir mygtukas. „View offers" – `aria-hidden` ir `tabIndex=-1` (ta pati nuoroda jau yra kortelė).
+- **Klaviatūra:** `.card:has(:focus-visible)` – kortelė pakyla tik **klaviatūros** fokusui (paspaudus pele kortelė „neįstringa" pakelta). Lietimo ekranuose, platesniuose nei telefonas, mygtukai rodomi visada (hover'io ten nėra).
+- **Gali paklausti:** „Kodėl mygtuko pavadinimas „Add to cart: The Witcher 3"?" – WCAG 2.5.3: matomi žodžiai turi būti pavadinimo pradžioje, o likusi dalis pasako, **kurį** produktą – kitaip ekrano skaitytuvas girdėtų 24 vienodus „Add to cart".
