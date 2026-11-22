@@ -6,6 +6,7 @@ import { ErrorState } from "../components/ErrorState.tsx";
 import { ProductView, ProductViewSkeleton } from "../features/product/ProductView.tsx";
 import { useDocumentTitle } from "../lib/useDocumentTitle.ts";
 import { NotFoundPage } from "./NotFoundPage.tsx";
+import styles from "./ProductPage.module.css";
 
 /**
  * /product/:slug. The data comes from the shared productQuery (src/api/queries.ts) - the SAME cache entry the
@@ -21,16 +22,27 @@ export function ProductPage() {
   // One title for every state (NotFoundPage sets the same one; the parent's effect would run last otherwise).
   useDocumentTitle(notFound ? "Page not found" : (query.data?.game.title ?? "Product"));
 
-  if (query.data) return <ProductView detail={query.data} />;
-  if (notFound) return <NotFoundPage />;
-  if (query.isError) {
-    return (
-      <ErrorState
-        message="We could not load this product. Please try again in a moment."
-        onRetry={() => void query.refetch()}
-        retrying={query.isFetching}
-      />
-    );
+  // Every state sits in the same box (no layout shift when the skeleton is replaced by the page, the 404 or the error):
+  //  - at least one screen tall (CSS), so the footer stays below the fold and does not jump;
+  //  - data-wide-page: the layout widens <main> to 1440px (Layout.module.css) - in EVERY state, so the width never changes.
+  return (
+    <div className={styles.route} data-wide-page="">
+      {content()}
+    </div>
+  );
+
+  function content() {
+    if (query.data) return <ProductView detail={query.data} />;
+    if (notFound) return <NotFoundPage />;
+    if (query.isError) {
+      return (
+        <ErrorState
+          message="We could not load this product. Please try again in a moment."
+          onRetry={() => void query.refetch()}
+          retrying={query.isFetching}
+        />
+      );
+    }
+    return <ProductViewSkeleton />;
   }
-  return <ProductViewSkeleton />;
 }

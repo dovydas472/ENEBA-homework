@@ -21,6 +21,12 @@
   margin-bottom: var(--space-2);
 }
 
+/* The struck-through MSRP on the lighter panel: 70% white, as Eneba does here. The normal old-price colour
+   (#b3aac9) is too faint on this panel for 4.5:1 (axe, DESIGN.md 5.1). Element + class beats Price's own rule. */
+.price s {
+  color: var(--color-text-muted);
+}
+
 .seller {
   display: flex;
   flex-wrap: wrap;

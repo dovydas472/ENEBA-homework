@@ -29,8 +29,7 @@ export function ProductView({ detail }: { detail: ProductDetail }) {
   const { ref: buyButtonRef, inView: buyButtonVisible } = useInView<HTMLButtonElement>();
 
   return (
-    // data-wide-page: the layout widens <main> to 1440px for this page (Layout.module.css).
-    <div className={cx(styles.page, buyable && styles.withBottomBar)} data-wide-page="">
+    <div className={cx(styles.page, buyable && styles.withBottomBar)}>
       <div className={styles.breadcrumb}>
         <Breadcrumb items={[{ label: "Store", to: "/store" }, { label: game.title }]} />
       </div>
@@ -88,7 +87,7 @@ function Fact({ icon, title, text }: { icon: ReactElement; title: string; text: 
 /** Shown while the product loads (usually never: the hover prefetch fills the cache). Same grid as the page. */
 export function ProductViewSkeleton() {
   return (
-    <div className={styles.page} data-wide-page="" aria-busy="true">
+    <div className={styles.page} aria-busy="true">
       <div className={styles.cover}>
         <Skeleton variant="block" className={styles.skeletonCover} />
       </div>

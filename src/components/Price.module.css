@@ -47,4 +47,9 @@
   .card .current {
     font-size: var(--font-size-lg);
   }
+
+  /* Buy box on phones: 22px (Eneba measured 21.5px at 390px in Task 12). */
+  .large .current {
+    font-size: var(--font-size-xl);
+  }
 }
