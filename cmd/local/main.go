@@ -15,6 +15,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/dovydas472/ENEBA-homework/pkg/auth"
 	"github.com/dovydas472/ENEBA-homework/pkg/catalog"
 	"github.com/dovydas472/ENEBA-homework/pkg/db"
 	"github.com/dovydas472/ENEBA-homework/pkg/server"
@@ -46,8 +47,8 @@ func main() {
 		log.Printf("no .env loaded (%v) - using the process environment only", err)
 	}
 
-	lazyDB := db.NewLazy() // one pool, shared by health and the catalog
-	router := server.NewRouter(server.Deps{DB: lazyDB, Catalog: catalog.NewStore(lazyDB)})
+	lazyDB := db.NewLazy() // one pool, shared by health, the catalog and auth
+	router := server.NewRouter(server.Deps{DB: lazyDB, Catalog: catalog.NewStore(lazyDB), Auth: auth.NewStore(lazyDB)})
 
 	log.Printf("local API listening on http://%s", addr)
 	log.Fatal(http.ListenAndServe(addr, router))

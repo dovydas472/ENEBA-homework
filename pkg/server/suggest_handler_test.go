@@ -125,7 +125,7 @@ func TestSuggest_errors(t *testing.T) {
 
 func TestSuggest_methodNotAllowed(t *testing.T) {
 	rec := httptest.NewRecorder()
-	NewRouter(Deps{Catalog: &fakeCatalog{}}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/search/suggest?q=gta", nil))
+	NewRouter(Deps{Catalog: &fakeCatalog{}}).ServeHTTP(rec, sameOriginRequest(http.MethodPost, "/api/search/suggest?q=gta", nil))
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("POST = %d, want 405", rec.Code)
 	}

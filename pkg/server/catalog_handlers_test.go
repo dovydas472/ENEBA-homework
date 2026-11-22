@@ -358,7 +358,8 @@ func TestProductDetail_unexpectedErrorIs500(t *testing.T) {
 func TestCatalogRoutes_methodsAndRemovedEndpoint(t *testing.T) {
 	for _, path := range []string{"/api/products", "/api/products/some-slug"} {
 		rec := httptest.NewRecorder()
-		NewRouter(Deps{Catalog: &fakeCatalog{}}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, path, nil))
+		// Same-origin POST, so it passes the CSRF check (origin.go) and reaches the 405.
+		NewRouter(Deps{Catalog: &fakeCatalog{}}).ServeHTTP(rec, sameOriginRequest(http.MethodPost, path, nil))
 		if rec.Code != http.StatusMethodNotAllowed {
 			t.Errorf("POST %s = %d, want 405", path, rec.Code)
 		}
