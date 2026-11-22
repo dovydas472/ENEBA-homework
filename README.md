@@ -15,15 +15,16 @@ Requirements: Go 1.25+ (see `go.mod`), Node 20+.
 npm install
 cp .env.example .env   # then fill in DATABASE_URL (Neon `dev` branch, pooled string)
 
-# terminal 1 – Go API on :8080 (run from the repo root so .env is found)
-go run ./cmd/local
+# terminal 1 – Go API on 127.0.0.1:8080 (run from the repo root so .env is found)
+go run ./cmd/local             # another port: go run ./cmd/local -port 8092
 
-# terminal 2 – Vite dev server on :5173 (proxies /api -> :8080)
+# terminal 2 – Vite dev server on 127.0.0.1:5173 (proxies /api -> 127.0.0.1:8080)
 npm run dev
 ```
 
-Open http://localhost:5173 – the page should show `API: ok · DB: ok (NN ms)`.
-Quick API check: `curl localhost:8080/api/health` →
+Both listen on **127.0.0.1 only** (this computer; no firewall prompt).
+Open http://127.0.0.1:5173 – the page should show `API: ok · DB: ok (NN ms)`.
+Quick API check: `curl 127.0.0.1:8080/api/health` →
 `{"status":"ok","db":"ok","dbLatencyMs":37}` (or `503` + `{"status":"error","db":"error"}`
 if the database is unreachable / `DATABASE_URL` is missing).
 
@@ -70,7 +71,7 @@ count 0 are left out unless they are currently selected. `priceRange` (`minCents
 in-stock products that match the platform/region filters (the price filter itself is ignored).
 
 ```bash
-curl "localhost:8080/api/products?platform=steam&region=global&sort=price_asc&pageSize=2"
+curl "127.0.0.1:8080/api/products?platform=steam&region=global&sort=price_asc&pageSize=2"
 ```
 ```json
 {
@@ -98,7 +99,7 @@ describe the platform filter (all Steam products: 43 + 6 + 1 + 4 = 54).
 product, `priceCents: null`, `inStock: false`); `matchedAlias` is the alias that matched when the title did not.
 
 ```bash
-curl "localhost:8080/api/search/suggest?q=gta%205"
+curl "127.0.0.1:8080/api/search/suggest?q=gta%205"
 ```
 ```json
 {"items": [{"gameTitle": "Grand Theft Auto V", "productSlug": "grand-theft-auto-v-steam-global",
