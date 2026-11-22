@@ -53,7 +53,7 @@ JSON, `camelCase` field names. Money is **integer cents** (formatting is the fro
 
 | Parameter | Meaning |
 |---|---|
-| `q` | Search text (Task 13a): game **title or alias** ("gta 5", "rdr2"), contains or typo match (`witchr 3`). Trimmed, 2–100 characters. Filters the items **and** the facets |
+| `q` | Search text (Task 13a): game **title or alias** ("gta 5", "rdr2"), contains or typo match (`witchr 3`). Trimmed, 2–100 characters. A **2-character** query matches only at the **start of a word** of the title or an alias (`re` → Red Dead Redemption, not Dishonored; `gt` → GTA via the alias "GTA 5"); 3+ characters match anywhere and tolerate typos. Filters the items **and** the facets |
 | `platform`, `region` | Comma-separated slugs, several allowed: `platform=steam,psn`. Unknown slugs match nothing |
 | `minPrice`, `maxPrice` | Integer cents ≥ 0, `minPrice ≤ maxPrice`. Uses the cheapest *in-stock* price, so out-of-stock products are excluded when a price filter is set |
 | `sort` | `popularity` (default without `q`) · `relevance` ("Best match", default with `q`; without `q` = popularity) · `price_asc` · `price_desc` · `discount` · `newest` · `title`. Out-of-stock products come last on the price and discount sorts |
@@ -94,15 +94,16 @@ curl "127.0.0.1:8080/api/products?platform=steam&region=global&sort=price_asc&pa
 describe the platform filter (all Steam products: 43 + 6 + 1 + 4 = 54).
 
 `GET /api/search/suggest?q=…` – up to 6 games for the search-box dropdown, best match first, **one item per game**:
-`{"items": [{"gameTitle", "productSlug", "platform": {slug, name}, "region": {slug, name}, "coverUrl", "priceCents" | null,
+`{"items": [{"gameTitle", "productSlug", "edition", "platform": {slug, name}, "region": {slug, name}, "coverUrl", "priceCents" | null,
 "inStock", "matchedAlias" | null}]}`. `productSlug` is the game's cheapest in-stock product (none in stock: its first
-product, `priceCents: null`, `inStock: false`); `matchedAlias` is the alias that matched when the title did not.
+product, `priceCents: null`, `inStock: false`); `edition` is that product's edition (`"Standard"` or e.g. `"Game of the Year Edition"`);
+`matchedAlias` is the alias that matched when the title did not. The same 2-character word-start rule as for `q` above applies.
 
 ```bash
 curl "127.0.0.1:8080/api/search/suggest?q=gta%205"
 ```
 ```json
-{"items": [{"gameTitle": "Grand Theft Auto V", "productSlug": "grand-theft-auto-v-steam-global",
+{"items": [{"gameTitle": "Grand Theft Auto V", "productSlug": "grand-theft-auto-v-steam-global", "edition": "Standard",
             "platform": {"slug": "steam", "name": "Steam"}, "region": {"slug": "global", "name": "GLOBAL"},
             "coverUrl": "https://images.igdb.com/…", "priceCents": 1199, "inStock": true, "matchedAlias": "GTA 5"}, "…"]}
 ```

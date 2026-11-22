@@ -605,16 +605,20 @@ RETURNING k.id;
 -- @q          'witchr 3'      (NULL = no search: the CTEs return no rows, base does not filter)
 -- @q_prefix   'witchr 3%'     built in Go; %, _ and \ in q are escaped first
 -- @q_contains '%witchr 3%'
+-- @short_query  false         true when q has at most 2 characters (Task 13c): word-start rule, see below
+-- @q_word_start NULL          only for short queries, e.g. '(^|[^[:alnum:]])re'  (regex characters of q escaped)
 SELECT set_config('pg_trgm.word_similarity_threshold', '0.55', true);  -- first query of the SAME batch
 
 WITH matched_terms AS (   -- every title and alias that matches; each half uses its own trigram index
     SELECT g.id AS game_id, g.title AS term, NULL::text AS alias
     FROM games g
-    WHERE g.title ILIKE @q_contains OR @q <% g.title          -- contains  OR  similar (typo)
+    WHERE (@short_query AND g.title ~* @q_word_start)         -- 2 characters: start of a word only
+       OR (NOT @short_query AND (g.title ILIKE @q_contains OR @q <% g.title))  -- else: contains OR similar (typo)
     UNION ALL
     SELECT a.game_id, a.alias, a.alias
     FROM game_aliases a
-    WHERE a.alias ILIKE @q_contains OR @q <% a.alias
+    WHERE (@short_query AND a.alias ~* @q_word_start)
+       OR (NOT @short_query AND (a.alias ILIKE @q_contains OR @q <% a.alias))
 ),
 ranked_terms AS (
     SELECT game_id, alias,
@@ -635,12 +639,14 @@ game_matches AS (         -- one row per game: its BEST term decides the rank
 )
 -- listing: base LEFT JOINs game_matches (sketch 1); sort=relevance =
 --   ORDER BY match_tier, match_score DESC, popularity DESC, id
--- suggest: game_matches + per game its cheapest in-stock product, LIMIT 6
+-- suggest: game_matches + per game its cheapest in-stock product (slug, EDITION, platform, region, price), LIMIT 6
 ```
 
 - **`word_similarity(q, term)` / `q <% term`:** the share of the query's trigrams found in the best matching *part* of the term (0-1). Unlike `similarity()` (whole strings), a short query is not punished for a long title: "witchr 3" vs "The Witcher 3: Wild Hunt" = 0.58.
 - **Threshold 0.55** (default 0.6), tuned with a table of real queries (Task 13a report). It is set with `set_config(…, true)` = local to the transaction, as the **first query of the same pgx batch**: pgx runs a batch as one implicit transaction, so the value is gone after the batch. A plain `SET` would stay on the PgBouncer server connection (transaction mode) and leak into other requests.
 - **Indexes:** both `ILIKE '%…%'` and `<%` are index conditions on the GIN trigram indexes (`BitmapOr` of two `Bitmap Index Scan`s per table). With 50 games and ~130 aliases (one page each) the planner correctly prefers a sequential scan; the CI test `TestSearchMatchCanUseTheTrigramIndexes` turns seq scans off for one transaction and checks that both indexes are used.
+- **2-character queries (Task 13c): word starts only.** "re" as a substring is found inside "Dishonored", "Elden Ring [alias *G*reat *Rune*]" and many foreign-language aliases, which fills the dropdown with noise. So a query of at most 2 characters (counted in characters, after normalising) matches a title or alias only where it **starts a word**: at the beginning of the text or right after one character that is not a letter or digit (space, `:`, `-`, `'`, `.`, `(` …). `~*` is Postgres' case-insensitive regex match and `(^|[^[:alnum:]])re` is "start of text, or one non-alphanumeric character, then `re`". No trigram match for these either: "ro" finds nothing instead of everything that merely looks like "ro". `q` goes into the regex through `regexp.QuoteMeta`, so `.*` or `(` are plain characters. Ranking is unchanged (exact > prefix > contains; a word start in the middle of a title is "contains", tier 2). 3+ characters keep contains OR similar.
+- **Index for `~*`:** pg_trgm's GIN index also answers `~*` (it extracts the trigrams the pattern needs), so the 2-character condition is index-friendly too; the same CI test (`TestSearchMatchCanUseTheTrigramIndexes`) checks both titles and aliases for `witchr 3` (ILIKE / `<%`) and for `re` (`~*`). For 3+ characters `@short_query` is false, the planner sees the value and the plan is exactly the one described above.
 - **`matched_alias`** is set only when the title did not match at all, so the dropdown can show "GTA 5 → Grand Theft Auto V" and never an alias next to a title that obviously matches.
 
 ## Why RESTRICT and not CASCADE

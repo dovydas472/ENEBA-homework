@@ -551,7 +551,9 @@ padding `5px 0 5px 20px`, cover 72×102, 15px gap, a mint outlined "Digital good
 - Popup: `--color-bg`, `--shadow-dropdown`, 10px padding top and bottom, `max-height` = screen height minus the header row, scrolls inside (`overscroll-behavior: contain`).
   The page behind: `--color-overlay` (see 3.1 for what is dimmed on phones).
 - Game row (up to 6, one per game): `grid: --suggestion-cover-width | 1fr | auto`, gap `--space-3`, padding `--space-1 --space-4`; cover = `CoverImage` (ratio `--cover-aspect-ratio`).
-  Middle: title 14px bold (`--line-height-tight`), the typed part in `--color-accent` (a `<mark>` without background); "Also known as GTA V" (12px `--color-text-muted`, the alias,
+  Middle: title 14px bold (`--line-height-tight`), the typed part in `--color-accent` (a `<mark>` without background; for a 2-character query the **start of a word**, the same rule as the server, Task 13c);
+  the edition (Task 13c: 12px `--color-text-muted`, only when it is not "Standard" - the same rule and look as the Store card; Eneba writes the edition into the title text instead: "… GOTY GOG.com Key GLOBAL");
+  "Also known as GTA V" (12px `--color-text-muted`, the alias,
   shown only when an alias matched and the title did not); "Platform · Region" 12px `--color-secondary` (instead of Eneba's "Digital good" pill). Right: `Price` size `row`
   ("From" + 20px price, right-aligned) or "Out of stock" (12px medium `--color-text-nav`, like Eneba's "Sold out").
   Hover and keyboard-active rows: `--color-bg-deep`.
