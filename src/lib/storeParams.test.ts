@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildStoreSearch, mergeStoreParams, parseStoreParams } from "./storeParams.ts";
+import { buildStoreSearch, cleanQuery, mergeStoreParams, parseStoreParams } from "./storeParams.ts";
 import { buildProductsQuery } from "../api/catalog.ts";
 
 const parse = (search: string) => parseStoreParams(new URLSearchParams(search));
@@ -36,6 +36,39 @@ describe("parseStoreParams", () => {
   it("trims the search text and drops it when blank", () => {
     expect(parse("q=%20zelda%20")).toEqual({ q: "zelda" });
     expect(parse("q=%20%20")).toEqual({});
+  });
+
+  it("drops a one-character search text (the API needs 2-100 characters)", () => {
+    expect(parse("q=a&sort=title")).toEqual({ sort: "title" });
+    expect(parse("q=%20a%20")).toEqual({});
+  });
+
+  it("cuts a search text longer than 100 characters", () => {
+    expect(parse(`q=${"x".repeat(150)}`).q).toBe("x".repeat(100));
+  });
+
+  it("keeps 'Best match' only together with a search text", () => {
+    expect(parse("q=witcher&sort=relevance")).toEqual({ q: "witcher", sort: "relevance" });
+    expect(parse("sort=relevance&platform=steam")).toEqual({ platform: ["steam"] });
+  });
+});
+
+describe("cleanQuery", () => {
+  it("trims, and needs at least 2 characters", () => {
+    expect(cleanQuery("  gta ")).toBe("gta");
+    expect(cleanQuery("g")).toBeUndefined();
+    expect(cleanQuery("")).toBeUndefined();
+    expect(cleanQuery(null)).toBeUndefined();
+  });
+
+  it("counts characters, not UTF-16 units: an emoji is one character and is never cut in half", () => {
+    expect(cleanQuery("😀")).toBeUndefined();
+    expect(cleanQuery("😀".repeat(120))).toBe("😀".repeat(100));
+  });
+
+  it("trims again after cutting at 100", () => {
+    expect(cleanQuery(`a${" ".repeat(99)}b`)).toBeUndefined();
+    expect(cleanQuery(`ab${" ".repeat(98)}c`)).toBe("ab");
   });
 });
 
@@ -96,6 +129,16 @@ describe("mergeStoreParams", () => {
   it("keeps an explicit page that comes together with a filter change", () => {
     expect(mergeStoreParams({ page: 3 }, { sort: "title", page: 2 })).toEqual({ sort: "title", page: 2 });
   });
+
+  it("removing the search text also removes 'Best match' (falls back to Most popular)", () => {
+    expect(mergeStoreParams({ q: "witcher", sort: "relevance", platform: ["steam"] }, { q: undefined })).toEqual({
+      platform: ["steam"],
+    });
+  });
+
+  it("removing the search text keeps any other sort", () => {
+    expect(mergeStoreParams({ q: "witcher", sort: "price_asc" }, { q: undefined })).toEqual({ sort: "price_asc" });
+  });
 });
 
 // S12: a hand-typed URL must never make the page send something the API answers with 400.
@@ -134,8 +177,7 @@ describe("parseStoreParams: sanitizing hand-typed URLs (S12)", () => {
 
   it("only produces API requests that the server accepts (a messy URL gives a clean query)", () => {
     const params = parse("platform=steam,,steam&sort=foo&minPrice=abc&page=0&maxPrice=700&q=x");
-    const { q, ...filters } = params;
-    expect(q).toBe("x");
-    expect(buildProductsQuery(filters)).toBe("?platform=steam&maxPrice=700");
+    expect(buildProductsQuery(params)).toBe("?platform=steam&maxPrice=700");
+    expect(buildProductsQuery(parse("q=%20zelda%20&sort=relevance"))).toBe("?q=zelda&sort=relevance");
   });
 });

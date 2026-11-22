@@ -5,18 +5,40 @@ import { buildProductsQuery, type ProductsParams } from "../api/catalog.ts";
 import { SORTS, type Sort } from "../api/types.ts";
 
 /**
- * Everything the Store page keeps in its URL: the listing filters of GET /api/products
- * (without pageSize: the page size is the server default) plus the header's search text `q`.
+ * Everything the Store page keeps in its URL: the parameters of GET /api/products, including the header's
+ * search text `q` (without pageSize: the page size is the server default).
  */
-export type StoreParams = Omit<ProductsParams, "pageSize"> & {
-  /** Free-text search typed in the header. The API does not use it yet. */
-  q?: string;
-};
+export type StoreParams = Omit<ProductsParams, "pageSize">;
 
 // The API answers 400 for these limits (pkg/server/catalog_query.go). The page must never send them,
 // so the numbers are repeated here and the parser keeps the URL inside them.
 export const MAX_PAGE = 10_000;
 export const MAX_SLUGS_PER_FILTER = 20;
+/** Search text length limits of the API (after trimming), counted in characters. */
+export const MIN_QUERY_LENGTH = 2;
+export const MAX_QUERY_LENGTH = 100;
+
+/**
+ * The search text as the API accepts it: trimmed, 2-100 characters. Shorter -> undefined (no search);
+ * longer -> cut to 100. Characters are counted as code points ([...text]), so an emoji counts as one
+ * and is never cut in half.
+ */
+export function cleanQuery(value: string | null | undefined): string | undefined {
+  // Cut first, then trim: the cut can leave spaces at the end ("a" + 99 spaces + "b" -> "a").
+  const text = [...(value ?? "").trim()].slice(0, MAX_QUERY_LENGTH).join("").trimEnd();
+  return [...text].length >= MIN_QUERY_LENGTH ? text : undefined;
+}
+
+/**
+ * "Best match" (sort=relevance) only means something while there is a search text. Without `q` the sort is
+ * dropped, so the page falls back to its default (Most popular). Used when reading the URL AND when writing it.
+ */
+function withoutOrphanRelevance(params: StoreParams): StoreParams {
+  if (params.sort !== "relevance" || params.q) return params;
+  const rest = { ...params };
+  delete rest.sort;
+  return rest;
+}
 
 /** "steam,psn" -> ["steam", "psn"]; empty items and repeats are dropped, at most 20 are kept; nothing left -> undefined. */
 function parseList(value: string | null): string[] | undefined {
@@ -43,7 +65,7 @@ function parseSort(value: string | null): Sort | undefined {
  */
 export function parseStoreParams(search: URLSearchParams): StoreParams {
   const candidate: StoreParams = {
-    q: search.get("q")?.trim() || undefined,
+    q: cleanQuery(search.get("q")),
     platform: parseList(search.get("platform")),
     region: parseList(search.get("region")),
     minPrice: parseInteger(search.get("minPrice"), 0),
@@ -57,31 +79,28 @@ export function parseStoreParams(search: URLSearchParams): StoreParams {
     delete candidate.maxPrice;
   }
   // Keep only the keys that have a value (so `{}` means "no filters" and toEqual is simple).
-  return Object.fromEntries(Object.entries(candidate).filter(([, v]) => v !== undefined)) as StoreParams;
+  const params = Object.fromEntries(Object.entries(candidate).filter(([, v]) => v !== undefined)) as StoreParams;
+  return withoutOrphanRelevance(params);
 }
 
 /**
- * Turns params into a query string ("?q=zelda&platform=steam&page=2" or ""). The filter part is
- * built by buildProductsQuery, so the URL and the API request follow the same rules
- * (fixed order, no empty values, commas between several values). `q` goes first.
+ * Turns params into a query string ("?q=zelda&platform=steam&page=2" or ""). It is buildProductsQuery itself,
+ * so the URL and the API request follow the same rules (fixed order with `q` first, no empty values,
+ * commas between several values). A blank search text is left out.
  */
 export function buildStoreSearch(params: StoreParams): string {
-  const { q, ...filters } = params;
-  const filterQuery = buildProductsQuery(filters); // "" or "?a=b&c=d"
-  const text = q?.trim();
-  if (!text) return filterQuery;
-  const qPart = `q=${encodeURIComponent(text)}`;
-  return filterQuery ? `?${qPart}&${filterQuery.slice(1)}` : `?${qPart}`;
+  return buildProductsQuery({ ...params, q: params.q?.trim() });
 }
 
 /**
  * Applies a change to the current params. A key set to `undefined` is removed.
  * When something other than the page changes (a filter, the sort, the search), the old page number
  * no longer makes sense, so we go back to page 1 - unless the patch sets the page itself.
+ * Removing the search text also removes "Best match" (see withoutOrphanRelevance), so the URL stays clean.
  */
 export function mergeStoreParams(current: StoreParams, patch: Partial<StoreParams>): StoreParams {
   const merged: StoreParams = { ...current, ...patch };
   const changesOnlyPage = Object.keys(patch).every((key) => key === "page");
   if (!changesOnlyPage && !("page" in patch)) delete merged.page;
-  return merged;
+  return withoutOrphanRelevance(merged);
 }
