@@ -27,12 +27,18 @@ Task file: [`docs/tasks/TASK_13b_search_ui.md`](../tasks/TASK_13b_search_ui.md) 
 - `docs/PAAISKINIMAI_LT.md`: Task 13b block (combobox, debounce + stale answers, highlight, URL keeps `q`, Best match only with `q`, empty state, dimming/layers) and a note on the old `SearchField` entry.
 - `docs/reports/assets/task13b_*.png`: our screenshots.
 
+**Local servers on 127.0.0.1 only (owner request during this task)**
+- `cmd/local/main.go`: listens on `127.0.0.1:<port>` instead of `:8080` (all interfaces); new `-port` flag (default 8080); `listenAddr` + `cmd/local/main_test.go`.
+- `vite.config.ts`: dev and preview servers on `127.0.0.1`; the `/api` proxy target is `http://127.0.0.1:8080` (not `localhost`, which Node may resolve to `::1`).
+- `CLAUDE.md` (Structure rules): every local server listens on 127.0.0.1 only; temporary check programs live in the scratchpad, never in the repo.
+- `README.md` (local dev commands and curl examples), `docs/PAAISKINIMAI_LT.md` (`cmd/local` entry).
+
 ## 2. Verification results
 
 | Check | Result |
 |---|---|
 | `gofmt -l .` | prints nothing |
-| `go build ./...`, `go vet ./...`, `go test ./...` | pass (no Go changes in this task). `go.mod` still `go 1.25.0` |
+| `go build ./...`, `go vet ./...`, `go test ./...` | pass, incl. the new `cmd/local` tests (`listenAddr`). `go.mod` still `go 1.25.0` |
 | `npm run lint` | 0 problems |
 | `npm test` (PowerShell) | **31 files, 378 tests passed** (after the rebase). New: SearchBox 23, highlight 8, moveActive 5, useDebouncedValue 2, Store page `q` 14 (2 old S10 tests removed), storeParams +8, SortRadios +1, routes +2 |
 | `npm run build` | pass |
@@ -40,8 +46,9 @@ Task file: [`docs/tasks/TASK_13b_search_ui.md`](../tasks/TASK_13b_search_ui.md) 
 | **axe-core** (WCAG 2 A/AA, 2.1 AA, best practice) | **0 violations** in all 20 states: every dropdown state with the list open AND with a row active (↓↓), and both Store pages, desktop and phone |
 | Horizontal overflow | none in any captured state |
 | Keyboard in the real browser | ↓↓ makes row 2 active (`aria-activedescendant` = its id, `#351183` background), focus stays in the field |
+| Loopback only | `go run ./cmd/local -port 8093` → `netstat`: `TCP 127.0.0.1:8093 LISTENING` (nothing on 0.0.0.0). `npx vite --port 5179` → `127.0.0.1:5179`, and `/api/health` through its proxy (target `127.0.0.1:8080`) answered 200 |
 
-Before 13a was merged, the same checks ran first against a small local mock, then against 13a's branch code (both in the session scratchpad, nothing committed).
+Before 13a was merged, the same checks ran first against a small local mock (Node, in the session scratchpad), then against 13a's branch code. For the real-API runs a one-off server (`cmd/zz13bcheck`, the router on :8092) sat **uncommitted** in a throwaway worktree of the 13a branch; it was never committed and was deleted with that worktree. It listened on all interfaces, which made Windows Firewall prompt: hence the owner's new rule (127.0.0.1 only, temporary programs in the scratchpad), applied in this PR.
 
 **Screenshots (ours):** `docs/reports/assets/`:
 - dropdown: `task13b_dropdown-desktop.png` (row 2 active), `-alias-desktop.png` (`gta`), `-nomatch-desktop.png`, `-2letter-desktop.png` (`re`), `-mobile.png`, `-alias-mobile.png` (row 2 active), `-nomatch-mobile.png`
@@ -94,6 +101,7 @@ Eneba's query-text suggestions, the "Digital good" pill, ⓘ and old prices in r
 2. Open `/store?q=gta`: "Results for 'gta'", "Clear search", the sort says "Best match"; change it, then clear the search: the sort falls back to "Most popular". Open `/store?q=qwertyzz`: "No results" + "Popular right now".
 3. Decide the 2-letter question in §6.
 4. Session log: Claude Code converts the transcript and commits it on this branch (see the PR).
+5. Your older servers from 2026-11-21 (`cmd/local` on :8080, Vite on :5173 and :4173) still run with the old code and listen on all interfaces / `localhost`. I left them alone. Restart them from `main` after this PR is merged to get the 127.0.0.1 behaviour (the new Vite dev page is http://127.0.0.1:5173).
 
 ## 4. Plain-language explanation
 - **Header suggestions.** Typing two or more letters in the header search opens a list of up to 6 matching games, the way Eneba does it: cover, name, platform and region, and the price.
@@ -112,6 +120,7 @@ Eneba's query-text suggestions, the "Digital good" pill, ⓘ and old prices in r
 - **No-matches row is not an option:** with no results the listbox has no options, so `aria-expanded="false"`; the visible row is plain text and a live region announces it. This is the correct ARIA, and the row is still shown as the owner asked.
 - **"Clear filters" in the empty state** when a filter is active, next to "Clear search": with `q` + filters, the filters can be the reason for zero results.
 - **Price size 20px** (Eneba 18px): the existing `Price` "row" size, no new token for 2px.
+- **Added at the owner's request during the task (not in the task file):** local servers listen on 127.0.0.1 only (`cmd/local` with `-port`, Vite host and proxy target) and the matching CLAUDE.md rules (§1).
 - **Search text limits on the client:** `q` shorter than 2 characters is dropped from the URL and longer than 100 is cut, so a hand-typed URL never gets a 400. The field has `maxLength=100`; Enter with fewer than 2 characters does nothing.
 
 ## 6. Open questions
