@@ -33,6 +33,11 @@
   font-size: var(--font-size-xl);
 }
 
+/* Offer row on the product page: 20px (measured on Eneba in Task 12). */
+.row .current {
+  font-size: var(--font-size-lg);
+}
+
 .large .current {
   font-size: var(--font-size-3xl);
 }

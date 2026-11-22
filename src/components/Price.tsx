@@ -12,8 +12,8 @@ interface PriceProps {
   discountPercent?: number | null;
   /** Small text above the price, e.g. "From" on a product card. */
   label?: string;
-  /** card = product card / offer row, large = buy box on the product page. */
-  size?: "card" | "large";
+  /** card = product card, row = offer row (20px), large = buy box on the product page (28px). */
+  size?: "card" | "row" | "large";
   className?: string;
 }
 

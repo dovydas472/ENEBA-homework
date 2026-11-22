@@ -73,6 +73,9 @@
   --font-size-2xl: 1.5rem; /* 24px  page title (mobile) */
   --font-size-3xl: 1.75rem; /* 28px  price on the product page, wordmark */
   --font-size-4xl: 1.875rem; /* 30px  page title (desktop) */
+  /* Added in Task 12 (product page, measured on eneba.com): */
+  --font-size-section: 1.125rem; /* 18px  section heading on the product page ("4 offers", "Product details") */
+  --font-size-product-title: 1.625rem; /* 26px  product page h1 (desktop; 16px on phones) */
 
   --font-weight-regular: 400;
   --font-weight-medium: 500; /* Eneba declares this file as weight 600 */
@@ -97,6 +100,7 @@
   --radius-none: 0; /* buttons, cards, inputs, panels */
   --radius-sm: 3px; /* checkbox, small tags */
   --radius-md: 5px; /* small chips, popups' inner blocks */
+  --radius-lg: 10px; /* genre tags on the product page (Task 12) */
   --radius-pill: 50px; /* pill tags: "Cashback deal", "Best cashback" */
   --radius-round: 50%; /* avatars, spinner */
 
@@ -106,6 +110,7 @@
   --shadow-popup: 0 7px 17px 0 rgba(0, 0, 0, 0.55); /* floating cards, popovers */
   --shadow-modal: 0 2px 27px 0 rgba(0, 0, 0, 0.5); /* modals, drawers */
   --shadow-toast: 0 3px 9px rgba(0, 0, 0, 0.4); /* toasts, tooltips */
+  --shadow-card: 0 3px 9px rgba(0, 0, 0, 0.25); /* product page buy box (Task 12) */
 
   /* ---------- Layering (z-index) ---------- */
   --z-base: 0;
@@ -144,6 +149,7 @@
   --search-max-width: 34.375rem; /* 550px: header search field */
   --icon-size: 1.5rem; /* 24px: header icons */
   --icon-size-sm: 1.25rem; /* 20px: icon inside the search field, small icons */
+  --icon-size-lg: 2.5rem; /* 40px: fact icons next to the product cover (Task 12) */
   --spinner-size: 1rem; /* 16px: loading spinner inside a button */
   --badge-count-size: 1rem; /* 16px: minimum width/height of the cart count badge */
   --toast-max-width: 25rem; /* 400px: toast / notice box */
@@ -161,6 +167,12 @@
   --platform-strip-height: 1.375rem; /* 22px: dark platform strip at the bottom of a cover (18px on phones) */
   --list-cover-width: 4.375rem; /* 70px: cover thumbnail of the phone list card */
   --radio-dot-size: 0.625rem; /* 10px: the dot of a checked radio button */
+  /* Added in Task 12 (product page, measured on eneba.com): */
+  --product-cover-width: 14rem; /* 224px: cover on the product page (desktop) */
+  --product-cover-width-sm: 4.5rem; /* 72px: the same cover on phones and tablets */
+  --buy-box-width: 21.875rem; /* 350px: the buy box column (desktop) */
+  --avatar-size: 2.5rem; /* 40px: seller avatar in an offer row */
+  --sticky-bar-height: 3.75rem; /* 60px: phone "Add to cart" bar at the bottom of the product page (10 + 40 + 10) */
 }
 
 /*

@@ -1,0 +1,58 @@
+/* Phone buy bar (P5). Eneba has none, so this is built from tokens (D): the nav-strip colour, a thin top line,
+   the toast shadow; exactly --sticky-bar-height tall (10px + 40px button + 10px). */
+.bar {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .bar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-sticky);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    height: var(--sticky-bar-height);
+    padding: 0 var(--page-gutter);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-deep);
+    box-shadow: var(--shadow-toast);
+    transition:
+      transform var(--transition-fast),
+      visibility var(--transition-fast);
+  }
+
+  /* Slid out of the screen while the buy box is visible. visibility also removes it from the tab order
+     and from screen readers, so nobody lands on an invisible button. */
+  .hidden {
+    visibility: hidden;
+    transform: translateY(100%);
+  }
+}
+
+.price {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-none);
+}
+
+.label {
+  color: var(--color-accent);
+  font-size: var(--font-size-2xs);
+  text-transform: uppercase; /* DESIGN.md 5.2: 10px only for uppercase micro labels */
+}
+
+.button {
+  flex: 1;
+}
+
+.icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
