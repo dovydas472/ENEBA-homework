@@ -1,12 +1,14 @@
 import { ArrowDownWideNarrow, ChevronDown } from "lucide-react";
 import { useId } from "react";
-import { SORTS, type Sort } from "../../api/types.ts";
+import type { Sort } from "../../api/types.ts";
 import { cx } from "../../lib/cx.ts";
 import { SORT_LABELS } from "./sortLabels.ts";
 import styles from "./SortSelect.module.css";
 
 interface SortSelectProps {
   value: Sort;
+  /** The sorts to offer, in this order ("Best match" only while there is a search text: see sortOptions). */
+  options: readonly Sort[];
   onChange: (sort: Sort) => void;
   className?: string;
 }
@@ -16,7 +18,7 @@ interface SortSelectProps {
  * native <select> (DESIGN.md 4.6): keyboard, screen readers and the browser's own list work without code of ours.
  * The "Sort by" label is for screen readers only; the icon says it visually. On phones the sort is in the drawer.
  */
-export function SortSelect({ value, onChange, className }: SortSelectProps) {
+export function SortSelect({ value, options, onChange, className }: SortSelectProps) {
   const id = useId();
 
   return (
@@ -29,10 +31,10 @@ export function SortSelect({ value, onChange, className }: SortSelectProps) {
         id={id}
         className={styles.select}
         value={value}
-        // The option values come from SORTS, so the cast is safe.
+        // The option values come from `options` (Sort values), so the cast is safe.
         onChange={(event) => onChange(event.target.value as Sort)}
       >
-        {SORTS.map((sort) => (
+        {options.map((sort) => (
           <option key={sort} value={sort}>
             {SORT_LABELS[sort]}
           </option>

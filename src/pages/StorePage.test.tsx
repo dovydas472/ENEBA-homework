@@ -332,21 +332,133 @@ describe("StorePage: empty and error states", () => {
     expect($$("li h3")).toHaveLength(1);
   });
 
-  it("the search text q is announced as 'not yet implemented' and is NOT sent to the API (S10)", async () => {
-    await mount("/store?q=zelda&platform=steam");
-    expect($("[role=note]").textContent).toBe("Text search arrives in a later task – showing all products.");
-    expect(requested()).toEqual(["/api/products?platform=steam"]);
-  });
-
-  it("has no info line without q", async () => {
-    await mount();
-    expect($("[role=note]")).toBeNull();
-  });
-
   it("sanitizes a messy hand-typed URL: no 400, a clean request (S12)", async () => {
     await mount("/store?sort=foo&minPrice=abc&page=0&maxPrice=700&platform=steam,,steam");
     expect(requested()).toEqual(["/api/products?platform=steam&maxPrice=700"]);
     expect($$("li h3")).toHaveLength(2);
+  });
+});
+
+describe("StorePage: search text q (Task 13b)", () => {
+  const popular = makeItem({ slug: "hades-steam-global", title: "Hades" });
+  /** The search request finds nothing; the "Popular right now" request (pageSize=8) gets one product. */
+  function searchFindsNothing() {
+    fakeApi.mockImplementation(async (path) =>
+      (path.includes("pageSize=8")
+        ? makeResponse([popular], { pageSize: 8 })
+        : makeResponse([], { total: 0, facets: { ...facets, priceRange: null } })) as never,
+    );
+  }
+
+  it("sends q to the API together with the filters", async () => {
+    await mount("/store?q=witcher&platform=steam");
+    expect(requested()).toEqual(["/api/products?q=witcher&platform=steam"]);
+  });
+
+  it("has no info line about search 'arriving later' any more", async () => {
+    await mount("/store?q=witcher");
+    expect($("[role=note]")).toBeNull();
+  });
+
+  it("titles the page 'Results for q' and keeps the result count", async () => {
+    await mount("/store?q=witcher");
+    expect($("h1").textContent).toBe("Results for 'witcher'");
+    expect($$("h1")).toHaveLength(1);
+    expect(document.title).toBe("Results for 'witcher' – EneHomeworkBa");
+    expect($("[aria-live=polite]").textContent).toBe("2 results");
+  });
+
+  it("is titled 'Store' without q", async () => {
+    await mount("/store");
+    expect($("h1").textContent).toBe("Store");
+    expect(button("Clear search")).toBeUndefined();
+  });
+
+  it("'Clear search' removes only q: the filters and a non-default sort stay", async () => {
+    const { router } = await mount("/store?q=witcher&platform=steam&sort=price_asc&page=2");
+    click(button("Clear search"));
+    await flush();
+    expect(urlOf(router)).toBe("/store?platform=steam&sort=price_asc");
+  });
+
+  it("offers 'Best match' only with q, and it is then the default (left out of the URL)", async () => {
+    const { router } = await mount("/store?q=witcher");
+    const select = $<HTMLSelectElement>("select");
+    expect($$("select option").map((o) => o.textContent)[0]).toBe("Best match");
+    expect(select.value).toBe("relevance");
+
+    setControlValue(select, "price_asc");
+    await flush();
+    expect(urlOf(router)).toBe("/store?q=witcher&sort=price_asc");
+    setControlValue(select, "relevance");
+    await flush();
+    expect(urlOf(router)).toBe("/store?q=witcher");
+  });
+
+  it("has no 'Best match' without q; 'Most popular' is the default", async () => {
+    await mount("/store");
+    expect($$("select option").map((o) => o.getAttribute("value"))).not.toContain("relevance");
+    expect($<HTMLSelectElement>("select").value).toBe("popularity");
+  });
+
+  it("the drawer's sort radios also offer 'Best match' with q", async () => {
+    await mount("/store?q=witcher");
+    click(button("Sort and filter"));
+    const radios = [...$("dialog").querySelectorAll<HTMLInputElement>("input[type=radio]")];
+    expect(radios[0].value).toBe("relevance");
+    expect(radios[0].checked).toBe(true);
+  });
+
+  it("sort=relevance without q falls back to Most popular (sanitizer): not sent to the API", async () => {
+    await mount("/store?sort=relevance&platform=steam");
+    expect(requested()).toEqual(["/api/products?platform=steam"]);
+    expect($<HTMLSelectElement>("select").value).toBe("popularity");
+  });
+
+  it("clearing q while sorted by Best match also drops sort=relevance from the URL", async () => {
+    const { router } = await mount("/store?q=witcher&sort=relevance");
+    click(button("Clear search"));
+    await flush();
+    expect(urlOf(router)).toBe("/store");
+    expect(requested().at(-1)).toBe("/api/products");
+  });
+
+  it("drops a one-character q instead of sending it (the API needs 2-100 characters)", async () => {
+    await mount("/store?q=a&platform=steam");
+    expect(requested()).toEqual(["/api/products?platform=steam"]);
+    expect($("h1").textContent).toBe("Store");
+  });
+
+  it("no results: 'No results for q', 'Clear search' and a 'Popular right now' grid of 8", async () => {
+    searchFindsNothing();
+    const { router } = await mount("/store?q=qwertyzz");
+    expect(document.body.textContent).toContain("No results for 'qwertyzz'");
+    expect(requested()).toContain("/api/products?pageSize=8");
+    const section = $("section[aria-labelledby]");
+    expect(section.querySelector("h2")?.textContent).toBe("Popular right now");
+    expect([...section.querySelectorAll("li h3")].map((h) => h.textContent)).toEqual(["Hades"]);
+    expect(button("Clear filters")).toBeUndefined(); // no filter is active
+
+    // Two "Clear search" buttons (next to the title and in the empty state); both remove only q.
+    const clears = $$("button").filter((b) => b.textContent?.trim() === "Clear search");
+    expect(clears).toHaveLength(2);
+    click(clears[1]);
+    await flush();
+    expect(urlOf(router)).toBe("/store");
+  });
+
+  it("no results with a filter also offers 'Clear filters'", async () => {
+    searchFindsNothing();
+    const { router } = await mount("/store?q=qwertyzz&platform=steam");
+    click(button("Clear filters"));
+    await flush();
+    expect(urlOf(router)).toBe("/store?q=qwertyzz");
+  });
+
+  it("a search that finds products shows no 'Popular right now'", async () => {
+    await mount("/store?q=witcher");
+    expect(document.body.textContent).not.toContain("Popular right now");
+    expect(requested()).not.toContain("/api/products?pageSize=8");
   });
 });
 

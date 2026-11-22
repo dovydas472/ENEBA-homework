@@ -1,0 +1,75 @@
+/*
+ * One row of the header search list: see docs/DESIGN.md 4.13 (measured on eneba.com in Task 13b).
+ * Eneba: 72px cover, 15px to the text, 20px side padding, 5px above and below; title 14px bold; price on the right.
+ */
+.option {
+  display: grid;
+  grid-template-columns: var(--suggestion-cover-width) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-4);
+  color: var(--color-text);
+  transition: background-color var(--transition-fast);
+}
+
+/* Hover (mouse) and active (↓/↑) look the same, like Eneba (#351183). */
+.option:hover,
+.active {
+  background: var(--color-bg-deep);
+  color: var(--color-text);
+}
+
+.cover {
+  align-self: start;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  overflow-wrap: anywhere;
+}
+
+/* The typed text inside the title: yellow instead of the browser's yellow box. */
+.mark {
+  background: none;
+  color: var(--color-accent);
+}
+
+/* "Also known as GTA V": why this game is in the list although the title does not contain the text. */
+.alias {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-tight);
+}
+
+/* Platform · region in mint, like the cards (Eneba shows a mint "Digital good" pill here). */
+.meta {
+  color: var(--color-secondary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-tight);
+}
+
+.price {
+  text-align: right;
+}
+
+/* "From" and the price both on the right edge, as on Eneba (Price is a flex column). */
+.priceBlock {
+  align-items: flex-end;
+}
+
+/* Eneba: "Sold out", 12px, light grey. */
+.outOfStock {
+  color: var(--color-text-nav);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}

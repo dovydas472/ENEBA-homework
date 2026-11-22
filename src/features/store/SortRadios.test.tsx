@@ -3,12 +3,13 @@ import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "../../test-utils.tsx";
 import { SortRadios } from "./SortRadios.tsx";
+import { sortOptions } from "./sortLabels.ts";
 
 let cleanup: (() => void) | undefined;
 afterEach(() => cleanup?.());
 
-function mount(value: Parameters<typeof SortRadios>[0]["value"], onChange = vi.fn()) {
-  const view = render(<SortRadios value={value} onChange={onChange} />);
+function mount(value: Parameters<typeof SortRadios>[0]["value"], onChange = vi.fn(), options = sortOptions(false)) {
+  const view = render(<SortRadios value={value} options={options} onChange={onChange} />);
   cleanup = view.unmount;
   const radios = [...view.container.querySelectorAll<HTMLInputElement>("input[type=radio]")];
   return { radios, onChange, group: view.container.querySelector("[role=radiogroup]")! };
@@ -39,5 +40,12 @@ describe("SortRadios", () => {
     const { radios, onChange } = mount("popularity");
     act(() => radios.find((r) => r.value === "price_asc")!.click());
     expect(onChange).toHaveBeenCalledWith("price_asc");
+  });
+
+  it("offers 'Best match' first when the options include it (a search is active)", () => {
+    const { radios } = mount("relevance", vi.fn(), sortOptions(true));
+    expect(radios.map((r) => r.value)).toEqual(["relevance", "popularity", "price_asc", "price_desc", "discount", "newest", "title"]);
+    expect(radios[0].closest("label")?.textContent).toBe("Best match");
+    expect(radios[0].checked).toBe(true);
   });
 });

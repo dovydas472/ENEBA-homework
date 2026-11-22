@@ -13,6 +13,9 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
 - `api/index.go` is the ONLY Go file in `/api` (each file there becomes a Vercel function). It only forwards to the router.
 - All Go logic lives in `pkg/`, NOT `internal/`: Vercel builds `api/index.go` as a separate package and Go's `internal` rule breaks the build.
 - Local dev server is `cmd/local`. Never add a root `main.go`, `cmd/api` or `cmd/server` (Vercel's Go preset auto-detects them and changes the deploy model).
+- Every local server (`cmd/local`, Vite dev/preview, any temporary check program) listens on **127.0.0.1 only**, never on `:port` / `0.0.0.0`
+  (Windows Firewall prompts otherwise). `cmd/local` takes `-port` (default 8080); proxy targets use `127.0.0.1`, not `localhost` (Node may pick `::1`).
+- Temporary check programs (mock APIs, one-off servers, scripts) live in the session scratchpad, **never** in the repo (not under `cmd/`, not uncommitted in a worktree).
 - Router: standard `net/http` ServeMux (Go 1.22+ patterns like `GET /api/x/{id}`). No chi/gin.
   Dependencies are passed into `NewRouter(Deps{...})`; handlers depend on small interfaces, not concrete types (see `DBPinger`).
 - `godotenv` is allowed only in `cmd/*` tools (`cmd/local`, `cmd/migrate`, `cmd/seed`, `cmd/igdb-snapshot`), never in `api/` or `pkg/`.

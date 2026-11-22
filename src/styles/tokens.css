@@ -172,6 +172,8 @@
   --product-cover-width-sm: 4.5rem; /* 72px: the same cover on phones and tablets */
   --buy-box-width: 21.875rem; /* 350px: the buy box column (desktop) */
   --avatar-size: 2.5rem; /* 40px: seller avatar in an offer row */
+  /* Added in Task 13b (header search suggestions, measured on eneba.com): */
+  --suggestion-cover-width: 4.5rem; /* 72px: cover in a search suggestion row */
 }
 
 /*

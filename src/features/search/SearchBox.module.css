@@ -1,0 +1,185 @@
+/*
+ * Header search field + suggestions list: see docs/DESIGN.md 3.1, 4.2 and 4.13 (list measured on eneba.com in Task 13b).
+ * Desktop: the list hangs under the field, exactly as wide (550px), and the page behind is dimmed.
+ * ≤ 930px: the field covers the header row (Header.module.css) and the list spans the whole screen width under it.
+ */
+.box {
+  position: relative; /* the list is placed under the field */
+  flex: 1;
+  min-width: 0;
+}
+
+/* While the list is open, the field and the list sit above the dimmed page (and above the cards' cover badges). */
+.boxOpen {
+  z-index: var(--z-dropdown);
+}
+
+/* ---- the field (moved from SearchField in Task 13b) ---- */
+.field {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: var(--control-height);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-none);
+  background: var(--color-bg); /* not transparent: the field stays bright above the dimmed page */
+}
+
+@media (min-width: 931px) {
+  .field {
+    height: var(--search-height);
+  }
+}
+
+/* The ring goes around the whole field, not around the inner input. */
+.field:focus-within {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: var(--hit-target-min);
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  transition: color var(--transition-fast);
+}
+
+.submit:hover {
+  color: var(--color-accent);
+}
+
+.icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--space-2) 0 0;
+  border: 0;
+  outline: none; /* the wrapper draws the focus ring (:focus-within above) */
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+
+@media (min-width: 931px) {
+  .input {
+    font-size: var(--font-size-lg);
+  }
+}
+
+.input::placeholder {
+  color: var(--color-text-subtle);
+  opacity: 1; /* Firefox dims placeholders by default */
+}
+
+/* The small spinner at the right end of the field while suggestions load. */
+.loading {
+  display: flex;
+  flex: none;
+  padding-right: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+/* ---- the dimmed page behind the list (Eneba: rgba(0, 0, 0, .55)) ---- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1; /* under the field and the list, over the rest of the page (see .boxOpen) */
+  background: var(--color-overlay);
+}
+
+/* ---- the list ---- */
+.popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  max-height: calc(100dvh - var(--header-top-height));
+  padding: var(--space-2) 0;
+  overflow-y: auto;
+  overscroll-behavior: contain; /* scrolling the list to its end does not scroll the page */
+  background: var(--color-bg);
+  box-shadow: var(--shadow-dropdown);
+}
+
+.popup[hidden] {
+  display: none;
+}
+
+.listbox {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Last row: looks like Eneba's outlined "Show all N results" button, 20px from the sides. */
+.seeAll {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--button-height);
+  margin: var(--space-3) var(--space-4) var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  text-align: center;
+  overflow-wrap: anywhere;
+  transition: background-color var(--transition-fast);
+}
+
+.seeAll:hover,
+.seeAllActive {
+  background: var(--color-bg-deep);
+  color: var(--color-text);
+}
+
+/* The active row of the keyboard gets the ring too: the outlined box alone does not show that it is active. */
+.seeAllActive {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.noMatches {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+/* ---- phones and tablets: the list is as wide as the screen, under the 56px header row ---- */
+@media (max-width: 930px) {
+  /* Not positioned here, so the list is placed against the header row (Header.module.css .search) instead. */
+  .box {
+    position: static;
+  }
+
+  /* No layer of its own here (a flex item WITH a z-index would be one, even unpositioned): then the backdrop would
+     also cover the "Close search" × next to the field. The header row is already on the dropdown layer. */
+  .boxOpen {
+    z-index: auto;
+  }
+
+  /* As on Eneba's phone page: only the page UNDER the header row is dimmed, the row with the field stays bright. */
+  .backdrop {
+    position: absolute;
+    inset: 100% 0 auto;
+    height: 100dvh;
+  }
+
+  .popup {
+    max-height: calc(100dvh - var(--header-height));
+  }
+}

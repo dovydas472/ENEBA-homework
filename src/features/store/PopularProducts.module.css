@@ -1,0 +1,10 @@
+/* "Popular right now" under a search without results (DESIGN.md 3.2). */
+.section {
+  margin-top: var(--space-5);
+}
+
+/* Like the section headings on the product page: 18px bold. */
+.title {
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-section);
+}
