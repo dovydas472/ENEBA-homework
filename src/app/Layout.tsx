@@ -4,6 +4,7 @@ import { Footer } from "./Footer.tsx";
 import { Header } from "./Header.tsx";
 import styles from "./Layout.module.css";
 import { SlowServerNotice } from "./SlowServerNotice.tsx";
+import { Toaster } from "./Toaster.tsx";
 
 /**
  * The frame around every page. It is a "layout route": routes.ts nests all pages inside it, and
@@ -22,7 +23,11 @@ export function Layout() {
         <Outlet />
       </main>
       <Footer />
-      <SlowServerNotice />
+      {/* Bottom corner: the toast ("Added to cart") and the "waking up" notice, stacked so they never overlap. */}
+      <div className={styles.notices}>
+        <Toaster />
+        <SlowServerNotice />
+      </div>
       {/* Remembers the scroll position of every history entry: Back from a product returns to the same place in
           the Store. A new page opens at the top (filter changes opt out, see useStoreParams). */}
       <ScrollRestoration />
