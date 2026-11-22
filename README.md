@@ -152,9 +152,22 @@ curl -i -X POST -H "Origin: https://evil.example" 127.0.0.1:8080/api/auth/demo  
 curl -i -X POST -H "Origin: http://127.0.0.1:8080" 127.0.0.1:8080/api/auth/demo  # -> 201 {"user":{...,"isDemo":true}} + Set-Cookie
 ```
 
-**Shortcuts (simulated parts of a real sign-up):** no email verification (any well-formed address can register, and is
-signed in at once), no password reset ("forgot password"), no "sign out everywhere", and old demo accounts are not cleaned
-up automatically. A real shop would add signed, single-use email links for verification and reset.
+**Rate limit trade-off (decided: keep per email).** The limit counts failures per *email*, so anyone who knows an email
+can send 10 wrong passwords and pause password sign-in for that email for 15 minutes. Nothing leaks and no account is taken
+over: sessions that are already signed in keep working, and the demo button always works. It is kept because it is simple,
+it cannot be bypassed by switching IP addresses, and this is a demo shop. **Production option:** key the counter on
+**email + client IP** (Vercel sends the client address in `X-Forwarded-For` / `X-Real-IP`). Then an attacker only locks
+out their own IP, while the owner can still sign in from theirs. The cost is that an attacker with many IPs gets 10 guesses
+per IP, so a production shop would add a per-account slow-down or a CAPTCHA after the limit.
+
+**Shortcuts (simulated parts of a real sign-up):**
+- no email verification: any well-formed address can register and is signed in at once;
+- no password reset ("forgot password") and no "sign out everywhere";
+- **demo accounts are never cleaned up (decided):** every "Sign in as demo user" click adds a row to `users`. That is
+  fine at demo scale. A real shop would delete old demo accounts (and decide what happens to their orders) with a
+  scheduled job.
+
+A real shop would add signed, single-use email links for verification and reset.
 
 Frontend: `src/api/auth.ts` (typed calls), `src/features/auth/` (`useCurrentUser`, the sign-in / sign-up page, `RequireAuth`),
 the header account menu in `src/app/AccountMenu.tsx`.

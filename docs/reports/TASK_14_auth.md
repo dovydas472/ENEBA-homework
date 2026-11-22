@@ -83,7 +83,7 @@ Eneba's logo and illustration, the "Hi! It's nice to see you!" greeting, the soc
 1. **Before merging, migrate production from this branch:** *Actions → Migrate production → Run workflow*, "Use workflow from" = **`task/14-auth`**. Check that the log shows `00004_auth.sql` applied, and only then merge. (The automatic run after the merge then finds nothing to apply. `00004` must not change after this run.)
 2. On the PR Preview: open `/orders` → you land on sign-in. Try "Sign in as demo user" (back on `/orders` as "Demo user"), sign out from the header menu, register with any email, sign out, sign in again, try a wrong password a few times. On a phone, open ☰ and check the account part.
 3. DevTools → Application → Cookies on the Preview: `session` is HttpOnly, Secure, SameSite=Lax.
-4. Decide the open question in §6.1 (third-party lockout).
+4. ~~Decide the open question in §6.1~~ – answered: keep (a), see §6.
 5. `/export` this session into `ai-logs/` (`YYYY-MM-DD_NN_auth.md`). If you leave it uncommitted, I commit it on this branch.
 6. Your older local servers (`cmd/local` on :8080, Vite on :5173/:4173) still run old code. Restart them from `main` after the merge: local sign-in needs this PR's Vite proxy change.
 
@@ -108,13 +108,9 @@ Eneba's logo and illustration, the "Hi! It's nice to see you!" greeting, the soc
 - **The Origin check covers the whole API:** a POST without `Origin` to any `/api/*` path gets `403` (before 405/404). Two existing 405 tests now send a same-origin `Origin`.
 
 ## 6. Open questions
-1. **Third-party lockout (security review finding, not changed).** Anyone who knows an email can send 10 wrong passwords and block password sign-in for that email for 15 minutes. Existing sessions keep working, and the demo button always works. This follows from A6 ("per email"). Options:
-   - (a) keep it as is: simple and documented;
-   - (b) key the counter on email **+ client IP** (`X-Forwarded-For` / `X-Real-IP` on Vercel): an attacker then only locks out themselves, but one with many IPs gets 10 guesses per IP;
-   - (c) after the limit, ask for a CAPTCHA instead of a hard block.
-
-   I recommend (a) for this demo, and (b) if you want it closer to production.
-2. **Demo accounts pile up** in the database (one per click). A clean-up of demo users older than e.g. 7 days could come with the checkout task, since their orders need a decision first.
+All answered by the owner in the review (2026-11-22):
+1. **Third-party lockout:** **keep (a)**, per email. The trade-off and the production option (b: email + client IP) are documented in README ("Rate limit trade-off").
+2. **Demo accounts pile up:** **no clean-up**; mentioned in README ("Shortcuts").
 
 ## 7. Self-review (task-reviewer)
 The `task-reviewer` subagent got only the task number and the branch. It ran after the code and docs were committed and before this report was written. It is read-only and ran nothing.
