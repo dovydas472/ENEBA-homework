@@ -4,13 +4,37 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { polyfillDialog, render, setControlValue } from "../test-utils.tsx";
 import { createQueryClient } from "./queryClient.ts";
 import { routes } from "./routes.ts";
 
 let cleanup: (() => void) | undefined;
 afterEach(() => cleanup?.());
+
+// The only request the shell makes by itself is GET /api/auth/me (Task 14). The fake server answers it:
+// 401 (signed out) unless a test signs someone in. Any other request fails loudly.
+let signedInAs: { id: number; email: string; isDemo: boolean } | null = null;
+beforeEach(() => {
+  signedInAs = null;
+  window.scrollTo = vi.fn() as never; // jsdom has no scrolling; the layout's ScrollRestoration calls it
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (path: string) => {
+      if (path !== "/api/auth/me") return new Response('{"error":"unexpected request"}', { status: 500 });
+      return signedInAs
+        ? new Response(JSON.stringify({ user: signedInAs }), { status: 200 })
+        : new Response('{"error":"not signed in"}', { status: 401 });
+    }),
+  );
+});
+afterEach(() => vi.unstubAllGlobals());
+
+/** Lets the fake server answer and React re-render (TanStack Query hands results over through timers). */
+const flush = () =>
+  act(async () => {
+    for (let tick = 0; tick < 5; tick++) await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 
 function renderApp(url: string) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });
@@ -50,12 +74,14 @@ describe("app shell", () => {
     expect($(`${banner} button`)).toBeNull();
   });
 
-  it("shows the wordmark linking home, the cart (no badge while empty, like Eneba), and a Sign in link", () => {
+  it("shows the wordmark linking home, the cart (no badge while empty, like Eneba), and a Sign in link", async () => {
     renderApp("/store");
+    await flush();
     expect($("header a[href='/']")?.textContent).toBe("EneHomeworkBa");
     expect($("header a[href='/cart']")?.getAttribute("aria-label")).toBe("Cart, 0 items");
     expect($("header a[href='/cart']")?.textContent).toBe("");
-    expect($("header a[href='/login']")?.getAttribute("aria-label")).toBe("Sign in");
+    // "Sign in" brings the user back to the page they were on.
+    expect($("header a[href='/login?next=%2Fstore']")?.getAttribute("aria-label")).toBe("Sign in");
   });
 
   it("has a main nav strip with the Store and the platform shortcuts", () => {
@@ -95,7 +121,6 @@ describe("routes and document titles", () => {
     ["/cart", "Cart – EneHomeworkBa"],
     ["/login", "Sign in – EneHomeworkBa"],
     ["/register", "Create account – EneHomeworkBa"],
-    ["/orders", "Orders – EneHomeworkBa"],
     ["/nope/not/here", "Page not found – EneHomeworkBa"],
   ])("%s has the tab title %s", (url, title) => {
     renderApp(url);
@@ -103,8 +128,8 @@ describe("routes and document titles", () => {
   });
 
   it("renders a placeholder page inside the layout", () => {
-    renderApp("/orders");
-    expect($("main h1")?.textContent).toBe("Orders");
+    renderApp("/cart");
+    expect($("main h1")?.textContent).toBe("Cart");
     expect($("main")?.textContent).toContain("Coming in a later task");
     expect($("header")).not.toBeNull();
     expect($("footer")).not.toBeNull();
@@ -268,5 +293,34 @@ describe("phone header: search icon", () => {
     search("zelda");
     expect(urlOf(router)).toBe("/store?q=zelda");
     expect(searchBox()).toBeNull();
+  });
+});
+
+describe("signed-in pages (Task 14)", () => {
+  it("/orders while signed out goes to /login?next=/orders", async () => {
+    const { router } = renderApp("/orders");
+    await flush();
+    expect(urlOf(router)).toBe("/login?next=%2Forders");
+    expect(document.title).toBe("Sign in – EneHomeworkBa");
+  });
+
+  it("/orders while signed in shows the page with 'Signed in as …' and the account menu in the header", async () => {
+    signedInAs = { id: 7, email: "me@example.com", isDemo: false };
+    const { router } = renderApp("/orders");
+    await flush();
+    expect(urlOf(router)).toBe("/orders");
+    expect(document.title).toBe("Orders – EneHomeworkBa");
+    expect($("main")?.textContent).toContain("Signed in as me@example.com");
+    expect($("header button[aria-label='Account: me@example.com']")).not.toBeNull();
+    expect($("header a[aria-label='Sign in']")).toBeNull();
+  });
+
+  it("a demo account is shown as 'Demo user', not its generated email", async () => {
+    signedInAs = { id: 8, email: "demo-0123456789abcdef@demo.invalid", isDemo: true };
+    renderApp("/orders");
+    await flush();
+    expect($("main")?.textContent).toContain("Signed in as Demo user");
+    expect($("header button[aria-label='Account: Demo user']")).not.toBeNull();
+    expect(document.body.textContent).not.toContain("demo.invalid");
   });
 });
