@@ -117,16 +117,48 @@ var orderBy = map[Sort]string{
 	SortTitle:      `b.title ASC, b.id`,
 }
 
-const itemsSQL = baseCTE + `
-SELECT b.slug, b.title, b.edition,
-       b.platform_slug, b.platform_name, b.region_slug, b.region_name,
-       b.cover_url, b.min_price_cents, b.msrp_cents, b.discount_pct, b.offer_count,
-       b.min_price_cents IS NOT NULL AS in_stock,
-       count(*) OVER () AS total            -- all matching rows, before LIMIT
-FROM base b
-WHERE ` + platformMatch + ` AND ` + regionMatch + ` AND ` + priceMatch + `
-ORDER BY %s
-LIMIT @limit OFFSET @offset`
+// offerStock adds `st.stock` to a row of offers `o`: the number of keys that can
+// be bought now. The product page (offersSQL) and the cheapest offer of a card
+// (itemsSQL) both use it, so "buyable" means exactly the same in both places.
+const offerStock = `CROSS JOIN LATERAL (
+    SELECT count(*) AS stock
+    FROM keys k
+    WHERE k.offer_id = o.id AND ` + sellableKey + `
+) st`
+
+// itemsSQL: the page of products (CTE "page"), then for each of those rows only
+// (at most pageSize) its cheapest buyable offer - the same offer, in the same
+// order, as the first row of offersSQL (price, then offer id). "pos" keeps the
+// order of the page through the join.
+const itemsSQL = baseCTE + `,
+page AS (
+    SELECT b.id, b.slug, b.title, b.edition,
+           b.platform_slug, b.platform_name, b.region_slug, b.region_name,
+           b.cover_url, b.min_price_cents, b.msrp_cents, b.discount_pct, b.offer_count,
+           b.min_price_cents IS NOT NULL AS in_stock,
+           count(*) OVER () AS total,            -- all matching rows, before LIMIT
+           row_number() OVER (ORDER BY %s) AS pos
+    FROM base b
+    WHERE ` + platformMatch + ` AND ` + regionMatch + ` AND ` + priceMatch + `
+    ORDER BY pos
+    LIMIT @limit OFFSET @offset
+)
+SELECT pg.slug, pg.title, pg.edition,
+       pg.platform_slug, pg.platform_name, pg.region_slug, pg.region_name,
+       pg.cover_url, pg.min_price_cents, pg.msrp_cents, pg.discount_pct, pg.offer_count,
+       pg.in_stock, pg.total,
+       co.id, co.stock, co.seller_name
+FROM page pg
+LEFT JOIN LATERAL (
+    SELECT o.id, st.stock, s.name AS seller_name
+    FROM offers o
+    JOIN sellers s ON s.id = o.seller_id
+    ` + offerStock + `
+    WHERE o.product_id = pg.id AND o.is_active AND st.stock > 0
+    ORDER BY o.price_cents, o.id
+    LIMIT 1
+) co ON true
+ORDER BY pg.pos`
 
 // totalSQL is only used when a page is past the last one (no rows, so
 // count(*) OVER () has nothing to report).
@@ -216,12 +248,18 @@ func (s *Store) ListProducts(ctx context.Context, f Filter) (Page, error) {
 	}
 	for rows.Next() {
 		var it Item
+		// The cheapest offer's columns are all NULL for an out-of-stock product (LEFT JOIN).
+		var offerID, stock *int64
+		var sellerName *string
 		if err := rows.Scan(&it.Slug, &it.Title, &it.Edition,
 			&it.Platform.Slug, &it.Platform.Name, &it.Region.Slug, &it.Region.Name,
 			&it.CoverURL, &it.PriceCents, &it.MSRPCents, &it.DiscountPercent, &it.OfferCount,
-			&it.InStock, &page.Total); err != nil {
+			&it.InStock, &page.Total, &offerID, &stock, &sellerName); err != nil {
 			rows.Close()
 			return Page{}, fmt.Errorf("catalog: scan item: %w", err)
+		}
+		if offerID != nil && stock != nil && sellerName != nil {
+			it.CheapestOffer = &CheapestOffer{OfferID: *offerID, Stock: *stock, SellerName: *sellerName}
 		}
 		page.Items = append(page.Items, it)
 	}
@@ -297,11 +335,7 @@ SELECT o.id, o.price_cents, st.stock,
 FROM products p
 JOIN offers  o ON o.product_id = p.id AND o.is_active
 JOIN sellers s ON s.id = o.seller_id
-CROSS JOIN LATERAL (
-    SELECT count(*) AS stock
-    FROM keys k
-    WHERE k.offer_id = o.id AND ` + sellableKey + `
-) st
+` + offerStock + `
 WHERE p.slug = @slug AND st.stock > 0
 ORDER BY o.price_cents, o.id`
 

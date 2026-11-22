@@ -60,6 +60,9 @@ JSON, `camelCase` field names. Money is **integer cents** (formatting is the fro
 An invalid value (`sort=cheapest`, `pageSize=100`, `minPrice=-1` …) is answered with `400` and a clear message, never
 silently ignored. A `price` of `null` means *out of stock*.
 
+`cheapestOffer` (`offerId`, `stock`, `sellerName`, or `null` when out of stock) is the offer a card's "Add to cart" button
+adds: always the same offer as the first one on the product page (cheapest, ties broken by offer id).
+
 **Facets** come in the same response and follow the current filters: each group (`platforms`, `regions`) is counted
 with all *other* active filters applied but not its own, so the other options of a group keep their counts. Entries with
 count 0 are left out unless they are currently selected. `priceRange` (`minCents`/`maxCents`, or `null`) covers the
@@ -73,7 +76,8 @@ curl "localhost:8080/api/products?platform=steam&region=global&sort=price_asc&pa
   "items": [{"slug": "portal-steam-global", "title": "Portal", "edition": "Standard",
              "platform": {"slug": "steam", "name": "Steam"}, "region": {"slug": "global", "name": "GLOBAL"},
              "coverUrl": "https://images.igdb.com/…", "priceCents": 549, "msrpCents": 1999, "discountPercent": 72,
-             "offerCount": 2, "inStock": true}, "…"],
+             "offerCount": 2, "inStock": true,
+             "cheapestOffer": {"offerId": 412, "stock": 5, "sellerName": "Pixel Vault"}}, "…"],
   "total": 43, "page": 1, "pageSize": 2,
   "facets": {
     "platforms": [{"slug": "steam", "name": "Steam", "count": 43}, {"slug": "xbox-live", "name": "Xbox Live", "count": 1},

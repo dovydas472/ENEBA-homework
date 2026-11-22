@@ -69,6 +69,7 @@ func sampleItem() catalog.Item {
 		Slug: "the-witcher-3-wild-hunt-steam-global", Title: "The Witcher 3: Wild Hunt", Edition: "Standard",
 		Platform: catalog.Ref{Slug: "steam", Name: "Steam"}, Region: catalog.Ref{Slug: "global", Name: "GLOBAL"},
 		CoverURL: &cover, PriceCents: &price, MSRPCents: &msrp, DiscountPercent: &disc, OfferCount: 4, InStock: true,
+		CheapestOffer: &catalog.CheapestOffer{OfferID: 17, Stock: 6, SellerName: "Retro Ridge"},
 	}
 }
 
@@ -113,6 +114,8 @@ func TestProductsList_ok(t *testing.T) {
 		"region":   map[string]any{"slug": "global", "name": "GLOBAL"},
 		"coverUrl": "https://img.example/x.jpg", "priceCents": 1099.0, "msrpCents": 3999.0, "discountPercent": 72.0,
 		"offerCount": 4.0, "inStock": true,
+		// The offer a card's "Add to cart" adds (Task 12).
+		"cheapestOffer": map[string]any{"offerId": 17.0, "stock": 6.0, "sellerName": "Retro Ridge"},
 	}
 	if !reflect.DeepEqual(item, wantItem) {
 		t.Errorf("item = %v\nwant   %v", item, wantItem)
@@ -136,7 +139,7 @@ func TestProductsList_nullsAndEmptyLists(t *testing.T) {
 	fake := &fakeCatalog{page: catalog.Page{Items: []catalog.Item{oos}, Total: 1, Page: 1, PageSize: 24}}
 	body := decode(t, get(t, fake, "/api/products"))
 	item := body["items"].([]any)[0].(map[string]any)
-	for _, k := range []string{"priceCents", "msrpCents", "discountPercent", "coverUrl"} {
+	for _, k := range []string{"priceCents", "msrpCents", "discountPercent", "coverUrl", "cheapestOffer"} {
 		if v, present := item[k]; !present || v != nil {
 			t.Errorf("%s: want present and null, got %v (present=%v)", k, v, present)
 		}
