@@ -174,6 +174,8 @@ Added / changed in Task 11b (S4): `--chip-height` 30px (active-filter chip), `--
 Added in Task 12 (S5, product page): `--product-cover-width` 224px (72px = `--product-cover-width-sm` ≤930px), `--buy-box-width` 350px, `--avatar-size` 40px (seller avatar),
 `--icon-size-lg` 40px (fact icons next to the cover).
 Added in Task 13b (header search suggestions, measured on eneba.com): `--suggestion-cover-width` 72px (cover in a suggestion row, 4.13).
+Added in Task 14 (auth): `--auth-panel-width` 380px (sign-in / sign-up panel = Eneba's 300px column + 2 × 40px padding, S), `--account-menu-width` 240px
+(header account popup, D) and `--account-name-max-width` 180px (a long email in the header button is cut with "…", D).
 
 ---
 
@@ -219,6 +221,14 @@ Categories move into the hamburger drawer. Every icon button is at least 40×40.
 While the list is open the page is dimmed with `--color-overlay` (Eneba: `rgba(0,0,0,.55)`): on desktop everything except the field and the list, on phones only the page **under** the
 header row (the row with the field and its × stays bright). The phone search row sits on `--z-dropdown` while open, so the list is above the cards' cover badges.
 Esc order on phones: 1) closes the list, 2) clears the field, 3) closes the search row (focus back to the search icon).
+
+**As built in Task 14 (account):** signed out, the header shows "Sign in" (it links to `/login?next=<this page>`). Signed in, it shows the **account menu**
+(`src/app/AccountMenu.tsx`): a button with the user icon, the email (or "Demo user"; cut with "…" at `--account-name-max-width`) and a chevron; ≤930px icon only.
+It opens a popup under it, right-aligned: `--account-menu-width`, `--color-bg-deep`, `--shadow-dropdown`, `--z-dropdown`; a "Signed in as / name" block (12px muted / 14px medium,
+bottom line `--color-border`), then 40px rows "Orders" and "Sign out" (14px medium, hover `--color-surface-hover`). It is a **disclosure** (button with `aria-expanded` +
+`aria-controls`), not an ARIA `menu`: the items are a normal link and button, Tab moves through them; Esc closes and returns focus to the button; a click outside or focus leaving closes it.
+The phone menu (☰) has the same choices under the nav links, after a `--color-border` line: "Sign in" / "Create account", or "Signed in as …", "Orders", "Sign out".
+Eneba shows "Log in | Register" (15px, extra-bold) and, signed in, an avatar menu; we keep the single "Sign in" link (Task 11b) and do not copy the avatar.
 
 ### 3.2 Store page (catalog with filters)
 
@@ -318,10 +328,24 @@ No social links, app badges, newsletter or locale button (we have none).
 
 ### 3.6 Cart and sign-in
 
-**Not researched — Eneba blocks automated access** (sign-in is behind a Cloudflare challenge; the cart is not a fetchable page).
-Until the owner supplies screenshots, build them from the same components: the cart is a list of offer-row-like rows on `--color-surface-row`
-with a summary panel on `--color-surface` and a primary button; sign-in is a centered panel on `--color-surface` with text inputs (4.2) and a primary button.
-See [6. Research notes and gaps](#6-research-notes-and-gaps).
+**Cart: not researched** (not a fetchable page; some probes returned HTTP 429, so we stopped). Until the owner supplies screenshots, build it from the same
+components: a list of offer-row-like rows on `--color-surface-row` with a summary panel on `--color-surface` and a primary button.
+
+**Sign-in / sign-up (Task 14, measured on `my.eneba.com/login` at 1440 and 390 — the page loaded without a challenge this time).** Eneba's sign-in is a separate site
+with no shop header: dark page (`#1f0a4e`), a big "Hi! It's nice to see you!" on the left, and on the right a **380px panel** (`#4618ac`, 40px padding → 300px column):
+"Log in" (bold) with "New user? **Create account**" (accent link) right under it, three social buttons + a row of four icons, an "or" divider, an Email field
+(300×56, `#3d1596`, 14px, the placeholder is the only label), a yellow 36px "Get magic link" and an outlined 36px "Log in with password". On phones the panel becomes the page.
+
+**As built (`src/features/auth/AuthPage.tsx`, one component for `/login` and `/register`):** inside our normal layout (header and footer stay), a centred panel
+`--auth-panel-width` (380px) with `--space-6` padding (`--space-4` and full width ≤600px) on **`--color-bg-deep`** with `--shadow-card`. Not `--color-surface`:
+error text fails 4.5:1 there (5.1). Inside, top to bottom, `--space-4` apart:
+1. title `--font-size-2xl` bold; under it "New here? **Create an account**" / "Already have an account? **Sign in**" (`--font-size-sm` muted, accent bold link; keeps `?next=`);
+2. sign-in page only: **"Sign in as demo user"** (secondary, full width) + a 12px muted note, then a divider "or sign in with email" (`--color-border` lines);
+3. a server error, if any: `role="alert"`, 1px `--color-error-border` outline, `--color-error` 14px text;
+4. the form: `TextField` "Email" and `PasswordField` "Password" (4.2; visible labels, `autocomplete` `email` / `current-password` / `new-password`, show/hide button),
+   then the primary submit, full width, normal `--button-height`;
+5. sign-up page only: divider "or", then the demo button and note.
+Inline validation: a field's message appears after the user leaves it or presses Submit (then focus goes to the first wrong field), and updates while typing.
 
 ---
 
@@ -357,6 +381,11 @@ Disabled and loading as above. A primary button is allowed **once per view area*
 - **Search field (header):** see 3.1 — wrapper has the 1px white border; on `:focus-within` the **wrapper** gets the focus ring (`outline` on the wrapper, none on the inner input) so the ring surrounds the whole field (**D**).
   Since Task 13b the field is part of `SearchBox` (`src/features/search/`, it replaced `SearchField`); its background is `--color-bg` (not transparent), so it stays bright above the dimmed page.
 - Number input (price range): two 77px-wide inputs with a bold "–" between, spin buttons hidden (C).
+- **`TextField` (Task 14, `src/components/TextField.tsx`):** the text input above with a visible `<label>` (tied by `htmlFor`), an optional hint
+  (`--font-size-xs` muted) and an error (`--font-size-xs` `--color-error`, `aria-invalid` + `aria-describedby`), and an optional `trailing` slot inside the field.
+  The background and the focus ring are on the wrapper (like the header search), so a trailing button sits inside the ring.
+  `PasswordField` (`src/features/auth/`) adds a 40×40 eye button (`--icon-size-sm` icon, `--color-text-muted`, hover accent) named "Show password" / "Hide password".
+  Eneba uses a 56px field with the placeholder as the only label; we keep a visible label and the 40px field (accessibility: a placeholder disappears while typing).
 
 ### 4.3 Product card
 
@@ -606,6 +635,10 @@ Minimums for every screen: text contrast **≥ 4.5:1**, non-text UI (borders of 
 | Offer row (`rgba(0,0,0,.3)` over page): `--color-discount` / `--color-warning` / `--color-secondary` / `--color-text-muted` / `--color-text-subtle` | 9.21 / 6.86 / 6.24 / 7.46 / 6.41 | pass (Task 12: "BEST PRICE", "Only N left", "NEW SELLER", reviews, genre tags) |
 | `--color-text-nav` / `--color-accent` on `--color-surface` (buy box seller line, "+N more offers") | 5.88 / 5.64 | pass (Task 12) |
 | `--color-text-nav` / `--color-text-subtle` on `--color-bg-deep` (description, detail labels) | 9.62 / 6.10 | pass (Task 12) |
+| Auth panel on `--color-bg-deep` (Task 14): `--color-text-muted` (notes, "New here?") / `--color-text-subtle` / `--color-error` (messages) / `--color-accent` (links) | 7.14 / 6.10 / 6.82 / 9.23 | pass (axe 0 violations on both pages, with errors shown) |
+| Text input on the auth panel (`--color-surface-inset` over `--color-bg-deep`): `#fff` text / muted eye icon (non-text) | 15.40 / 7.98 | pass |
+| Non-text: `--color-error-border` on `--color-bg-deep` (field and server-error outline) | 4.39 | pass (≥3:1) |
+| Account popup (`--color-bg-deep`): `#fff` on a hovered row (`--color-surface-hover`) / muted "Signed in as" | 10.51 / 7.14 | pass (Task 14) |
 | Suggestion row on `--color-bg` / on `--color-bg-deep` (active): `--color-accent` (typed part) / `--color-text-muted` (alias) / `--color-secondary` (platform · region) / `--color-text-nav` ("Out of stock") / `--color-text-subtle` ("From") | 7.25 / 5.83 / 4.65 / 7.55 / 4.79 · 9.23 / 7.14 / 5.93 / 9.62 / 6.10 | pass (Task 13b; axe 0 violations with the list open and a row active) |
 
 Disabled controls (`opacity: .5`) are exempt from the contrast rule (WCAG), but the disabled state must still be recognisable.
@@ -632,7 +665,7 @@ and rectangles of the real DOM and took screenshots. The screenshots are not com
 
 | Page | Why | What we did meanwhile |
 |---|---|---|
-| Sign-in (`my.eneba.com/login`) | behind a Cloudflare "verify you are human" challenge. We do **not** try to bypass it. | built from shared components (4.1, 4.2); the sign-in CSS bundle is the same design system |
+| Sign-in (`my.eneba.com/login`) | behind a Cloudflare "verify you are human" challenge in Task 06. We do **not** try to bypass it. **Task 14:** one plain load per width (1440, 390) showed the page without a challenge; measured then (3.6) | built from shared components (4.1, 4.2), then aligned with the measurements (3.6) |
 | Cart | not a fetchable page (a drawer/page that needs a session); some probes returned HTTP 429, so we stopped probing | described as composed from offer row + summary panel (3.6) |
 
 **Derived without an Eneba source (D):** skeleton, toast, empty state, error state, select menu, seller rating, loading spinner,
