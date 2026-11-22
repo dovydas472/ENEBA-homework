@@ -36,7 +36,8 @@ Aliases ("GTA 5", "RDR2") come from IGDB `alternative_names` for the existing 50
 
 **Docs**
 - `docs/DATA_MODEL.md` – `game_aliases` table, ER diagram, listing sketch, search sketch 4 (implemented).
-- `docs/PAAISKINIMAI_LT.md` – Task 13a section. `README.md` – `q`, `relevance`, suggest endpoint, `--aliases-only`, new checksum.
+- `docs/PAAISKINIMAI_LT.md` – Task 13a section. `README.md` – `q`, `relevance`, suggest endpoint, `--aliases-only`, new checksum, and the pre-merge migration procedure.
+- `CLAUDE.md` – Migration rules: every PR with a migration is migrated on production from the PR branch **before** the merge (owner decision in review).
 - `docs/tasks/TASK_13a_search_backend.md`, this report.
 
 ## 2. Verification results
@@ -155,9 +156,10 @@ Checked through the Neon **pooler**, three times: inside the batch `current_sett
 
 ## 3. What the owner must do manually
 
-1. Review and merge this PR (**before** Task 13b).
-2. **Actions → Migrate production** starts automatically after the merge (the PR touches `migrations/`). Check that the log shows `00003_search_aliases.sql` applied.
-   - The Vercel deploy runs at the same time. The new code reads `game_aliases`, so if the deploy finished *before* the migration, listing/search requests would answer 500 for that short window (seconds). The migration normally finishes first; if you see errors right after the merge, wait for the workflow.
+Schema first, code second: the procedure now documented for every PR with a migration (CLAUDE.md "Migration rules", README "Database migrations").
+
+1. **Before merging** (PR reviewed, CI green): **Actions → Migrate production → Run workflow**, "Use workflow from" = **`task/13a-search-backend`**. Check that the log shows `00003_search_aliases.sql` applied. The workflow checks out the chosen branch, so this applies the new migration. It is backward compatible: the code live now never reads `game_aliases`.
+2. **Merge** this PR (**before** Task 13b). The new code deploys against a schema that is already in place; the automatic *Migrate production* run after the merge has nothing left to apply. Do not change `00003` after step 1; a fix would be a new migration.
 3. Then **Actions → Seed production → Run workflow** with **`reset` ticked** and `confirm` = `seed-production`, so production gets the aliases. The log must show `game_aliases 134`, `search aliases: 134 (IGDB + 3 hand-written)` and **`catalog checksum: 4e94565d904cc1698b65cce04cbff8d9`** (the same as `dev`).
    - Until this runs, production search works on titles only (`game_aliases` is empty) – nothing breaks.
 4. Nothing to do for `dev`: I already migrated it and reseeded it (`--reset`, checksum above).
@@ -220,9 +222,14 @@ everything (tested).
 
 ## 6. Open questions
 
-1. **Deploy/migration race (see section 3, step 2).** Zero risk would need the migration merged in its own PR first (pure expand/contract) or a manual *Migrate production* run before the code deploys. I kept one PR as the task describes; is the short window acceptable for the demo?
-2. **2-letter queries** match any substring (`ac` also finds "Uncharted 4: El Desen**lac**e…" via an alias, at the bottom). Restricting short queries to word starts would be easy if 13b's UI shows it is noisy.
-3. **IGDB alias oddities kept as data:** working titles such as "Great Rune" (Elden Ring) or "Prince of Persia: Assassin" (Assassin's Creed). Harmless today; easy to filter if wanted.
+Answered by the owner in review:
+
+1. ~~Deploy/migration race~~ → **Resolved:** the owner runs *Migrate production* manually from the PR branch **before** merging, so the schema is ready before the code deploys. Documented as the procedure for every PR with a migration in `CLAUDE.md` (Migration rules) and `README.md` (Database migrations); section 3 follows it.
+2. ~~2-letter queries~~ match any substring (`ac` also finds "Uncharted 4: El Desen**lac**e…" via an alias, at the bottom) → **kept as is**; Task 13b will report how it looks in the UI.
+3. ~~IGDB alias oddities~~ (working titles such as "Great Rune" for Elden Ring, "Prince of Persia: Assassin" for Assassin's Creed) → **kept**.
+
+Still open (no decision needed now):
+
 4. `src/lib/storeParams.ts` still says the API does not use `q` yet – left for Task 13b, which wires `q` into the Store (avoids a merge conflict).
 
 ## 7. Self-review (task-reviewer)

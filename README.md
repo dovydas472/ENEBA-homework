@@ -127,9 +127,20 @@ go run ./cmd/migrate create add_games  # new numbered file in migrations/ (no DB
 ```
 
 **Production** is migrated only by GitHub Actions (`.github/workflows/migrate-production.yml`):
-automatically after a merge to `main` that touches `migrations/` or `cmd/migrate/`, or manually via
-*Actions → Migrate production → Run workflow*. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
+manually via *Actions → Migrate production → Run workflow*, or automatically after a merge to `main` that touches
+`migrations/` or `cmd/migrate/`. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
 (Neon `production` branch, **direct** connection string). Never run migrations against production from a laptop.
+
+**Procedure for every PR that adds a migration** (schema first, code second):
+1. Review the PR and wait for green CI.
+2. *Actions → Migrate production → Run workflow*, **"Use workflow from" = the PR branch**. The workflow checks out that
+   branch, so it applies the new migration to production. Check the log: the new file is listed as applied.
+3. Merge. The Vercel deploy now finds the schema already in place; the automatic migrate run after the merge has
+   nothing left to apply.
+
+Why: the new code may read a table or column the migration adds. If the code deployed first, it would fail until the
+migration ran. The migration itself is always backward compatible (expand/contract), so the *old* code keeps working
+against the new schema between steps 2 and 3. After step 2 the migration file must not change; a fix is a new migration.
 
 ## Seed data
 The catalog (50 real games, 9 platforms, 4 regions, 8 fictional sellers, offers and fake keys) comes from a
