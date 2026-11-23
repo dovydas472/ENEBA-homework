@@ -333,6 +333,7 @@ with AI coding tools (Claude Code) using the same small-task / spec / testing wo
 - `pkg/server/` – router and handlers (they depend on small interfaces: `DBPinger`, `CatalogReader`, `HomepageReader`, ...); query-string validation
 - `pkg/db/` – lazy, shared pgx connection pool
 - `pkg/catalog/` – catalog queries (listing + facets, product page, search + suggestions), seller rating label; pure Go + pgx, no HTTP
+- `pkg/homepage/` – the home page blocks: registry, hero, tiles, platforms and product rows (store + service; strict config parsing)
 - `pkg/testdb/` – test helper: migrated + seeded Postgres from `TEST_DATABASE_URL` (tests skip when it is empty; with `REQUIRE_TEST_DB=1`, as in the CI `migrations` job, they fail instead)
 - `cmd/local/` – local dev server using the same router (loads `.env`)
 - `cmd/migrate/` – goose migration runner (`up`/`down`/`status`/`version`/`create`)
@@ -348,7 +349,6 @@ with AI coding tools (Claude Code) using the same small-task / spec / testing wo
 - `src/api/` – `apiFetch` client (timeout, typed errors), catalog, auth and checkout / order functions + JSON types
 - `src/app/` – app frame: routes, layout, header, demo banner, footer, TanStack Query client, "waking up" notice
 - `src/components/` – base UI components (Button, Badge, Price, Skeleton, EmptyState, ErrorState, SearchField)
-- `pkg/homepage/` – the home page blocks: registry, hero, tiles, platforms and product rows (store + service; strict config parsing)
 - `src/pages/` – one file per route
 - `src/features/home/` – the home page block renderers (hero carousel, side tiles, platform row, product row) and the type → renderer map
 - `public/banners/` – the Innert hero pictures (WebP, several widths)
