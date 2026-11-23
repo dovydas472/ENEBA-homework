@@ -26,6 +26,8 @@
   --color-skeleton-shine: rgba(255, 255, 255, 0.2);
   /* Added in Task 16b (cart, measured on eneba.com/checkout): */
   --color-surface-line: rgba(0, 0, 0, 0.12); /* one cart / order line inside a --color-bg-deep panel */
+  /* Added in Task 15 (home page, measured on eneba.com, S7): */
+  --color-band: #311178; /* every second full-bleed product row band on the home page ("Top games" on Eneba) */
 
   /* ---------- Colors: text ---------- */
   --color-text: #ffffff; /* default text, headings, prices */

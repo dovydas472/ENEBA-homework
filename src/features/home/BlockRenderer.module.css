@@ -23,7 +23,7 @@
 /* Every second PRODUCT ROW sits on a darker full-bleed band, like Eneba's "Top games" (counted among the
    product rows only, so switching another block off does not change the stripes). */
 .slot:nth-child(2n of [data-block-type="product_row"]) {
-  background: var(--color-bg-deep);
+  background: var(--color-band);
 }
 
 /* Tablets and phones: the tiles go under the carousel, full width (the variables fall back to their defaults). */
