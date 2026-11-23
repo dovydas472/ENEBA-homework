@@ -33,10 +33,15 @@ export function useCurrentUser(): CurrentUser {
  * The mutations that sign in or out. Each one writes its result into the currentUser cache entry
  * (setQueryData), so every component that shows the user updates at once.
  * The cart is not touched: it stays in localStorage across sign-in and sign-out (owner decision).
+ * Cached orders ARE dropped (Task 16b): they belong to the previous user and must never flash for the next one.
  */
 export function useAuthMutations() {
   const queryClient = useQueryClient();
-  const signedIn = (user: User) => queryClient.setQueryData(queryKeys.currentUser, user);
+  const dropOrders = () => queryClient.removeQueries({ queryKey: queryKeys.orders });
+  const signedIn = (user: User) => {
+    dropOrders();
+    queryClient.setQueryData(queryKeys.currentUser, user);
+  };
 
   const loginMutation = useMutation({ mutationFn: (c: Credentials) => login(c), onSuccess: signedIn });
   const registerMutation = useMutation({ mutationFn: (c: Credentials) => register(c), onSuccess: signedIn });
@@ -46,6 +51,7 @@ export function useAuthMutations() {
     // Settled = success OR error: the server clears the cookie even when it answers 503, so the UI shows
     // "signed out" either way, then asks the server again to be sure.
     onSettled: async () => {
+      dropOrders();
       queryClient.setQueryData(queryKeys.currentUser, null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.currentUser });
     },

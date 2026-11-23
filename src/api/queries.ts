@@ -4,9 +4,17 @@
 import { queryOptions } from "@tanstack/react-query";
 import { getCurrentUser } from "./auth.ts";
 import { getProduct, getProducts, getSuggestions, type ProductsParams } from "./catalog.ts";
+import { getOrder, getOrders, quoteCart } from "./orders.ts";
+import type { CheckoutItem } from "./types.ts";
 
 /** The first part of every key: `invalidateQueries({ queryKey: queryKeys.products })` would reset all listings. */
 export const queryKeys = {
+  /** Task 16b: every order key starts with "orders", so sign in / out can drop them all at once (they belong to one user). */
+  orders: ["orders"] as const,
+  orderList: ["orders", "list"] as const,
+  order: (id: string) => ["orders", "detail", id] as const,
+  /** The cart's price/stock check: the key is the exact lines sent, so a changed cart is a new question. */
+  cartQuote: (items: CheckoutItem[]) => ["cartQuote", items] as const,
   products: ["products"] as const,
   /** One listing: the key contains the filters, so every filter combination has its own cache entry. */
   productList: (params: ProductsParams) => ["products", params] as const,
@@ -56,5 +64,35 @@ export function currentUserQuery() {
     queryKey: queryKeys.currentUser,
     queryFn: ({ signal }) => getCurrentUser({ signal }),
     staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * Key + function of the cart's price/stock check (POST /api/checkout/quote; a POST only because the cart is sent in the body).
+ * staleTime 0: every visit to the cart asks again - prices and stock are exactly what may have changed since.
+ */
+export function cartQuoteQuery(items: CheckoutItem[]) {
+  return queryOptions({
+    queryKey: queryKeys.cartQuote(items),
+    queryFn: ({ signal }) => quoteCart(items, { signal }),
+    staleTime: 0,
+  });
+}
+
+/** Key + function of the signed-in user's order list. staleTime 0: statuses change (paid, expired). */
+export function orderListQuery() {
+  return queryOptions({
+    queryKey: queryKeys.orderList,
+    queryFn: ({ signal }) => getOrders({ signal }),
+    staleTime: 0,
+  });
+}
+
+/** Key + function of one order (payment page and order page). staleTime 0: the status and the server time must be fresh. */
+export function orderQuery(id: string) {
+  return queryOptions({
+    queryKey: queryKeys.order(id),
+    queryFn: ({ signal }) => getOrder(id, { signal }),
+    staleTime: 0,
   });
 }

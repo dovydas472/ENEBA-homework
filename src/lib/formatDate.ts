@@ -10,3 +10,13 @@ export function formatReleaseDate(isoDate: string): string {
   const [, year, month, day] = match;
   return dateFormat.format(new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))));
 }
+
+/**
+ * An order time ("2026-11-22T14:05:00Z") -> "22 Nov 2026, 14:05" in the user's OWN time zone (unlike a release date,
+ * this is a moment, so local time is right). `timeZone` is only for tests. Anything unexpected is shown as sent.
+ */
+export function formatDateTime(iso: string, timeZone?: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-IE", { dateStyle: "medium", timeStyle: "short", timeZone }).format(date);
+}

@@ -1,7 +1,7 @@
 // The cart's rules as PURE functions: they take the current lines and return new ones, never change
 // their input and never touch localStorage or React. That makes every rule easy to test, and the store
 // (cartStore.ts) only has to keep the current value and save it.
-import type { Offer, ProductDetail, ProductItem } from "../../api/types.ts";
+import type { CheckoutItem, Offer, ProductDetail, ProductItem, QuoteLine } from "../../api/types.ts";
 
 /** localStorage key. The ":v1" is the format version: a future format gets a new key, old data is ignored. */
 export const CART_STORAGE_KEY = "cart:v1";
@@ -87,6 +87,65 @@ export function cartCount(lines: readonly CartLine[]): number {
 /** Sum in integer cents (display only - checkout computes the real total on the server). */
 export function cartTotalCents(lines: readonly CartLine[]): number {
   return lines.reduce((sum, line) => sum + line.priceCents * line.quantity, 0);
+}
+
+// ---- checkout (Task 16b) ----
+
+/**
+ * The lines as the server wants them: offer, quantity and the price the user SAW (expectedPriceCents),
+ * so the server can answer "the price changed" instead of silently charging another amount.
+ * `skip` = offers to leave out (lines that are no longer available).
+ */
+export function checkoutItems(lines: readonly CartLine[], skip: ReadonlySet<number> = new Set()): CheckoutItem[] {
+  return lines
+    .filter((line) => !skip.has(line.offerId))
+    .map((line) => ({ offerId: line.offerId, quantity: line.quantity, expectedPriceCents: line.priceCents }));
+}
+
+/**
+ * Writes the server's answer (quote, or the lines of a 409 "cart_changed") into the cart: the current price,
+ * stock, quantity and display data of every line the server can still sell.
+ * A line the server cannot sell (unavailable) is kept AS IT IS - the page shows it disabled and the user removes it.
+ * (Writing quantity 0 into it would make the stored cart invalid, and parseCart would then drop the whole cart.)
+ * Lines the answer does not mention are not touched.
+ */
+export function applyQuoteLines(lines: readonly CartLine[], quoteLines: readonly QuoteLine[]): CartLine[] {
+  const byOffer = new Map(quoteLines.map((q) => [q.offerId, q]));
+  return lines.map((line) => {
+    const q = byOffer.get(line.offerId);
+    const limit = q ? maxQuantity(q.stock) : 0;
+    if (!q || !q.available || q.quantity < 1 || limit < 1) return line;
+    return {
+      offerId: line.offerId,
+      quantity: Math.min(q.quantity, limit),
+      productSlug: q.productSlug,
+      title: q.title,
+      edition: q.edition,
+      platformName: q.platformName,
+      regionName: q.regionName,
+      coverUrl: q.coverUrl,
+      sellerName: q.sellerName,
+      priceCents: q.unitPriceCents,
+      stock: q.stock,
+    };
+  });
+}
+
+/**
+ * After a successful payment: takes the bought quantities out of the cart. A line whose whole quantity was bought
+ * disappears; if the user added more of it after the order was created, the extra pieces stay.
+ */
+export function removePurchased(
+  lines: readonly CartLine[],
+  bought: readonly { offerId: number; quantity: number }[],
+): CartLine[] {
+  const boughtQty = new Map<number, number>();
+  for (const item of bought) boughtQty.set(item.offerId, (boughtQty.get(item.offerId) ?? 0) + item.quantity);
+  return lines.flatMap((line) => {
+    const left = line.quantity - (boughtQty.get(line.offerId) ?? 0);
+    if (left === line.quantity) return [line];
+    return left >= 1 ? [{ ...line, quantity: left }] : [];
+  });
 }
 
 // ---- reading and writing the stored text ----
