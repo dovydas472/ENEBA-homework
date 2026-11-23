@@ -172,6 +172,60 @@ A real shop would add signed, single-use email links for verification and reset.
 Frontend: `src/api/auth.ts` (typed calls), `src/features/auth/` (`useCurrentUser`, the sign-in / sign-up page, `RequireAuth`),
 the header account menu in `src/app/AccountMenu.tsx`.
 
+## Checkout (Task 16a)
+The cart lives in the browser. At checkout the server **re-prices it**, creates a **pending order** and **reserves the keys
+for 15 minutes**; the buyer then "pays" (simulated) and the order becomes **paid** and shows its keys.
+All code is in `pkg/orders` (`rules.go` = every business rule, pure and unit-tested; `store.go` = the SQL transactions);
+the handlers are `pkg/server/orders_handlers.go`. Every endpoint is `Cache-Control: no-store`.
+
+| Endpoint | Body | Answers |
+|---|---|---|
+| `POST /api/checkout/quote` (no sign-in) | `{"items":[{"offerId","quantity","expectedPriceCents"}]}` | `200 {"lines":[Line],"totalCents"}` · `400` |
+| `POST /api/orders` | `{"idempotencyKey" (UUID),"items":[…]}` | `201 {"order"}` new · `200 {"order"}` same key again · `409 {"error":"cart_changed","lines":[Line]}` · `400` · `401` |
+| `GET /api/orders` | – | `200 {"orders":[{id,status,totalCents,itemCount,createdAt,reservedUntil}]}`, newest first (max 100) |
+| `GET /api/orders/{id}` | – | `200 {"order","serverTime"}` · `404` (unknown **or not yours**) |
+| `POST /api/orders/{id}/pay` | `{"outcome":"success"\|"decline"}` | `200 {"order"}` (also when already paid) · `402` "Payment declined (simulated)" · `409` "Reservation expired" / "Order is not payable" · `404` |
+| `POST /api/orders/{id}/cancel` | – | `200 {"order"}` · `409` "Order is not pending" · `404` |
+
+`Line` = `{offerId, quantity, unitPriceCents, stock, maxQuantity, available, productSlug, title, edition, platformName, regionName, sellerName, coverUrl, changes[]}`;
+`quantity` is what can really be bought now, `changes` ⊆ `price_changed` · `quantity_reduced` · `unavailable` (offer paused, out of stock, or no such offer).
+`Order` = `{id, status, totalCents, createdAt, reservedUntil, paidAt, items:[{offerId, productSlug, title, edition, platformName, regionName, sellerName, unitPriceCents, quantity, keys[]}]}`;
+`itemCount` is the number of keys (sum of the quantities). Types: `src/api/types.ts`, calls: `src/api/orders.ts`.
+
+The rules (numbered R1–R9 in `pkg/orders/rules.go`):
+- **Limits:** 1–20 lines per order, quantity 1–5 per line, an offer only once, quantity ≤ stock.
+- **The server is the truth:** the client's `expectedPriceCents` is only *compared*. If a price, the stock or an offer's state
+  differs, **no order is created** and the `409` lists every line with its `changes`. The order total and item snapshots
+  (title, edition, platform, region, seller, unit price) come from the database.
+- **Reservation without a race:** the keys are taken with `SELECT … FOR UPDATE SKIP LOCKED` inside one transaction, so two
+  buyers can never get the same key and never wait for each other (see `docs/PAAISKINIMAI_LT.md`). One order = one
+  transaction: either the order, its items and *all* its keys exist, or nothing.
+- **Idempotency:** `POST /api/orders` carries an `idempotencyKey` (one per checkout attempt). The same user sending the same
+  key again gets the **same order** (`200`), nothing is reserved twice - decided by `UNIQUE (user_id, idempotency_key)`, so it
+  also holds for two identical requests arriving at the same moment. Paying a paid order returns it unchanged; a partial unique index allows at most one
+  succeeded payment per order.
+- **Lazy expiry:** nothing runs in the background. A pending order whose `reservedUntil` has passed is *shown* as `expired`, and a
+  key whose reservation has ended counts as available (the next buyer simply takes it over). Paying too late marks the order
+  `expired`, frees its keys and answers `409`. A declined payment (`402`) leaves the order pending: try again while it is valid.
+- **Keys are secret:** key codes appear only in a **paid** order and only for its owner. Another user's order is `404`, exactly
+  like an unknown id.
+- **Time is injectable** (`Store.WithClock`), so tests simulate the 15 minutes without sleeping.
+
+```bash
+# (after signing in as the demo user in a browser - the session cookie is HttpOnly - or with a cookie jar)
+curl -s -X POST 127.0.0.1:8080/api/checkout/quote -H "Origin: http://127.0.0.1:8080" -H "Content-Type: application/json" \
+  -d '{"items":[{"offerId":412,"quantity":2,"expectedPriceCents":549}]}'
+```
+
+**Shortcuts (decided):**
+- **the payment is simulated:** the buyer picks `success` or `decline`; there is no card form, no card data and no payment provider;
+- **no clean-up job:** demo users and their orders (paid, expired, cancelled) stay in the database forever, just like demo users in Task 14;
+- re-seeding the catalog (`cmd/seed --reset`) **refuses** while orders exist (they reference offers and keys), so order history is never deleted by accident;
+- expiry is lazy: an expired pending order stays `pending` in the table until someone pays, cancels or reads it (reading shows `expired` but does not write).
+
+**Running the database tests locally.** They need a throw-away Postgres in `TEST_DATABASE_URL` (never a Neon branch) and must run
+one package at a time because `pkg/catalog` re-seeds the tables `pkg/orders` uses: `go test -p 1 ./...` (CI does this).
+
 ## Database migrations
 Migrations are SQL files in `migrations/` (numbered, [goose](https://github.com/pressly/goose) format) embedded into the `cmd/migrate` binary.
 
