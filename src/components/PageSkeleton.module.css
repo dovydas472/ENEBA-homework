@@ -1,0 +1,24 @@
+/* Lazy page placeholder (PageSkeleton.tsx). Same width as the cart / order pages it usually stands in for. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: var(--checkout-max-width);
+  min-height: 100vh; /* the footer stays below the fold while the page loads (no layout shift when it arrives) */
+  margin-inline: auto;
+}
+
+.title {
+  width: 40%;
+  height: var(--font-size-4xl);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-bg-deep); /* the cart / order panel colour */
+}

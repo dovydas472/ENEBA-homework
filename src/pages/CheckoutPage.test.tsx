@@ -54,7 +54,7 @@ async function choose(label: "Success" | "Decline") {
 describe("payment page: content", () => {
   it("shows the order summary, the total and 'Pay €40.97'", async () => {
     await mountApp(url);
-    expect(document.title).toBe("Payment – EneHomeworkBa");
+    expect(document.title).toBe("Payment for order #0B9F2C1E – EneHomeworkBa"); // Task 17: the order in the title
     const order = $("section[aria-labelledby=order-title]")!;
     expect(order.textContent).toContain("The Witcher 3: Wild Hunt");
     expect(order.textContent).toContain("2 × €14.99");

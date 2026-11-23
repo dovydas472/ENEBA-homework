@@ -4,13 +4,16 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { polyfillDialog, render, setControlValue } from "../test-utils.tsx";
+import { loadAllPages } from "./lazyPages.ts";
 import { createQueryClient } from "./queryClient.ts";
 import { routes } from "./routes.ts";
 
 let cleanup: (() => void) | undefined;
 afterEach(() => cleanup?.());
+// Task 17: the lazily loaded pages (lazyPages.ts) are loaded once up front, so no test waits for a module mid-render.
+beforeAll(() => loadAllPages());
 
 // The only request the shell makes by itself is GET /api/auth/me (Task 14). The fake server answers it:
 // 401 (signed out) unless a test signs someone in. The orders page (Task 16b) gets an empty list, and the home page
@@ -33,11 +36,18 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-/** Lets the fake server answer and React re-render (TanStack Query hands results over through timers). */
-const flush = () =>
-  act(async () => {
-    for (let tick = 0; tick < 5; tick++) await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+/**
+ * Lets the fake server answer and React re-render (TanStack Query hands results over through timers).
+ * Two act() rounds (Task 17): React commits at the end of an act(); a lazily loaded page (route `lazy`) is committed
+ * in the first round and only then starts its own requests, which the second round lets finish.
+ */
+async function flush() {
+  for (let round = 0; round < 2; round++) {
+    await act(async () => {
+      for (let tick = 0; tick < 5; tick++) await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+}
 
 function renderApp(url: string) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });
@@ -136,17 +146,29 @@ describe("routes and document titles", () => {
     ["/login", "Sign in – EneHomeworkBa"],
     ["/register", "Create account – EneHomeworkBa"],
     ["/nope/not/here", "Page not found – EneHomeworkBa"],
-  ])("%s has the tab title %s", (url, title) => {
+  ])("%s has the tab title %s", async (url, title) => {
     renderApp(url);
+    await flush(); // a lazily loaded page renders after the router has resolved its module (route `lazy`)
     expect(document.title).toBe(title);
   });
 
-  it("renders a page inside the layout (the empty cart, Task 16b)", () => {
+  it("renders a page inside the layout (the empty cart, Task 16b)", async () => {
     renderApp("/cart");
+    await flush();
     expect($("main h1")?.textContent).toBe("Your cart is empty");
     expect($("main a[href='/store']")?.textContent).toBe("Browse the store");
     expect($("header")).not.toBeNull();
     expect($("footer")).not.toBeNull();
+  });
+
+  it("a lazily loaded page opened directly: the layout at once with a skeleton, then the page (Task 17)", async () => {
+    renderApp("/cart");
+    // First render: the router is still resolving the cart's chunk -> the HydrateFallback in the page area.
+    expect($("header")).not.toBeNull();
+    expect($("main [aria-busy=true]")?.textContent).toBe("Loading the page…");
+    await flush();
+    expect($("main [aria-busy=true]")).toBeNull();
+    expect($("main h1")?.textContent).toBe("Your cart is empty");
   });
 
   it("shows the 404 page INSIDE the layout for an unknown URL", () => {
