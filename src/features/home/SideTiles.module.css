@@ -1,0 +1,111 @@
+/*
+ * Side tiles (DESIGN.md 3.4). Next to the carousel (desktop) they are three 144 x 288 portrait tiles, like
+ * Eneba's; under it (<= 930px) three equal columns, 144px tall. The slot sets --tile-width / --tile-height
+ * (BlockRenderer.module.css); without them the defaults below apply.
+ */
+.list {
+  display: grid;
+  grid-auto-columns: var(--tile-width, minmax(0, 1fr));
+  grid-auto-flow: column;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  height: var(--tile-height, var(--hero-tile-height-sm));
+  padding: var(--space-3);
+  overflow: hidden; /* the cover collage spills over the bottom-right corner and is cut there */
+  background: var(--tile-gradient-violet);
+  color: var(--color-text);
+}
+
+.tile:hover {
+  color: var(--color-text);
+}
+
+.violet {
+  background: var(--tile-gradient-violet);
+}
+
+.promo {
+  background: var(--tile-gradient-promo);
+}
+
+.mint {
+  background: var(--tile-gradient-mint);
+}
+
+.skeleton {
+  position: absolute;
+  inset: 0;
+}
+
+/* The text stays above the covers. */
+.title,
+.subtitle {
+  position: relative;
+  z-index: var(--z-raised);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.subtitle {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+}
+
+/* Three covers fanned out in the bottom-right corner. row-reverse: the first (most relevant) cover is on the right. */
+.covers {
+  position: absolute;
+  right: calc(-1 * var(--space-2));
+  bottom: calc(-1 * var(--space-3));
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  transition: transform var(--transition-fast);
+}
+
+.cover {
+  width: var(--tile-cover-width);
+  aspect-ratio: var(--cover-aspect-ratio);
+  object-fit: cover;
+  box-shadow: var(--shadow-popup);
+  transform: rotate(8deg);
+}
+
+.cover + .cover {
+  margin-right: calc(-0.55 * var(--tile-cover-width));
+  transform: rotate(-2deg);
+}
+
+.cover:nth-child(3) {
+  transform: rotate(-12deg);
+}
+
+/* Hover / keyboard focus: the collage lifts a little. */
+.tile:hover .covers,
+.tile:focus-visible .covers {
+  transform: translateY(calc(-1 * var(--space-2)));
+}
+
+/* Phones: a third of 390px is narrow - the title alone (the covers get smaller through the token, tokens.css). */
+@media (max-width: 600px) {
+  .tile {
+    padding: var(--space-2);
+  }
+
+  .title {
+    font-size: var(--font-size-base);
+  }
+
+  .subtitle {
+    display: none;
+  }
+}

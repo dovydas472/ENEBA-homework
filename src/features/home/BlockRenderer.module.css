@@ -1,0 +1,40 @@
+/*
+ * Block slots on the home page grid (HomePage.module.css: two columns, "1fr auto"). Every block takes the
+ * full width - except that on desktop the hero and the tiles that FOLLOW it share one row, like Eneba's banner
+ * row: the carousel on the left, the tiles on the right. If either is switched off, the other is simply full
+ * width; the page needs no code for that.
+ */
+.slot {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.hero:has(+ .tiles) {
+  grid-column: 1;
+}
+
+/* Next to the carousel the tiles are narrow and as tall as the hero (SideTiles reads these two variables). */
+.hero + .tiles {
+  grid-column: 2;
+  --tile-width: var(--hero-tile-width);
+  --tile-height: var(--hero-height);
+}
+
+/* Every second PRODUCT ROW sits on a darker full-bleed band, like Eneba's "Top games" (counted among the
+   product rows only, so switching another block off does not change the stripes). */
+.slot:nth-child(2n of [data-block-type="product_row"]) {
+  background: var(--color-bg-deep);
+}
+
+/* Tablets and phones: the tiles go under the carousel, full width (the variables fall back to their defaults). */
+@media (max-width: 930px) {
+  .hero:has(+ .tiles),
+  .hero + .tiles {
+    grid-column: 1 / -1;
+  }
+
+  .hero + .tiles {
+    --tile-width: initial;
+    --tile-height: initial;
+  }
+}

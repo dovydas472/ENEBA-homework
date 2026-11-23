@@ -1,0 +1,34 @@
+/*
+ * Home page (DESIGN.md 3.4). The page is full-bleed (the layout drops its max width for it); the blocks sit on a
+ * two-column grid so the hero and the tiles can share the first row on desktop (BlockRenderer.module.css).
+ */
+.page {
+  width: 100%;
+}
+
+.blocks {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* Centred content for the page-level states (error, empty). */
+.inner {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: var(--space-4) var(--page-gutter);
+}
+
+.loading {
+  min-height: 100vh;
+}
+
+.heroSkeleton {
+  height: var(--hero-height);
+}
+
+@media (max-width: 600px) {
+  .heroSkeleton {
+    height: auto;
+    aspect-ratio: var(--hero-aspect-ratio-sm);
+  }
+}

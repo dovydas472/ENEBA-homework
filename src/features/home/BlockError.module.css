@@ -1,0 +1,16 @@
+/* The small error of one home page block (DESIGN.md 3.4): text + a secondary Retry button on one line. */
+.error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.text {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}

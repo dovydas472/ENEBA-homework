@@ -1,0 +1,70 @@
+/*
+ * Platform row (DESIGN.md 3.4), after Eneba's category row: 100px wide entries, a 32px icon above a 12px bold
+ * label, 5px apart, starting 40px under the hero. Our entries also show the product count. Scrolls sideways
+ * when it does not fit.
+ */
+.nav {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: var(--space-6) var(--page-gutter) 0;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+}
+
+.row > li {
+  flex-shrink: 0;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: var(--platform-item-width);
+  padding: var(--space-2) 0;
+  color: var(--color-text);
+  text-align: center;
+  transition: color var(--transition-fast);
+}
+
+.item:hover {
+  color: var(--color-accent);
+}
+
+.icon {
+  width: var(--platform-icon-size);
+  height: var(--platform-icon-size);
+  margin-bottom: var(--space-1);
+}
+
+.label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-snug);
+}
+
+.count {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+}
+
+.item:hover .count {
+  color: inherit;
+}
+
+/* One text line of the skeleton: as tall as a 12px / 1.5 line. */
+.skeletonLine {
+  width: var(--space-7);
+  height: calc(var(--font-size-xs) * var(--line-height-snug));
+}
+
+@media (max-width: 600px) {
+  .nav {
+    padding-top: var(--space-4);
+  }
+}
