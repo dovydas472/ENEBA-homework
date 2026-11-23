@@ -2,6 +2,7 @@ package seedgen
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -44,6 +45,9 @@ func Counts(ctx context.Context, tx pgx.Tx) ([]TableCount, error) {
 // Postgres: if the seed fails later, the ROLLBACK brings the old data AND the old
 // identity counters back. (setval() would NOT be rolled back, so it is not used.)
 func Reset(ctx context.Context, tx pgx.Tx) error {
+	if err := refuseWhenOrdersExist(ctx, tx); err != nil {
+		return err
+	}
 	for _, t := range CatalogTables {
 		if _, err := tx.Exec(ctx, "DELETE FROM "+t); err != nil {
 			return fmt.Errorf("delete from %s: %w", t, err)
@@ -51,6 +55,32 @@ func Reset(ctx context.Context, tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, "ALTER TABLE "+t+" ALTER COLUMN id RESTART WITH 1"); err != nil {
 			return fmt.Errorf("restart identity of %s: %w", t, err)
 		}
+	}
+	return nil
+}
+
+// ErrOrdersExist is returned by Reset when orders exist: they reference offers and keys (RESTRICT),
+// so the catalog cannot be rewritten under them, and deleting them silently would destroy order history.
+var ErrOrdersExist = errors.New("seedgen: orders exist")
+
+// refuseWhenOrdersExist stops a reset before anything is deleted, with a message that says why
+// (instead of a raw foreign-key error halfway through). The orders table is checked only when it
+// exists, so a database that is not yet migrated to the checkout schema can still be reset.
+func refuseWhenOrdersExist(ctx context.Context, tx pgx.Tx) error {
+	var exists bool
+	if err := tx.QueryRow(ctx, "SELECT to_regclass('orders') IS NOT NULL").Scan(&exists); err != nil {
+		return fmt.Errorf("check for orders: %w", err)
+	}
+	if !exists {
+		return nil
+	}
+	var n int64
+	if err := tx.QueryRow(ctx, "SELECT count(*) FROM orders").Scan(&n); err != nil {
+		return fmt.Errorf("count orders: %w", err)
+	}
+	if n > 0 {
+		return fmt.Errorf("%w: %d order(s) reference the catalog; --reset would break them. "+
+			"Order history is never deleted by a seed - use an empty database (or delete the demo orders on purpose first)", ErrOrdersExist, n)
 	}
 	return nil
 }

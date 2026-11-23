@@ -11,6 +11,10 @@
 // database sets it: a test that is silently skipped looks green but proves
 // nothing, so if the database ever disappears from CI the build must go red.
 //
+// Packages that share this database must not run at the same time: pkg/catalog re-seeds the catalog
+// (deleting every product, offer and key) while pkg/orders builds its own rows in the same tables.
+// Run them one after another: `go test -p 1 ./...` (CI does).
+//
 // Used only from _test.go files.
 package testdb
 
@@ -178,6 +182,15 @@ func setup(url string) (*pgxpool.Pool, error) {
 	defer tx.Rollback(context.Background()) // no-op after a successful Commit
 	if err := seedgen.Lock(ctx, tx); err != nil {
 		return nil, fmt.Errorf("lock catalog: %w", err)
+	}
+	// Orders from an earlier test run (pkg/orders) reference offers and keys; seedgen.Reset refuses
+	// to run over orders on purpose (a real seed must never delete order history). This is the
+	// throw-away test database, so here they are wiped first: payments, keys, then the orders
+	// (their items go with them).
+	for _, stmt := range []string{"DELETE FROM payments", "DELETE FROM keys", "DELETE FROM orders"} {
+		if _, err := tx.Exec(ctx, stmt); err != nil {
+			return nil, fmt.Errorf("wipe commerce tables (%s): %w", stmt, err)
+		}
 	}
 	if err := seedgen.Reset(ctx, tx); err != nil {
 		return nil, err
