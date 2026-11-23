@@ -287,6 +287,12 @@ export interface HomeBlock {
 
 export interface HomepageResponse {
   blocks: HomeBlock[];
+  /**
+   * Task 17: what the page needs first, named by the server so the browser can start downloading it early.
+   * heroImage = the picture of the first slide the hero will show (null: no hero). Optional: a registry without it
+   * (an older server) simply means no early preload.
+   */
+  preload?: { heroImage: SlideImage | null };
 }
 
 /** A slide picture: desktop and phone crops; a srcset lists one picture in several widths ("url 1280w, ..."). */

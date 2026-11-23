@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import { homeBlockQuery } from "../../api/queries.ts";
-import type { HeroBlockData, HeroSlide } from "../../api/types.ts";
+import { homeBlockQuery, queryKeys } from "../../api/queries.ts";
+import type { HeroBlockData, HeroSlide, HomepageResponse, SlideImage } from "../../api/types.ts";
 import { ButtonLink } from "../../components/Button.tsx";
 import { Price } from "../../components/Price.tsx";
 import { Skeleton } from "../../components/Skeleton.tsx";
@@ -10,20 +10,27 @@ import { cx } from "../../lib/cx.ts";
 import type { BlockProps } from "./blockTypes.ts";
 import { BlockError } from "./BlockError.tsx";
 import styles from "./HeroCarousel.module.css";
+import { HERO_PHONE_MEDIA, HERO_PHONE_SIZES, HERO_SIZES } from "./heroImage.ts";
 import { useCarousel } from "./useCarousel.ts";
 
 /**
  * Hero block (H1): the big carousel at the top of the home page. Its slides come from GET /api/blocks/hero;
  * a product slide has the live price and a "Buy now" button to its product page.
- * While loading, the skeleton has exactly the carousel's size, so nothing moves when the slides arrive (CLS).
+ * While loading, the placeholder has exactly the carousel's size, so nothing moves when the slides arrive (CLS).
  */
 export function HeroCarousel({ block }: BlockProps) {
   const query = useQuery(homeBlockQuery<HeroBlockData>(block.endpoint));
+  // Task 17 (LCP): the registry (already in the cache - this block exists because the registry listed it) names the
+  // first slide's picture, and HomePage has started downloading it. While the slides load, that picture is shown in
+  // the placeholder: the biggest thing on the screen appears as soon as it is downloaded, not after this block's
+  // request. Read from the cache, not with useQuery: this must never send a request of its own.
+  const queryClient = useQueryClient();
+  const firstImage = queryClient.getQueryData<HomepageResponse>(queryKeys.homepage)?.preload?.heroImage;
 
   if (query.isPending) {
     return (
       <div className={styles.carousel} aria-hidden="true">
-        <Skeleton variant="block" className={styles.skeleton} />
+        {firstImage ? <HeroPicture image={firstImage} first /> : <Skeleton variant="block" className={styles.skeleton} />}
       </div>
     );
   }
@@ -105,7 +112,6 @@ interface SlideProps {
 }
 
 function Slide({ slide, position, total, active, first }: SlideProps) {
-  const { image } = slide;
   return (
     <div
       className={cx(styles.slide, active && styles.active)}
@@ -115,21 +121,7 @@ function Slide({ slide, position, total, active, first }: SlideProps) {
       aria-hidden={!active}
       inert={!active}
     >
-      {/* <picture>: phones get the phone crop; srcset + sizes let the browser pick the smallest file that is sharp
-          enough. alt="" because the picture is decoration: the slide's text says what it is. */}
-      <picture className={styles.picture}>
-        <source media="(max-width: 600px)" srcSet={image.mobileSrcset ?? image.mobileUrl} sizes="100vw" />
-        <img
-          className={styles.image}
-          src={image.url}
-          srcSet={image.srcset ?? undefined}
-          sizes="(max-width: 930px) 100vw, 70vw"
-          alt=""
-          loading={first ? "eager" : "lazy"}
-          fetchPriority={first ? "high" : "auto"}
-          decoding={first ? "auto" : "async"}
-        />
-      </picture>
+      <HeroPicture image={slide.image} first={first} />
       <div className={styles.content}>
         {slide.badge && <span className={styles.badge}>{slide.badge}</span>}
         <h2 className={styles.title}>{slide.title}</h2>
@@ -148,5 +140,29 @@ function Slide({ slide, position, total, active, first }: SlideProps) {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * A slide's picture. <picture>: phones get the phone crop; srcset + sizes let the browser pick the smallest file that
+ * is sharp enough (the values are shared with the early preload, heroImage.ts, so the preloaded file is reused).
+ * alt="" because the picture is decoration: the slide's text says what it is.
+ * `first`: the first slide's picture is the page's LCP element - it loads at once and with high priority.
+ */
+function HeroPicture({ image, first }: { image: SlideImage; first: boolean }) {
+  return (
+    <picture className={styles.picture}>
+      <source media={HERO_PHONE_MEDIA} srcSet={image.mobileSrcset ?? image.mobileUrl} sizes={HERO_PHONE_SIZES} />
+      <img
+        className={styles.image}
+        src={image.url}
+        srcSet={image.srcset ?? undefined}
+        sizes={HERO_SIZES}
+        alt=""
+        loading={first ? "eager" : "lazy"}
+        fetchPriority={first ? "high" : "auto"}
+        decoding={first ? "auto" : "async"}
+      />
+    </picture>
   );
 }

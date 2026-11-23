@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/dovydas472/ENEBA-homework/pkg/catalog"
@@ -72,6 +73,10 @@ func TestHomepage_registryIsCachedAndKeepsOrder(t *testing.T) {
 	}
 	if !reflect.DeepEqual(body.Blocks, want) {
 		t.Errorf("blocks = %v, want %v", body.Blocks, want)
+	}
+	// Task 17: the preload hint is always in the JSON (null when there is no hero picture).
+	if !strings.Contains(rec.Body.String(), `"preload":{"heroImage":null}`) {
+		t.Errorf("body %s: want the preload hint", rec.Body)
 	}
 }
 

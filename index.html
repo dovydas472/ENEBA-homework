@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Task 17 (performance): open the connection to the cover-image host while the app's code downloads, so the
+         first covers do not also wait for DNS + TCP + TLS. -->
+    <link rel="preconnect" href="https://images.igdb.com" />
+    <!-- The two font weights that most text above the fold uses (500: banner, nav, buttons; 700: wordmark, titles,
+         prices), measured at 390 and 1440 px. Without this the browser finds them only after the CSS has been parsed.
+         Vite replaces the paths with the hashed files of the build. Fonts are always fetched in CORS mode, so the
+         preload needs `crossorigin` to be reused. -->
+    <link rel="preload" href="/src/styles/fonts/metropolis-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/styles/fonts/metropolis-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
     <title>EneHomeworkBa – internship demo</title>
   </head>
   <body>

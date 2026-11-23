@@ -6,6 +6,7 @@ import { ErrorState } from "../components/ErrorState.tsx";
 import { Skeleton } from "../components/Skeleton.tsx";
 import { VisuallyHidden } from "../components/VisuallyHidden.tsx";
 import { BlockRenderer } from "../features/home/BlockRenderer.tsx";
+import { preloadHeroImage } from "../features/home/heroImage.ts";
 import { APP_NAME } from "../lib/appInfo.ts";
 import { useDocumentTitle } from "../lib/useDocumentTitle.ts";
 import styles from "./HomePage.module.css";
@@ -22,6 +23,12 @@ import styles from "./HomePage.module.css";
 export function HomePage() {
   useDocumentTitle(); // home = no page name in the tab title
   const query = useQuery(homepageQuery());
+
+  // Task 17 (LCP): the registry names the first hero picture, so its download starts NOW - in parallel with the
+  // block requests - instead of after GET /api/blocks/hero. preload() may be called while rendering (React adds the
+  // <link> once); it only names a file, it shows nothing.
+  const heroImage = query.data?.preload?.heroImage;
+  if (heroImage) preloadHeroImage(heroImage);
 
   return (
     <div className={styles.page} data-full-bleed-page>

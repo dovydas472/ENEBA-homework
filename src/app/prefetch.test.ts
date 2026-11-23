@@ -8,6 +8,7 @@ import { planPrefetch, prefetchRoute } from "./prefetch.ts";
 
 describe("planPrefetch", () => {
   it.each([
+    ["/", { data: { kind: "homepage" } }],
     ["/product/the-witcher-3", { data: { kind: "product", slug: "the-witcher-3" } }],
     ["/store", { data: { kind: "products", params: {} } }],
     ["/store?platform=steam,psn&sort=price_asc&page=2", { data: { kind: "products", params: { platform: ["steam", "psn"], sort: "price_asc", page: 2 } } }],
@@ -32,7 +33,7 @@ describe("planPrefetch", () => {
     expect(planPrefetch({ pathname: "/store", search: "?q=witcher" })).toEqual({ data: { kind: "products", params: { q: "witcher" } } });
   });
 
-  it.each(["/", "/nope/not/here", "https://example.com/product/x", "//example.com/store", "product/x", "#main"])(
+  it.each(["/nope/not/here", "https://example.com/product/x", "//example.com/store", "product/x", "#main"])(
     "%s -> nothing",
     (to) => {
       expect(planPrefetch(to)).toBeNull();

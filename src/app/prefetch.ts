@@ -6,7 +6,7 @@
 // WHEN is decided by PrefetchLink (src/components/PrefetchLink.tsx).
 import type { QueryClient } from "@tanstack/react-query";
 import { matchPath, type To } from "react-router";
-import { orderListQuery, productListQuery, productQuery, queryKeys } from "../api/queries.ts";
+import { homepageQuery, orderListQuery, productListQuery, productQuery, queryKeys } from "../api/queries.ts";
 import { parseStoreParams, type StoreParams } from "../lib/storeParams.ts";
 import { pageLoaders, type LazyPage } from "./lazyPages.ts";
 
@@ -22,6 +22,7 @@ export const PREFETCH_FRESH_MS = 30_000;
 
 /** The data a page shows first, as plain data (easy to test); prefetchRoute turns it into the page's own query. */
 export type PrefetchData =
+  | { kind: "homepage" }
   | { kind: "product"; slug: string }
   | { kind: "products"; params: StoreParams }
   | { kind: "orders" };
@@ -45,7 +46,8 @@ function splitTarget(to: To): { pathname: string; search: string } | null {
 }
 
 /**
- * What the page at `to` needs, or null for "nothing" (unknown target, the home page, another site).
+ * What the page at `to` needs, or null for "nothing" (unknown target, another site).
+ *   /                   -> the home page's block registry (each block then loads its own content)
  *   /product/:slug      -> the product query (Product is in the main bundle: no code to load)
  *   /store?...          -> the listing query with the URL's filters, read by the SAME sanitizer as the Store page
  *                          (parseStoreParams), so the cache key is exactly the one the page will ask for
@@ -57,6 +59,7 @@ export function planPrefetch(to: To): PrefetchPlan | null {
   if (!target) return null;
   const { pathname, search } = target;
 
+  if (pathname === "/") return { data: { kind: "homepage" } };
   const product = matchPath("/product/:slug", pathname);
   if (product?.params.slug) return { data: { kind: "product", slug: product.params.slug } };
   if (matchPath("/store", pathname)) return { data: { kind: "products", params: parseStoreParams(new URLSearchParams(search)) } };
@@ -96,6 +99,9 @@ export function prefetchRoute(queryClient: QueryClient, to: To): void {
   if (!data) return;
   const fresh = { staleTime: PREFETCH_FRESH_MS };
   switch (data.kind) {
+    case "homepage":
+      void queryClient.prefetchQuery({ ...homepageQuery(), ...fresh });
+      return;
     case "product":
       void queryClient.prefetchQuery({ ...productQuery(data.slug), ...fresh });
       return;
