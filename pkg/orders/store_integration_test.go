@@ -406,7 +406,11 @@ func TestCreate_sameIdempotencyKeyIsTheSameOrder(t *testing.T) {
 	}
 
 	// The key belongs to ONE user: the same key from another user is a separate order.
-	third, created, err := f.store.CreateOrder(context.Background(), f.newUser(t), req)
+	// (1 key is left: 6 - 2 - 3, so this buyer asks for 1.)
+	third, created, err := f.store.CreateOrder(context.Background(), f.newUser(t), orders.CreateRequest{
+		IdempotencyKey: req.IdempotencyKey,
+		Items:          []orders.CartItem{{OfferID: o.id, Quantity: 1, ExpectedPriceCents: 1000}},
+	})
 	if err != nil || !created || third.ID == first.ID {
 		t.Errorf("same key, other user: id %q (first %q), created=%v, err=%v; want a new order", third.ID, first.ID, created, err)
 	}
