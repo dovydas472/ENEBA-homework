@@ -3,9 +3,11 @@
 import type { RouteObject } from "react-router";
 import { RequireAuth } from "../features/auth/RequireAuth.tsx";
 import { CartPage } from "../pages/CartPage.tsx";
+import { CheckoutPage } from "../pages/CheckoutPage.tsx";
 import { HomePage } from "../pages/HomePage.tsx";
 import { LoginPage } from "../pages/LoginPage.tsx";
 import { NotFoundPage } from "../pages/NotFoundPage.tsx";
+import { OrderPage } from "../pages/OrderPage.tsx";
 import { OrdersPage } from "../pages/OrdersPage.tsx";
 import { ProductPage } from "../pages/ProductPage.tsx";
 import { RegisterPage } from "../pages/RegisterPage.tsx";
@@ -31,10 +33,14 @@ export const routes: RouteObject[] = [
           { path: "login", Component: LoginPage },
           { path: "register", Component: RegisterPage },
           // Pages for signed-in users only (Task 14). RequireAuth sends everyone else to /login?next=...
-          // The checkout page joins this group later.
+          // The cart (above) is open to everyone; its "Checkout" asks for sign-in (Task 16b).
           {
             Component: RequireAuth,
-            children: [{ path: "orders", Component: OrdersPage }],
+            children: [
+              { path: "orders", Component: OrdersPage },
+              { path: "orders/:id", Component: OrderPage },
+              { path: "checkout/:orderId", Component: CheckoutPage },
+            ],
           },
           // "*" matches everything that is left -> 404 page.
           { path: "*", Component: NotFoundPage },

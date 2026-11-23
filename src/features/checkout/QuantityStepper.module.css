@@ -1,0 +1,50 @@
+/* Quantity stepper of a cart line (DESIGN.md 3.6): "− 1 +", 16px semibold number, small icon buttons (Eneba: 85x25 in total). */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.button {
+  display: grid;
+  place-items: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.button:hover {
+  color: var(--color-accent);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.icon {
+  width: var(--font-size-base);
+  height: var(--font-size-base);
+}
+
+.value {
+  min-width: var(--icon-size);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  text-align: center;
+}
+
+/* Phones: 40px tap targets (DESIGN.md 5.2). */
+@media (max-width: 600px) {
+  .button {
+    width: var(--hit-target-min);
+    height: var(--hit-target-min);
+  }
+}

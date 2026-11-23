@@ -91,16 +91,3 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
     callerSignal?.removeEventListener("abort", onCallerAbort);
   }
 }
-
-/**
- * POST with an optional JSON body (auth, orders, checkout). The browser adds the Origin header itself;
- * the server checks it (CSRF, Task 14).
- */
-export function postJSON<T>(path: string, body?: unknown, options?: ApiOptions): Promise<T> {
-  return apiFetch<T>(path, {
-    ...options,
-    method: "POST",
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}

@@ -1,0 +1,26 @@
+/* Order page (Task 16b): the cart/payment layout (CheckoutLayout.module.css) with the status next to the title. */
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+/* "Ordered  22 Nov 2026, 14:05": label muted, value white; 12px like the Summary rows. */
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--font-size-xs);
+}
+
+.facts dt {
+  color: var(--color-text-muted);
+}
+
+.facts dd {
+  margin: 0;
+  text-align: right;
+}

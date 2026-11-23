@@ -13,7 +13,8 @@ let cleanup: (() => void) | undefined;
 afterEach(() => cleanup?.());
 
 // The only request the shell makes by itself is GET /api/auth/me (Task 14). The fake server answers it:
-// 401 (signed out) unless a test signs someone in. Any other request fails loudly.
+// 401 (signed out) unless a test signs someone in. The orders page (Task 16b) gets an empty list.
+// Any other request fails loudly.
 let signedInAs: { id: number; email: string; isDemo: boolean } | null = null;
 beforeEach(() => {
   signedInAs = null;
@@ -21,6 +22,7 @@ beforeEach(() => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (path: string) => {
+      if (path === "/api/orders") return new Response('{"orders":[]}', { status: 200 });
       if (path !== "/api/auth/me") return new Response('{"error":"unexpected request"}', { status: 500 });
       return signedInAs
         ? new Response(JSON.stringify({ user: signedInAs }), { status: 200 })
@@ -127,10 +129,10 @@ describe("routes and document titles", () => {
     expect(document.title).toBe(title);
   });
 
-  it("renders a placeholder page inside the layout", () => {
+  it("renders a page inside the layout (the empty cart, Task 16b)", () => {
     renderApp("/cart");
-    expect($("main h1")?.textContent).toBe("Cart");
-    expect($("main")?.textContent).toContain("Coming in a later task");
+    expect($("main h1")?.textContent).toBe("Your cart is empty");
+    expect($("main a[href='/store']")?.textContent).toBe("Browse the store");
     expect($("header")).not.toBeNull();
     expect($("footer")).not.toBeNull();
   });
@@ -304,13 +306,13 @@ describe("signed-in pages (Task 14)", () => {
     expect(document.title).toBe("Sign in – EneHomeworkBa");
   });
 
-  it("/orders while signed in shows the page with 'Signed in as …' and the account menu in the header", async () => {
+  it("/orders while signed in shows the orders page and the account menu in the header", async () => {
     signedInAs = { id: 7, email: "me@example.com", isDemo: false };
     const { router } = renderApp("/orders");
     await flush();
     expect(urlOf(router)).toBe("/orders");
     expect(document.title).toBe("Orders – EneHomeworkBa");
-    expect($("main")?.textContent).toContain("Signed in as me@example.com");
+    expect($("main h1")?.textContent).toBe("No orders yet"); // the fake server's empty list (Task 16b)
     expect($("header button[aria-label='Account: me@example.com']")).not.toBeNull();
     expect($("header a[aria-label='Sign in']")).toBeNull();
   });
@@ -319,7 +321,6 @@ describe("signed-in pages (Task 14)", () => {
     signedInAs = { id: 8, email: "demo-0123456789abcdef@demo.invalid", isDemo: true };
     renderApp("/orders");
     await flush();
-    expect($("main")?.textContent).toContain("Signed in as Demo user");
     expect($("header button[aria-label='Account: Demo user']")).not.toBeNull();
     expect(document.body.textContent).not.toContain("demo.invalid");
   });

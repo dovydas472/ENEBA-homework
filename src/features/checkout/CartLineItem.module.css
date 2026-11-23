@@ -1,0 +1,169 @@
+/* A cart line: DESIGN.md 3.6 (measured on eneba.com/checkout: rgba(0,0,0,.12) line, 90x127 cover flush left,
+   20px to the text, padding 10 20 5 0; "Sold by" 12px bold; title 14px/20px bold; meta 12px muted; price 14px bold). */
+.line {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--cart-cover-width) minmax(0, 1fr);
+  gap: var(--space-4);
+  padding-right: var(--space-4);
+  background: var(--color-surface-line);
+}
+
+.coverLink {
+  display: block;
+  align-self: start;
+}
+
+.cover {
+  display: block;
+  width: var(--cart-cover-width);
+  aspect-ratio: var(--cover-aspect-ratio);
+  object-fit: cover;
+  background: var(--color-skeleton); /* also the box shown when a game has no cover */
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) 0 var(--space-1);
+}
+
+.seller {
+  /* room for the trash icon in the top-right corner */
+  padding-right: var(--space-6);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-snug);
+}
+
+.soldBy {
+  color: var(--color-text-muted);
+}
+
+.title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.title a {
+  color: var(--color-text);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.title a:hover {
+  color: var(--color-accent);
+}
+
+.meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.notice,
+.unavailable {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.notice {
+  color: var(--color-warning);
+}
+
+.unavailable {
+  color: var(--color-error);
+}
+
+.noticeIcon {
+  flex-shrink: 0;
+  width: var(--font-size-sm);
+  height: var(--font-size-sm);
+}
+
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: auto; /* the stepper and the price sit at the bottom of the line, as on Eneba */
+}
+
+.price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: var(--font-family-tabular);
+}
+
+.total {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.each {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.remove {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-3);
+  display: grid;
+  place-items: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.remove:hover {
+  color: var(--color-accent);
+}
+
+.removeIcon {
+  width: var(--font-size-lg);
+  height: var(--font-size-lg);
+}
+
+/* Unavailable: the cover and the texts are dimmed; the "No longer available" line and the remove button stay clear. */
+.line[data-unavailable] .cover,
+.line[data-unavailable] .seller,
+.line[data-unavailable] .title,
+.line[data-unavailable] .meta {
+  opacity: var(--opacity-dimmed);
+}
+
+/* Phones (Eneba at 390px): the line has its own padding 20 20 10, a 50px cover, 10px to the text. */
+@media (max-width: 600px) {
+  .line {
+    grid-template-columns: var(--cart-cover-width-sm) minmax(0, 1fr);
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-4) var(--space-2);
+  }
+
+  .cover {
+    width: var(--cart-cover-width-sm);
+  }
+
+  .body {
+    padding: 0;
+  }
+
+  .remove {
+    top: var(--space-2);
+    right: var(--space-2);
+    width: var(--hit-target-min);
+    height: var(--hit-target-min);
+  }
+}

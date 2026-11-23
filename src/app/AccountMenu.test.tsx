@@ -126,7 +126,8 @@ describe("header: signed in (account menu)", () => {
     await click(popup().querySelector<HTMLAnchorElement>("a[href='/orders']")!);
     expect(urlOf(router)).toBe("/orders");
     expect(popup().hidden).toBe(true);
-    expect($("main")?.textContent).toContain("Signed in as me@example.com");
+    await flush(); // the orders page asks for the list (Task 16b); the fake answers an empty one
+    expect($("main h1")?.textContent).toBe("No orders yet");
   });
 
   it("'Sign out' calls the API, goes home and shows 'Sign in' again", async () => {

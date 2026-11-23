@@ -25,6 +25,14 @@ export function maskKey(key: string): string {
   return [parts[0], ...parts.slice(1).map((part) => "•".repeat(part.length))].join("-");
 }
 
+/**
+ * "#0B9F2C1E": the first 8 characters of the order's UUID, to tell orders apart on screen. Only a label - the full id is
+ * in the URL, and the server finds orders by the full id.
+ */
+export function shortOrderId(id: string): string {
+  return `#${id.slice(0, 8).toUpperCase()}`;
+}
+
 /** "1 item" / "3 items" */
 export function itemCountText(count: number): string {
   return `${count} ${count === 1 ? "item" : "items"}`;

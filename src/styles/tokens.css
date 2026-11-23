@@ -24,6 +24,8 @@
   --color-border-dark: #1f0a4d; /* bottom line of the compact (phone) header */
   --color-skeleton: rgba(255, 255, 255, 0.1); /* loading placeholder (derived, no Eneba source) */
   --color-skeleton-shine: rgba(255, 255, 255, 0.2);
+  /* Added in Task 16b (cart, measured on eneba.com/checkout): */
+  --color-surface-line: rgba(0, 0, 0, 0.12); /* one cart / order line inside a --color-bg-deep panel */
 
   /* ---------- Colors: text ---------- */
   --color-text: #ffffff; /* default text, headings, prices */
@@ -178,6 +180,11 @@
   --auth-panel-width: 23.75rem; /* 380px: the sign-in / sign-up panel = 300px column + 2 x 40px padding (S: my.eneba.com/login) */
   --account-menu-width: 15rem; /* 240px: the header account menu popup (D) */
   --account-name-max-width: 11.25rem; /* 180px: a long email in the header button is cut with "…" (D) */
+  /* Added in Task 16b (cart, payment and order pages, measured on eneba.com/checkout): */
+  --checkout-max-width: 63.125rem; /* 1010px: cart page content = 635px list panel + 20px gap + 355px summary */
+  --checkout-side-width: 22.1875rem; /* 355px: the Summary / payment panel */
+  --cart-cover-width: 5.625rem; /* 90px: cover of a cart line (it is 127px tall: --cover-aspect-ratio) */
+  --cart-cover-width-sm: 3.125rem; /* 50px: the same cover on phones */
 }
 
 /*

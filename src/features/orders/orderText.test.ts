@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDateTime } from "../../lib/formatDate.ts";
-import { itemCountText, maskKey, statusLabel } from "./orderText.ts";
+import { itemCountText, maskKey, shortOrderId, statusLabel } from "./orderText.ts";
 
 describe("maskKey", () => {
   it("keeps the first group and the dashes, hides everything else", () => {
@@ -23,6 +23,10 @@ describe("statusLabel / itemCountText", () => {
   it("1 item / 3 items", () => {
     expect(itemCountText(1)).toBe("1 item");
     expect(itemCountText(3)).toBe("3 items");
+  });
+
+  it("shortOrderId: '#' + the first 8 characters, upper case", () => {
+    expect(shortOrderId("0b9f2c1e-4d5a-4f3b-9a7c-2e6d8f1a3b5c")).toBe("#0B9F2C1E");
   });
 });
 

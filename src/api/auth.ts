@@ -1,7 +1,8 @@
 // Typed functions for the auth endpoints (Task 14). Every call goes through apiFetch.
 // The session itself is an HttpOnly cookie: JavaScript never sees the token, the browser sends it
 // with every same-site request on its own. That is why nothing here stores or reads a token.
-import { ApiError, apiFetch, postJSON, type ApiOptions } from "./client.ts";
+import { ApiError, apiFetch, type ApiOptions } from "./client.ts";
+import { postJSON } from "./post.ts";
 
 /** The signed-in account, exactly as the API returns it (never a password or hash). */
 export interface User {
