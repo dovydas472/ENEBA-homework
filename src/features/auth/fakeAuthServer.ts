@@ -14,7 +14,8 @@ export interface FakeAuthState {
 }
 
 export function newFakeAuthState(): FakeAuthState {
-  return { user: null, handlers: {}, requests: [] };
+  // /orders is the protected page the auth tests land on; since Task 16b it asks for the order list (empty here).
+  return { user: null, handlers: { "GET /api/orders": () => ({ orders: [] }) }, requests: [] };
 }
 
 /** An HTTP error the way apiFetch throws it, with the server's {"error": "..."} body. */

@@ -1,0 +1,136 @@
+/* The two-panel layout of the cart and the payment page (DESIGN.md 3.6, measured on eneba.com/checkout at 1440px):
+   1010px wide and centred, a list panel + a 355px side panel 20px apart, both --color-bg-deep. One column at 930px and below. */
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--checkout-side-width);
+  align-items: start;
+  gap: var(--space-4);
+  max-width: var(--checkout-max-width);
+  margin: 0 auto;
+}
+
+.panel {
+  padding: var(--space-4);
+  background: var(--color-bg-deep);
+}
+
+/* The side panel: 30px side padding (Eneba's Summary). */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  background: var(--color-bg-deep);
+}
+
+/* "My cart" / "Summary": 18px bold (Eneba's h1 / h2 are the same size here). */
+.panelTitle {
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.panel > .panelTitle {
+  margin-bottom: var(--space-4);
+}
+
+.panelTitle:focus {
+  outline: none; /* focused only by script (after removing a line), never by Tab */
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+/* "2 products  €35.73": 12px, the amount 14px bold (Eneba). */
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.rowValue {
+  font-family: var(--font-family-tabular);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+/* "Total:  €35.73": label 16px bold, amount 30px bold, a line above (Eneba). */
+.total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+
+.totalValue {
+  font-family: var(--font-family-tabular);
+  font-size: var(--font-size-4xl);
+  line-height: var(--line-height-none);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* An error inside a panel: error text on --color-bg-deep passes 4.5:1 (DESIGN.md 5.1), with an outline so colour is not the only signal. */
+.error {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+}
+
+/* A way out inside an error box ("View your orders"): accent and bold, like other in-text links (9.23:1 on deep). */
+.errorLink {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.errorLink:hover {
+  color: var(--color-accent-hover);
+}
+
+.changed {
+  margin-bottom: var(--space-3);
+  color: var(--color-warning);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Empty = no height, but still rendered and NOT display:none: a hidden live region may not announce text added later. */
+.changed:empty {
+  margin: 0;
+}
+
+@media (max-width: 930px) {
+  .page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Phones: the panels run edge to edge (Eneba). */
+@media (max-width: 600px) {
+  .page {
+    gap: var(--space-2);
+    margin-inline: calc(-1 * var(--page-gutter));
+  }
+
+  .side {
+    padding-inline: var(--space-4);
+  }
+}

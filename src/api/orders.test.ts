@@ -5,11 +5,13 @@ import {
   cartChangedLines,
   createOrder,
   getOrder,
+  isHttpStatus,
   isPaymentDeclined,
   isReservationExpired,
   isTooManyPendingOrders,
   listOrders,
   newIdempotencyKey,
+  orderErrorMessage,
   payOrder,
   quoteCart,
 } from "./orders.ts";
@@ -142,6 +144,41 @@ describe("isTooManyPendingOrders", () => {
     expect(isTooManyPendingOrders(http(409, { error: "cart_changed", lines: [] }))).toBe(false);
     expect(isTooManyPendingOrders(http(402))).toBe(false);
     expect(isTooManyPendingOrders(new Error("x"))).toBe(false);
+  });
+});
+
+// Task 16b: the UI's readers - which statuses are which, and which messages may be shown (never a raw 5xx text).
+describe("isHttpStatus / orderErrorMessage", () => {
+  const http = (status: number, body?: unknown) => new ApiError("http", `HTTP ${status}`, status, body);
+
+  it("isHttpStatus is false for network errors and plain errors", () => {
+    expect(isHttpStatus(http(404), 404)).toBe(true);
+    expect(isHttpStatus(new ApiError("network", "Network error"), 0)).toBe(false);
+    expect(isHttpStatus(new Error("x"), 404)).toBe(false);
+    expect(isHttpStatus(null, 404)).toBe(false);
+  });
+
+  it("shows the server's text for 400, 402 and 409 (including the unpaid-order cap)", () => {
+    expect(orderErrorMessage(http(400, { error: "At most 20 lines" }))).toBe("At most 20 lines");
+    expect(orderErrorMessage(http(402, { error: "Payment declined (simulated)" }))).toBe("Payment declined (simulated)");
+    expect(orderErrorMessage(http(409, { error: "Too many unpaid orders – pay or cancel one first" }))).toBe(
+      "Too many unpaid orders – pay or cancel one first",
+    );
+  });
+
+  it("a generic sentence for 5xx, other 4xx, missing text and unknown errors", () => {
+    const generic = "Something went wrong. Please try again.";
+    expect(orderErrorMessage(http(500, { error: "pq: relation orders does not exist" }))).toBe(generic);
+    expect(orderErrorMessage(http(503, { error: "database unavailable" }))).toBe(generic);
+    expect(orderErrorMessage(http(404, { error: "Not found" }))).toBe(generic);
+    expect(orderErrorMessage(http(409))).toBe(generic);
+    expect(orderErrorMessage(new Error("TypeError in our code"))).toBe(generic);
+  });
+
+  it("network and timeout: check the connection", () => {
+    const text = "Could not reach the server. Check your connection and try again.";
+    expect(orderErrorMessage(new ApiError("network", "Network error"))).toBe(text);
+    expect(orderErrorMessage(new ApiError("timeout", "Request timed out"))).toBe(text);
   });
 });
 

@@ -5,11 +5,14 @@
 // Why not a React context? The cart also changes from OUTSIDE React (another browser tab writes
 // localStorage), and useSyncExternalStore is React's own tool for "a value that lives outside React":
 // no provider to wrap the app in, and no re-render of components that do not read the cart.
+import type { CheckoutLine } from "../../api/types.ts";
 import {
   addItem,
+  applyQuoteLines,
   CART_STORAGE_KEY,
   parseCart,
   removeLine,
+  removePurchased,
   serializeCart,
   setQuantity,
   type AddResult,
@@ -30,6 +33,10 @@ export interface CartStore {
   setQuantity(offerId: number, quantity: number): void;
   remove(offerId: number): void;
   clear(): void;
+  /** Task 16b: the server's current price / stock / quantity for the lines it can still sell (see applyQuoteLines). */
+  applyQuote(quoteLines: readonly CheckoutLine[]): void;
+  /** Task 16b: after a successful payment, takes the bought pieces out of the cart. */
+  removePurchased(bought: readonly { offerId: number; quantity: number }[]): void;
 }
 
 /**
@@ -66,6 +73,14 @@ export function createCartStore(storage: Storage | null, events: EventSource | n
       // Full or blocked storage: the cart still works for this page, it is just not remembered.
     }
     notify();
+  }
+
+  /**
+   * Like commit, but only when the lines really differ. Applying a quote changes the cart, which asks for a new
+   * quote; the second answer changes nothing, so it must not produce a new array (that would ask again, forever).
+   */
+  function commitIfChanged(next: readonly CartLine[]) {
+    if (serializeCart(next) !== serializeCart(current())) commit(next);
   }
 
   // Tab sync (C4): the browser fires `storage` in the OTHER tabs of this site when one tab writes
@@ -105,6 +120,12 @@ export function createCartStore(storage: Storage | null, events: EventSource | n
     },
     clear() {
       commit([]);
+    },
+    applyQuote(quoteLines) {
+      commitIfChanged(applyQuoteLines(current(), quoteLines));
+    },
+    removePurchased(bought) {
+      commitIfChanged(removePurchased(current(), bought));
     },
   };
 }

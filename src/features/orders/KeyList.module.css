@@ -1,0 +1,59 @@
+/* Keys of a paid order item (Task 16b, D - Eneba's key page needs a real purchase): the key in a sunken box
+   (the input look, DESIGN.md 4.2), Reveal / Copy as text buttons with an icon. */
+.keys {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.code {
+  flex: 1 1 auto;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-inset);
+  box-shadow: var(--shadow-inset);
+  font-family: var(--font-family-tabular);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: var(--key-action-min-width);
+  min-height: var(--button-height);
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.action:hover {
+  color: var(--color-accent-hover);
+}
+
+.icon {
+  width: var(--font-size-base);
+  height: var(--font-size-base);
+}

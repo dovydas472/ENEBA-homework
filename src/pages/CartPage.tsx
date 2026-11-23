@@ -1,7 +1,8 @@
+import { CartView } from "../features/checkout/CartView.tsx";
 import { useDocumentTitle } from "../lib/useDocumentTitle.ts";
-import { PlaceholderPage } from "./PlaceholderPage.tsx";
 
+/** /cart (open to everyone; "Checkout" asks for sign-in). */
 export function CartPage() {
   useDocumentTitle("Cart");
-  return <PlaceholderPage title="Cart" />;
+  return <CartView />;
 }

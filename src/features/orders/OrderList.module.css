@@ -1,0 +1,85 @@
+/* Orders list (Task 16b, D - Eneba's order history needs an account with purchases): one --color-bg-deep panel as wide
+   as the cart page, rows in the cart line look; each row is one link, so it gets the --color-surface-hover hover (DESIGN.md 4.7). */
+.panel {
+  max-width: var(--checkout-max-width);
+  margin: 0 auto;
+  padding: var(--space-4);
+  background: var(--color-bg-deep);
+}
+
+.panel > h1 {
+  margin-bottom: var(--space-4);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-line);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: background-color var(--transition-fast);
+}
+
+.row:hover {
+  background: var(--color-surface-hover);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.total {
+  font-family: var(--font-family-tabular);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.go {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.chevron {
+  width: var(--font-size-base);
+  height: var(--font-size-base);
+}
+
+/* Phones: two lines per row - order + date on top, then status, total and the action. Panel edge to edge. */
+@media (max-width: 600px) {
+  .panel {
+    margin-inline: calc(-1 * var(--page-gutter));
+  }
+
+  .row {
+    grid-template-columns: auto auto 1fr;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .main {
+    grid-column: 1 / -1;
+  }
+
+  .go {
+    justify-self: end;
+  }
+}

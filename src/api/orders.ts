@@ -1,6 +1,7 @@
 // Typed functions for the checkout endpoints (Task 16a, pkg/orders). Every call goes through apiFetch.
-// No UI here: the cart and checkout screens (Task 16b) call these from TanStack Query.
+// The cart and checkout screens (Task 16b) call these from TanStack Query.
 import { ApiError, apiFetch, type ApiOptions } from "./client.ts";
+import { postJSON } from "./post.ts";
 import type {
   CartChangedBody,
   CartLineInput,
@@ -13,16 +14,6 @@ import type {
   PaymentOutcome,
   Quote,
 } from "./types.ts";
-
-/** POST with a JSON body. The browser adds the Origin header itself; the server checks it (CSRF). */
-function postJSON<T>(path: string, body?: unknown, options?: ApiOptions): Promise<T> {
-  return apiFetch<T>(path, {
-    ...options,
-    method: "POST",
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
 
 /** POST /api/checkout/quote (no sign-in): re-prices the cart; each line says what can really be bought. */
 export function quoteCart(items: CartLineInput[], options?: ApiOptions): Promise<Quote> {
@@ -94,4 +85,29 @@ export const TOO_MANY_PENDING_MESSAGE = "Too many unpaid orders – pay or cance
 export function isTooManyPendingOrders(err: unknown): boolean {
   if (!(err instanceof ApiError) || err.code !== "http" || err.status !== 409) return false;
   return (err.body as { error?: unknown } | undefined)?.error === TOO_MANY_PENDING_MESSAGE;
+}
+
+// ---- Task 16b: the UI's error readers ----
+
+/** True when `err` is an HTTP answer with exactly this status (404 → "Page not found", 401 → sign in…). */
+export function isHttpStatus(err: unknown, status: number): boolean {
+  return err instanceof ApiError && err.code === "http" && err.status === status;
+}
+
+/** Statuses whose `{"error": "..."}` text is written for the user (validation, declined, not payable / too many unpaid). */
+const USER_FACING_STATUSES = new Set([400, 402, 409]);
+
+/**
+ * The message to show for a failed checkout / order request. The server's text only for the statuses above;
+ * 5xx, network and timeouts get a generic sentence, never a raw error (CLAUDE.md).
+ */
+export function orderErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    const text = (err.body as { error?: unknown } | undefined)?.error;
+    if (err.code === "http" && USER_FACING_STATUSES.has(err.status) && typeof text === "string" && text !== "") return text;
+    if (err.code === "network" || err.code === "timeout") {
+      return "Could not reach the server. Check your connection and try again.";
+    }
+  }
+  return "Something went wrong. Please try again.";
 }

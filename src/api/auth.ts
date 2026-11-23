@@ -2,6 +2,7 @@
 // The session itself is an HttpOnly cookie: JavaScript never sees the token, the browser sends it
 // with every same-site request on its own. That is why nothing here stores or reads a token.
 import { ApiError, apiFetch, type ApiOptions } from "./client.ts";
+import { postJSON } from "./post.ts";
 
 /** The signed-in account, exactly as the API returns it (never a password or hash). */
 export interface User {
@@ -19,16 +20,6 @@ export interface UserResponse {
 export interface Credentials {
   email: string;
   password: string;
-}
-
-/** POST with a JSON body. The browser adds the Origin header itself; the server checks it (CSRF). */
-function postJSON<T>(path: string, body?: unknown, options?: ApiOptions): Promise<T> {
-  return apiFetch<T>(path, {
-    ...options,
-    method: "POST",
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
 }
 
 /**

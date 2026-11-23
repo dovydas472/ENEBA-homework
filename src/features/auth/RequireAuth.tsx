@@ -7,7 +7,7 @@ import styles from "./RequireAuth.module.css";
 import { useCurrentUser } from "./useCurrentUser.ts";
 
 /**
- * A layout route that protects every page nested inside it (routes.ts): /orders now, /checkout later.
+ * A layout route that protects every page nested inside it (routes.ts): /orders, /orders/:id and /checkout/:orderId.
  *   - signed in   -> the page (<Outlet />)
  *   - signed out  -> /login?next=<this page>, so the user comes back here after signing in
  *   - still asking the server -> a spinner (never a flash of the sign-in page for a signed-in user)
