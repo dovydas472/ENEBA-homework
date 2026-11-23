@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Gamepad, Gamepad2, Joystick, LayoutGrid, Monitor, TabletSmartphone, type LucideIcon } from "lucide-react";
-import { Link } from "react-router";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
 import { homeBlockQuery } from "../../api/queries.ts";
 import type { PlatformsBlockData } from "../../api/types.ts";
 import { Skeleton } from "../../components/Skeleton.tsx";
@@ -59,11 +59,11 @@ export function PlatformRow({ block }: BlockProps) {
             const Icon = (Object.hasOwn(ICONS, item.icon) ? ICONS[item.icon] : undefined) ?? DEFAULT_ICON;
             return (
               <li key={item.key}>
-                <Link to={item.href} className={styles.item}>
+                <PrefetchLink to={item.href} className={styles.item}>
                   <Icon className={styles.icon} aria-hidden="true" />
                   <span className={styles.label}>{item.label}</span>
                   <span className={styles.count}>{productCount(item.count)}</span>
-                </Link>
+                </PrefetchLink>
               </li>
             );
           })}

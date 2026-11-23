@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { Link } from "react-router";
+import { PrefetchLink } from "./PrefetchLink.tsx";
 import styles from "./Breadcrumb.module.css";
 
 export interface Crumb {
@@ -20,9 +20,9 @@ export function Breadcrumb({ items }: { items: Crumb[] }) {
           <li key={`${index}-${item.label}`} className={styles.item}>
             {index > 0 && <ChevronRight className={styles.separator} aria-hidden="true" />}
             {item.to ? (
-              <Link to={item.to} className={styles.link}>
+              <PrefetchLink to={item.to} className={styles.link}>
                 {item.label}
-              </Link>
+              </PrefetchLink>
             ) : (
               <span className={styles.current} aria-current="page">
                 {item.label}

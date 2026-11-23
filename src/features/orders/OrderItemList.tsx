@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
 import type { OrderItem } from "../../api/types.ts";
 import { formatPrice } from "../../lib/formatPrice.ts";
 import layout from "../checkout/CheckoutLayout.module.css";
@@ -24,7 +24,7 @@ export function OrderItemList({ items, renderExtra }: OrderItemListProps) {
             <div className={styles.info}>
               <p className={styles.seller}>Sold by {item.sellerName}</p>
               <h2 className={styles.title}>
-                <Link to={`/product/${item.productSlug}`}>{item.title}</Link>
+                <PrefetchLink to={`/product/${item.productSlug}`}>{item.title}</PrefetchLink>
               </h2>
               {item.edition !== "Standard" && <p className={styles.meta}>{item.edition}</p>}
               <p className={styles.meta}>

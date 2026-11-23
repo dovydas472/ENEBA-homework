@@ -1,7 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { ShoppingCart } from "lucide-react";
-import { Link } from "react-router";
-import { productQuery } from "../../api/queries.ts";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
 import type { ProductItem } from "../../api/types.ts";
 import { Badge } from "../../components/Badge.tsx";
 import { Button, ButtonLink } from "../../components/Button.tsx";
@@ -25,23 +23,15 @@ import styles from "./ProductCard.module.css";
  * an out-of-stock card has no button.
  */
 export function ProductCard({ item }: { item: ProductItem }) {
-  const queryClient = useQueryClient();
   const buyable = item.inStock && item.priceCents !== null;
   const cartItem = itemFromListing(item); // null = nothing to add (out of stock)
-
-  // Prefetch (S13): while the pointer is over the card (or it has keyboard focus) the product page data is
-  // already requested, so by the time the user clicks it is usually in the cache. prefetchQuery does nothing
-  // when the cache entry is still fresh (staleTime), so moving over a card again costs no request.
-  // prefetchQuery never throws: a failed prefetch shows nothing - the product page itself asks again
-  // and shows its own error state.
-  function prefetch() {
-    void queryClient.prefetchQuery(productQuery(item.slug));
-  }
 
   return (
     <div className={cx(styles.card, !buyable && styles.unavailable, cartItem && styles.withCart)}>
       <div className={styles.slide}>
-        <Link to={`/product/${item.slug}`} className={styles.link} onMouseEnter={prefetch} onFocus={prefetch}>
+        {/* Prefetch (S13, Task 17: PrefetchLink): resting the pointer on the card, focusing it or touching it already
+            requests the product page data, so by the time the user clicks it is usually in the cache. */}
+        <PrefetchLink to={`/product/${item.slug}`} className={styles.link}>
           <div className={styles.cover}>
             <CoverImage url={item.coverUrl} title={item.title} />
             {/* Desktop: the platform on a dark strip over the bottom of the cover (hidden on phones, see the CSS). */}
@@ -72,7 +62,7 @@ export function ProductCard({ item }: { item: ProductItem }) {
               )}
             </div>
           </div>
-        </Link>
+        </PrefetchLink>
 
         {/* Revealed by the hover slide (desktop). */}
         <div className={styles.actions}>

@@ -1,7 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
-import { Link } from "react-router";
-import { productQuery } from "../../api/queries.ts";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
 import type { Variant } from "../../api/types.ts";
 import { cx } from "../../lib/cx.ts";
 import { formatPrice } from "../../lib/formatPrice.ts";
@@ -10,10 +8,10 @@ import styles from "./VariantList.module.css";
 /**
  * "Other versions" (P3): the other products of the same game - another platform, region or edition - each a link
  * to its own page. Eneba has no such list on the product page (it lives in its search), so the rows reuse the
- * offer-row look; a whole row is one link, so it gets a hover colour (DESIGN.md 4.7).
+ * offer-row look; a whole row is one link, so it gets a hover colour (DESIGN.md 4.7). Like a Store card it is a
+ * PrefetchLink: the page data is usually in the cache before the click.
  */
 export function VariantList({ variants }: { variants: Variant[] }) {
-  const queryClient = useQueryClient();
   if (variants.length === 0) return null;
 
   return (
@@ -24,12 +22,9 @@ export function VariantList({ variants }: { variants: Variant[] }) {
       <ul className={styles.list}>
         {variants.map((variant) => (
           <li key={variant.slug}>
-            <Link
+            <PrefetchLink
               to={`/product/${variant.slug}`}
               className={cx(styles.row, !variant.inStock && styles.unavailable)}
-              // Same prefetch as a Store card: the page data is usually in the cache before the click.
-              onMouseEnter={() => void queryClient.prefetchQuery(productQuery(variant.slug))}
-              onFocus={() => void queryClient.prefetchQuery(productQuery(variant.slug))}
             >
               <span className={styles.name}>
                 <span className={styles.platform}>{variant.platform.name}</span>
@@ -46,7 +41,7 @@ export function VariantList({ variants }: { variants: Variant[] }) {
                 )}
               </span>
               <ChevronRight className={styles.chevron} aria-hidden="true" />
-            </Link>
+            </PrefetchLink>
           </li>
         ))}
       </ul>

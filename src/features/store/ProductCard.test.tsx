@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HOVER_DELAY_MS } from "../../app/prefetch.ts";
 import { render } from "../../test-utils.tsx";
 import { makeItem } from "./fixtures.ts";
 import { ProductCard } from "./ProductCard.tsx";
@@ -164,13 +165,17 @@ describe("ProductCard", () => {
       // staleTime > 0 like the app's client: a second hover must not ask again.
       const { link } = renderCard(makeItem(), new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } }));
 
+      // Task 17: the card is a PrefetchLink - the pointer must rest on it for HOVER_DELAY_MS before it prefetches.
+      const rest = () => act(() => new Promise((resolve) => setTimeout(resolve, HOVER_DELAY_MS + 20)));
       await act(async () => {
         link.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
       });
+      await rest();
       await act(async () => {
         link.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
         link.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
       });
+      await rest();
 
       expect(apiFetch).toHaveBeenCalledTimes(1);
       expect(vi.mocked(apiFetch).mock.calls[0][0]).toBe("/api/products/the-witcher-3-wild-hunt-steam-global");

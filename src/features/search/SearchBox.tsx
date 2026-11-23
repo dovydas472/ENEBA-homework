@@ -1,8 +1,10 @@
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent, type Ref } from "react";
-import { Link, useNavigate } from "react-router";
-import { productQuery, suggestionsQuery } from "../../api/queries.ts";
+import { useNavigate } from "react-router";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
+import { suggestionsQuery } from "../../api/queries.ts";
+import { prefetchRoute } from "../../app/prefetch.ts";
 import { Spinner } from "../../components/Spinner.tsx";
 import { VisuallyHidden } from "../../components/VisuallyHidden.tsx";
 import { cx } from "../../lib/cx.ts";
@@ -98,10 +100,13 @@ export function SearchBox({ urlQuery, label, placeholder, inputRef, onDone }: Se
     setActiveIndex(-1);
   }
 
-  /** Product data is requested before the click (like the Store cards), so the product page usually opens at once. */
+  /**
+   * ↓/↑ onto a game row requests its product page data before Enter (the same prefetchRoute as every PrefetchLink),
+   * so the product page usually opens at once. A hovered row is a PrefetchLink and does this by itself.
+   */
   function prefetch(index: number) {
     const item = items[index];
-    if (item) void queryClient.prefetchQuery(productQuery(item.productSlug));
+    if (item) prefetchRoute(queryClient, `/product/${item.productSlug}`);
   }
 
   /** Enter with no active row, the magnifier button and "See all results": the Store page with this search. */
@@ -228,11 +233,10 @@ export function SearchBox({ urlQuery, label, placeholder, inputRef, onDone }: Se
               query={text}
               active={index === active}
               onChoose={afterProductChosen}
-              onPrefetch={() => prefetch(index)}
             />
           ))}
           {items.length > 0 && query !== undefined && (
-            <Link
+            <PrefetchLink
               to={{ pathname: "/store", search: buildStoreSearch({ q: query }) }}
               id={optionId(seeAllIndex)}
               role="option"
@@ -246,7 +250,7 @@ export function SearchBox({ urlQuery, label, placeholder, inputRef, onDone }: Se
               }}
             >
               See all results for '{query}'
-            </Link>
+            </PrefetchLink>
           )}
         </div>
         {noMatches && <p className={styles.noMatches}>No matches for '{debouncedQuery}'</p>}
