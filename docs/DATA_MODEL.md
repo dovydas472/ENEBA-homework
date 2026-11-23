@@ -460,17 +460,17 @@ CHECKs: `homepage_slides_one_target` (not both `product_slug` and `cta_href`) an
 | Column | Type | Why |
 |---|---|---|
 | `id`, `position`, `enabled` | as above | |
-| `title` | `text` NN, not blank | "Up to −70%" |
+| `title` | `text` NN, not blank | "Steam games". The token `{maxDiscount}` is replaced by the API with the biggest **live** discount of the buyable products (the first card of the Store's discount listing): "Up to −{maxDiscount}%" → "Up to −73%". No discounted product → the tile is left out (no "Up to −0%") |
 | `subtitle` | `text`, null | |
 | `href` | `text` NN, CHECK internal path | where the tile goes (`/store?sort=discount`) |
 | `accent` | `text` NN, default `'violet'`, CHECK `IN ('violet','promo','mint')` | which **token gradient** the frontend paints – a name, never a colour value |
 | `covers` | `jsonb`, null, CHECK object | which catalog products give the collage, e.g. `{"sort":"popularity","platform":"steam"}`; the API returns up to 3 different covers. `NULL` = text only |
 
-### Content (inserted by `00006`)
+### Content (inserted by `00006`; `00007` makes the discount tile's number live)
 | Block (position) | Type | Content |
 |---|---|---|
 | `hero` (10) | hero | 1. **Innert** (a friend's game in development, art used with permission): badge "Coming soon", no button, WebP files in `public/banners/`. 2. Grand Theft Auto V and 3. The Witcher 3 (the two most popular in-stock games): IGDB artworks `ar6d9m` / `ar3lze`, "Buy now" → product page |
-| `tiles` (20) | tiles | "Up to −70%" → `/store?sort=discount`, "Steam games" → `/store?platform=steam`, "New releases" → `/store?sort=newest` |
+| `tiles` (20) | tiles | "Up to −{maxDiscount}%" (live, e.g. "Up to −73%") → `/store?sort=discount`, "Steam games" → `/store?platform=steam`, "New releases" → `/store?sort=newest` |
 | `platforms` (30) | platforms | "All games" + every platform with products; generic lucide icon names |
 | `popular` (40), `discounts` (50), `new-releases` (60) | product_row | 5 products by popularity / discount / newest; "View all" → `/store`, `/store?sort=discount`, `/store?sort=newest` |
 
