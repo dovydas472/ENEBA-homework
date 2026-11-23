@@ -351,7 +351,8 @@ above the **"Summary" panel**; both panels `#351183` (= `--color-bg-deep`).
   "Only N left – quantity reduced", `--color-error` for "No longer available"), then the stepper (`QuantityStepper`, 24px buttons, 40px ≤600px; − disabled at 1, + at min(stock, 5))
   and the **line total** (owner decision; Eneba shows the unit price) with "€x each" under it when the quantity is above 1. Trash icon (muted, accent on hover) top-right.
   An **unavailable** line: cover and texts at `--opacity-dimmed`, no stepper and no price, only the trash icon.
-- "Summary": `h2`, the primary **"Checkout"** first (full width, as Eneba), a muted note when signed out ("You will be asked to sign in first…"), an error box if checkout failed,
+- "Summary": `h2`, the primary **"Checkout"** first (full width, as Eneba), a muted note when signed out ("You will be asked to sign in first…"), an error box if checkout failed
+  (`role="alert"`, 1px `--color-error-border`, `--color-error` 14px text; for "Too many unpaid orders – pay or cancel one first" it ends with a bold `--color-accent` link **"View your orders"** → `/orders`),
   "N products  €x" and "Total:" with the 30px (`--font-size-4xl`) amount above a `--color-border` line. Lines that are no longer available are left out of both.
 - Empty cart: the empty state (4.9) as `h1` "Your cart is empty" + primary "Browse the store".
 - **Not copied:** Eneba's step header, the email field (we have accounts), heart/wishlist, seller logos, "Digital product ⓘ", cashback, service fee, consent checkboxes,

@@ -301,11 +301,12 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - `public/robots.txt` – the demo asks search engines not to index it (plus `noindex` in `index.html`)
 - `migrations/` – numbered SQL migrations, embedded with `go:embed`
 - `docs/DATA_MODEL.md` – the data model (ER diagram, tables, state machines, query sketches)
-- `src/api/` – `apiFetch` client (timeout, typed errors), catalog functions + JSON types
+- `src/api/` – `apiFetch` client (timeout, typed errors), catalog, auth and checkout / order functions + JSON types
 - `src/app/` – app frame: routes, layout, header, demo banner, footer, TanStack Query client, "waking up" notice
 - `src/components/` – base UI components (Button, Badge, Price, Skeleton, EmptyState, ErrorState, SearchField)
-- `src/pages/` – one file per route (Store is real; the others are placeholders until their tasks)
+- `src/pages/` – one file per route (the home page is still a placeholder)
 - `src/features/store/` – the parts of the Store page (product card and grid, filters, price slider, pagination, mobile drawer)
+- `src/features/cart/`, `src/features/checkout/`, `src/features/orders/` – the cart store, the cart and payment pages (quote notices, idempotency key, countdown, simulated payment) and the order pages (masked keys)
 - `src/lib/` – helpers and hooks (`formatPrice`, Store filters in the URL, ...)
 - `docs/PAAISKINIMAI_LT.md` – explanations in Lithuanian
 - `ai-logs/` – exported Claude Code sessions
