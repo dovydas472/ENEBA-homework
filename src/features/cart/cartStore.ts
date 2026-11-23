@@ -5,7 +5,7 @@
 // Why not a React context? The cart also changes from OUTSIDE React (another browser tab writes
 // localStorage), and useSyncExternalStore is React's own tool for "a value that lives outside React":
 // no provider to wrap the app in, and no re-render of components that do not read the cart.
-import type { QuoteLine } from "../../api/types.ts";
+import type { CheckoutLine } from "../../api/types.ts";
 import {
   addItem,
   applyQuoteLines,
@@ -34,7 +34,7 @@ export interface CartStore {
   remove(offerId: number): void;
   clear(): void;
   /** Task 16b: the server's current price / stock / quantity for the lines it can still sell (see applyQuoteLines). */
-  applyQuote(quoteLines: readonly QuoteLine[]): void;
+  applyQuote(quoteLines: readonly CheckoutLine[]): void;
   /** Task 16b: after a successful payment, takes the bought pieces out of the cart. */
   removePurchased(bought: readonly { offerId: number; quantity: number }[]): void;
 }

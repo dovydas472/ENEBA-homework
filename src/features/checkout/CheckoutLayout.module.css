@@ -95,6 +95,16 @@
   font-size: var(--font-size-sm);
 }
 
+/* A way out inside an error box ("View your orders"): accent and bold, like other in-text links (9.23:1 on deep). */
+.errorLink {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.errorLink:hover {
+  color: var(--color-accent-hover);
+}
+
 .changed {
   margin-bottom: var(--space-3);
   color: var(--color-warning);

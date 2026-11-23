@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "../api/auth.ts";
 import { ApiError, apiFetch } from "../api/client.ts";
-import type { CheckoutItem, QuoteLine } from "../api/types.ts";
+import type { CartLineInput, CheckoutLine } from "../api/types.ts";
 import { fakeAuthServer, newFakeAuthState, type FakeAuthState } from "../features/auth/fakeAuthServer.ts";
 import type { CartLine } from "../features/cart/cart.ts";
 import { cartStore } from "../features/cart/cartStore.ts";
@@ -20,7 +20,7 @@ vi.mock("../api/client.ts", async (importOriginal) => ({
 const me: User = { id: 7, email: "me@example.com", isDemo: false };
 let server: FakeAuthState;
 /** What the fake quote endpoint answers for a line (default: nothing changed). */
-let quoteAnswer: (item: CheckoutItem, line: CartLine) => QuoteLine;
+let quoteAnswer: (item: CartLineInput, line: CartLine) => CheckoutLine;
 
 /** Puts lines into the real cart store (= localStorage) the way "Add to cart" would. */
 function fillCart(...lines: CartLine[]) {
@@ -36,7 +36,7 @@ beforeEach(() => {
   server = newFakeAuthState();
   quoteAnswer = (_item, line) => quoteFor(line);
   server.handlers["POST /api/checkout/quote"] = (body) => {
-    const items = (body as { items: CheckoutItem[] }).items;
+    const items = (body as { items: CartLineInput[] }).items;
     const lines = items.map((item) => {
       const stored = cartStore.getSnapshot().find((l) => l.offerId === item.offerId)!;
       return quoteAnswer(item, { ...stored, quantity: item.quantity, priceCents: item.expectedPriceCents });
@@ -221,7 +221,7 @@ describe("checkout", () => {
 
     await click(checkoutButton());
     const [post] = orderPosts();
-    const body = post.body as { idempotencyKey: string; items: CheckoutItem[] };
+    const body = post.body as { idempotencyKey: string; items: CartLineInput[] };
     expect(body.idempotencyKey).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(body.items).toEqual([{ offerId: 15, quantity: 1, expectedPriceCents: 1099 }]);
     expect(urlOf(router)).toBe(`/checkout/${ORDER_ID}`);
@@ -296,7 +296,7 @@ describe("checkout", () => {
     ]);
 
     await click(checkoutButton());
-    const posts = orderPosts().map((p) => p.body as { idempotencyKey: string; items: CheckoutItem[] });
+    const posts = orderPosts().map((p) => p.body as { idempotencyKey: string; items: CartLineInput[] });
     expect(posts[1].idempotencyKey).not.toBe(posts[0].idempotencyKey);
     expect(posts[1].items).toEqual([
       { offerId: 15, quantity: 1, expectedPriceCents: 1199 },
@@ -314,5 +314,43 @@ describe("checkout", () => {
     const { router } = await mountApp("/cart");
     await click(checkoutButton());
     expect(urlOf(router)).toBe("/login?next=%2Fcart");
+  });
+
+  it("409 'Too many unpaid orders': the message with a link to /orders; the next press repeats the same attempt", async () => {
+    server.user = me;
+    fillCart(makeCartLine());
+    let capReached = true;
+    server.handlers["POST /api/orders"] = () => {
+      if (capReached) throw new ApiError("http", "HTTP 409", 409, { error: "Too many unpaid orders – pay or cancel one first" });
+      return { order: makeOrder() };
+    };
+    const { router } = await mountApp("/cart");
+
+    await click(checkoutButton());
+    expect(urlOf(router)).toBe("/cart");
+    const alert = $("main [role=alert]")!;
+    expect(alert.textContent).toBe("Too many unpaid orders – pay or cancel one first. View your orders");
+    expect(alert.querySelector("a")?.getAttribute("href")).toBe("/orders");
+    expect(cartStore.getSnapshot()).toHaveLength(1); // nothing changed in the cart
+
+    // the user pays or cancels one order elsewhere, then presses Checkout again
+    capReached = false;
+    await click(checkoutButton());
+    const keys = orderPosts().map((p) => (p.body as { idempotencyKey: string }).idempotencyKey);
+    expect(keys[1]).toBe(keys[0]);
+    expect(urlOf(router)).toBe(`/checkout/${ORDER_ID}`);
+  });
+
+  it("the link of that message opens the orders page", async () => {
+    server.user = me;
+    fillCart(makeCartLine());
+    server.handlers["POST /api/orders"] = () => {
+      throw new ApiError("http", "HTTP 409", 409, { error: "Too many unpaid orders – pay or cancel one first" });
+    };
+    server.handlers["GET /api/orders"] = () => ({ orders: [] });
+    const { router } = await mountApp("/cart");
+    await click(checkoutButton());
+    await click($<HTMLAnchorElement>("main [role=alert] a")!);
+    expect(urlOf(router)).toBe("/orders");
   });
 });

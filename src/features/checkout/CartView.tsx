@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { Link } from "react-router";
 import { Button, ButtonLink } from "../../components/Button.tsx";
 import { EmptyState } from "../../components/EmptyState.tsx";
 import { formatPrice } from "../../lib/formatPrice.ts";
@@ -97,6 +98,15 @@ export function CartView() {
         {checkout.errorMessage && (
           <p className={layout.error} role="alert">
             {checkout.errorMessage}
+          </p>
+        )}
+        {/* 16a rule R10: at most 3 unpaid orders. The way out is on the orders page: pay or cancel one. */}
+        {checkout.tooManyUnpaidMessage && (
+          <p className={layout.error} role="alert">
+            {checkout.tooManyUnpaidMessage}.{" "}
+            <Link to="/orders" className={layout.errorLink}>
+              View your orders
+            </Link>
           </p>
         )}
         <p className={layout.row}>

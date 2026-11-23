@@ -1,7 +1,7 @@
 // The cart's rules as PURE functions: they take the current lines and return new ones, never change
 // their input and never touch localStorage or React. That makes every rule easy to test, and the store
 // (cartStore.ts) only has to keep the current value and save it.
-import type { CheckoutItem, Offer, ProductDetail, ProductItem, QuoteLine } from "../../api/types.ts";
+import type { CartLineInput, Offer, ProductDetail, ProductItem, CheckoutLine } from "../../api/types.ts";
 
 /** localStorage key. The ":v1" is the format version: a future format gets a new key, old data is ignored. */
 export const CART_STORAGE_KEY = "cart:v1";
@@ -96,7 +96,7 @@ export function cartTotalCents(lines: readonly CartLine[]): number {
  * so the server can answer "the price changed" instead of silently charging another amount.
  * `skip` = offers to leave out (lines that are no longer available).
  */
-export function checkoutItems(lines: readonly CartLine[], skip: ReadonlySet<number> = new Set()): CheckoutItem[] {
+export function checkoutItems(lines: readonly CartLine[], skip: ReadonlySet<number> = new Set()): CartLineInput[] {
   return lines
     .filter((line) => !skip.has(line.offerId))
     .map((line) => ({ offerId: line.offerId, quantity: line.quantity, expectedPriceCents: line.priceCents }));
@@ -109,7 +109,7 @@ export function checkoutItems(lines: readonly CartLine[], skip: ReadonlySet<numb
  * (Writing quantity 0 into it would make the stored cart invalid, and parseCart would then drop the whole cart.)
  * Lines the answer does not mention are not touched.
  */
-export function applyQuoteLines(lines: readonly CartLine[], quoteLines: readonly QuoteLine[]): CartLine[] {
+export function applyQuoteLines(lines: readonly CartLine[], quoteLines: readonly CheckoutLine[]): CartLine[] {
   const byOffer = new Map(quoteLines.map((q) => [q.offerId, q]));
   return lines.map((line) => {
     const q = byOffer.get(line.offerId);

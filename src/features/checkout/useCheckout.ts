@@ -1,8 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-import { cartChangedLines, createOrder, isHttpStatus, orderErrorMessage } from "../../api/orders.ts";
+import {
+  cartChangedLines,
+  createOrder,
+  isHttpStatus,
+  isTooManyPendingOrders,
+  orderErrorMessage,
+  TOO_MANY_PENDING_MESSAGE,
+} from "../../api/orders.ts";
 import { queryKeys } from "../../api/queries.ts";
-import type { CheckoutItem } from "../../api/types.ts";
+import type { CartLineInput } from "../../api/types.ts";
 import { authPageLink } from "../../lib/safeNext.ts";
 import { useCurrentUser } from "../auth/useCurrentUser.ts";
 import { checkoutItems, type CartLine } from "../cart/cart.ts";
@@ -15,7 +22,7 @@ export const SIGN_IN_FOR_CHECKOUT = authPageLink("/login", "/cart");
 
 interface Attempt {
   key: string;
-  items: CheckoutItem[];
+  items: CartLineInput[];
 }
 
 export interface Checkout {
@@ -24,6 +31,11 @@ export interface Checkout {
   isPending: boolean;
   /** A message for a failed attempt (network, 5xx, validation); null when there is none to show. */
   errorMessage: string | null;
+  /**
+   * The server refused because the user already holds 3 unpaid orders (16a rule R10): the text to show next to
+   * a link to /orders, where the user pays or cancels one. null otherwise.
+   */
+  tooManyUnpaidMessage: string | null;
 }
 
 /**
@@ -31,6 +43,8 @@ export interface Checkout {
  *   - signed out          -> /login?next=/cart (the cart stays in localStorage)
  *   - 201 / 200           -> /checkout/:orderId  (200 = the server already had an order for this key)
  *   - 409 cart_changed    -> no order; the returned lines go into the cart with their notices; the user checks and presses again
+ *   - 409 too many unpaid -> no order; "Too many unpaid orders – pay or cancel one first" + a link to /orders.
+ *                            The key stays: after paying or cancelling one, Checkout repeats the same attempt.
  *   - 401 (session ended) -> treated as signed out
  * Unavailable lines are left out. The idempotency key (attemptKey.ts) makes a double click or a retry safe.
  */
@@ -73,10 +87,12 @@ export function useCheckout(lines: readonly CartLine[], statuses: LineStatuses):
   }
 
   const err = mutation.error;
-  const showError = err !== null && !cartChangedLines(err) && !isHttpStatus(err, 401);
+  const tooManyUnpaid = isTooManyPendingOrders(err);
+  const showError = err !== null && !cartChangedLines(err) && !isHttpStatus(err, 401) && !tooManyUnpaid;
   return {
     checkout,
     isPending: mutation.isPending,
     errorMessage: showError ? orderErrorMessage(err) : null,
+    tooManyUnpaidMessage: tooManyUnpaid ? TOO_MANY_PENDING_MESSAGE : null,
   };
 }

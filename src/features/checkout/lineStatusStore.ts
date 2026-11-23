@@ -3,7 +3,7 @@
 // Outside React because the answer that changes them arrives inside a query function / mutation callback,
 // and because they should still be there when the user leaves the cart and comes back in this tab.
 import { useSyncExternalStore } from "react";
-import type { CheckoutItem, QuoteLine } from "../../api/types.ts";
+import type { CartLineInput, CheckoutLine } from "../../api/types.ts";
 import { cartStore } from "../cart/cartStore.ts";
 import { clearNotices, mergeAnswer, type LineStatuses } from "./lineStatus.ts";
 
@@ -44,7 +44,7 @@ export const lineStatusStore = {
  *   2. the statuses remember what changed, so the page can say it.
  * `sent` = the lines exactly as they were sent (the price the user saw is the "before" of a price notice).
  */
-export function applyServerAnswer(sent: readonly CheckoutItem[], answer: readonly QuoteLine[]) {
+export function applyServerAnswer(sent: readonly CartLineInput[], answer: readonly CheckoutLine[]) {
   set(mergeAnswer(statuses, sent, answer));
   cartStore.applyQuote(answer);
 }

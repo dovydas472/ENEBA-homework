@@ -4,8 +4,8 @@
 import { queryOptions } from "@tanstack/react-query";
 import { getCurrentUser } from "./auth.ts";
 import { getProduct, getProducts, getSuggestions, type ProductsParams } from "./catalog.ts";
-import { getOrder, getOrders } from "./orders.ts";
-import type { CheckoutItem } from "./types.ts";
+import { getOrder, listOrders } from "./orders.ts";
+import type { CartLineInput } from "./types.ts";
 
 /** The first part of every key: `invalidateQueries({ queryKey: queryKeys.products })` would reset all listings. */
 export const queryKeys = {
@@ -14,7 +14,7 @@ export const queryKeys = {
   orderList: ["orders", "list"] as const,
   order: (id: string) => ["orders", "detail", id] as const,
   /** The cart's price/stock check (useCartQuote): the key is the exact lines sent, so a changed cart is a new question. */
-  cartQuote: (items: CheckoutItem[]) => ["cartQuote", items] as const,
+  cartQuote: (items: CartLineInput[]) => ["cartQuote", items] as const,
   products: ["products"] as const,
   /** One listing: the key contains the filters, so every filter combination has its own cache entry. */
   productList: (params: ProductsParams) => ["products", params] as const,
@@ -71,7 +71,7 @@ export function currentUserQuery() {
 export function orderListQuery() {
   return queryOptions({
     queryKey: queryKeys.orderList,
-    queryFn: ({ signal }) => getOrders({ signal }),
+    queryFn: ({ signal }) => listOrders({ signal }),
     staleTime: 0,
   });
 }

@@ -5,7 +5,7 @@
 // (new price, lower quantity), which is a new question to the server - and that second answer says "nothing
 // changed". The user must still see "Price updated: €10.99 → €12.49", so a notice stays until the line is
 // removed or the user changes that line themselves.
-import type { CheckoutItem, QuoteLine } from "../../api/types.ts";
+import type { CartLineInput, CheckoutLine } from "../../api/types.ts";
 import { formatPrice } from "../../lib/formatPrice.ts";
 
 export interface LineStatus {
@@ -35,7 +35,7 @@ export const UNAVAILABLE_TEXT = "No longer available";
  * is the "before" of the price notice). Availability always follows the newest answer; notices are added, never
  * removed here (see the comment at the top).
  */
-export function mergeAnswer(prev: LineStatuses, sent: readonly CheckoutItem[], answer: readonly QuoteLine[]): LineStatuses {
+export function mergeAnswer(prev: LineStatuses, sent: readonly CartLineInput[], answer: readonly CheckoutLine[]): LineStatuses {
   const next: Record<number, LineStatus> = { ...prev };
   for (const q of answer) {
     const status: LineStatus = { ...(prev[q.offerId] ?? { unavailable: false }) };

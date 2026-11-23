@@ -8,7 +8,8 @@
 // So the key is stored together with a fingerprint of the cart it belongs to:
 //   same cart  -> same key;   cart changed -> new key;   order created -> key forgotten.
 // sessionStorage (not localStorage): it survives a page reload but belongs to this one tab, and is gone when the tab closes.
-import type { CheckoutItem } from "../../api/types.ts";
+import { newIdempotencyKey } from "../../api/orders.ts";
+import type { CartLineInput } from "../../api/types.ts";
 
 export const ATTEMPT_STORAGE_KEY = "checkout-attempt:v1";
 
@@ -20,7 +21,7 @@ interface StoredAttempt {
 }
 
 /** The same cart always gives the same text (order of the lines does not matter). */
-export function cartFingerprint(items: readonly CheckoutItem[]): string {
+export function cartFingerprint(items: readonly CartLineInput[]): string {
   return JSON.stringify(
     [...items]
       .sort((a, b) => a.offerId - b.offerId)
@@ -30,7 +31,7 @@ export function cartFingerprint(items: readonly CheckoutItem[]): string {
 
 export interface AttemptStore {
   /** The key for checking out exactly these items: the stored one if the cart is the same, otherwise a new one. */
-  keyFor(items: readonly CheckoutItem[]): string;
+  keyFor(items: readonly CartLineInput[]): string;
   /** The order was created (or the cart changed on the server's side): the next checkout is a new attempt. */
   clear(): void;
 }
@@ -88,5 +89,5 @@ function browserSessionStorage(): Storage | null {
   }
 }
 
-/** The app's one attempt store. crypto.randomUUID = a random v4 UUID, built into the browser. */
-export const checkoutAttempt = createAttemptStore(browserSessionStorage(), () => crypto.randomUUID());
+/** The app's one attempt store. newIdempotencyKey (16a) = crypto.randomUUID(), a random v4 UUID built into the browser. */
+export const checkoutAttempt = createAttemptStore(browserSessionStorage(), newIdempotencyKey);

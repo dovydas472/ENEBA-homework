@@ -1,16 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
-import {
-  cancelOrder,
-  isHttpStatus,
-  isReservationExpired,
-  orderErrorMessage,
-  payOrder,
-  type PaymentOutcome,
-} from "../../api/orders.ts";
+import { cancelOrder, isHttpStatus, isReservationExpired, orderErrorMessage, payOrder } from "../../api/orders.ts";
 import { queryKeys } from "../../api/queries.ts";
-import type { OrderDetailResponse } from "../../api/types.ts";
+import type { OrderDetailResponse, PaymentOutcome } from "../../api/types.ts";
 import { Button, ButtonLink } from "../../components/Button.tsx";
 import { EmptyState } from "../../components/EmptyState.tsx";
 import { formatPrice } from "../../lib/formatPrice.ts";

@@ -1,5 +1,5 @@
 // Test data (used only by *.test.ts(x)): cart lines, quote lines and orders in the exact API shape (Task 16a §4).
-import type { Order, OrderItem, OrderSummary, QuoteLine } from "../../api/types.ts";
+import type { Order, OrderItem, OrderSummary, CheckoutLine } from "../../api/types.ts";
 import type { CartLine } from "../cart/cart.ts";
 
 export function makeCartLine(overrides: Partial<CartLine> = {}): CartLine {
@@ -35,7 +35,7 @@ export function makeOtherLine(overrides: Partial<CartLine> = {}): CartLine {
 }
 
 /** The server's view of a cart line: by default exactly what the line says (nothing changed). */
-export function quoteFor(line: CartLine, overrides: Partial<QuoteLine> = {}): QuoteLine {
+export function quoteFor(line: CartLine, overrides: Partial<CheckoutLine> = {}): CheckoutLine {
   return {
     offerId: line.offerId,
     quantity: line.quantity,
@@ -66,6 +66,7 @@ export function orderItemFor(line: CartLine, overrides: Partial<OrderItem> = {})
     sellerName: line.sellerName,
     unitPriceCents: line.priceCents,
     quantity: line.quantity,
+    keys: [], // the API sends [] until the order is paid
     ...overrides,
   };
 }
