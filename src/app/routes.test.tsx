@@ -13,8 +13,8 @@ let cleanup: (() => void) | undefined;
 afterEach(() => cleanup?.());
 
 // The only request the shell makes by itself is GET /api/auth/me (Task 14). The fake server answers it:
-// 401 (signed out) unless a test signs someone in. The orders page (Task 16b) gets an empty list.
-// Any other request fails loudly.
+// 401 (signed out) unless a test signs someone in. The orders page (Task 16b) gets an empty list, and the home page
+// (Task 15) an empty block registry (its blocks are tested in HomePage.test.tsx). Any other request fails loudly.
 let signedInAs: { id: number; email: string; isDemo: boolean } | null = null;
 beforeEach(() => {
   signedInAs = null;
@@ -23,6 +23,7 @@ beforeEach(() => {
     "fetch",
     vi.fn(async (path: string) => {
       if (path === "/api/orders") return new Response('{"orders":[]}', { status: 200 });
+      if (path === "/api/homepage") return new Response('{"blocks":[]}', { status: 200 });
       if (path !== "/api/auth/me") return new Response('{"error":"unexpected request"}', { status: 500 });
       return signedInAs
         ? new Response(JSON.stringify({ user: signedInAs }), { status: 200 })
@@ -98,8 +99,10 @@ describe("app shell", () => {
     ]);
   });
 
-  it("the home page has a 'Browse the store' link to /store", () => {
+  it("the home page asks the server for its blocks; with none it offers 'Browse the store'", async () => {
     const { router } = renderApp("/");
+    await flush();
+    expect(vi.mocked(fetch).mock.calls.map((call) => call[0])).toContain("/api/homepage");
     const link = [...document.querySelectorAll("main a")].find((a) => a.textContent === "Browse the store") as HTMLElement;
     expect(link.getAttribute("href")).toBe("/store");
     act(() => link.click());
@@ -112,6 +115,15 @@ describe("app shell", () => {
     expect(footer?.textContent).toContain("Game data and cover art provided by IGDB");
     expect(footer?.querySelector("a[href='https://www.igdb.com']")).not.toBeNull();
     expect(footer?.querySelector("a[href='https://github.com/dovydas472/ENEBA-homework']")).not.toBeNull();
+  });
+
+  it("the footer links the author's other project (Kodmo Auto) in a new tab", () => {
+    renderApp("/");
+    const footer = $("footer");
+    expect(footer?.textContent).toContain("Other projects by the author: Kodmo Auto (opens in a new tab) – an offline management app for auto repair shops");
+    const link = footer?.querySelector("a[href='https://kodmolab.lt/auto/']");
+    expect(link?.getAttribute("target")).toBe("_blank");
+    expect(link?.getAttribute("rel")).toContain("noopener");
   });
 });
 
@@ -165,7 +177,7 @@ describe("header search", () => {
     search("zelda");
     await act(() => router.navigate(-1));
     expect(urlOf(router)).toBe("/");
-    expect($("main h1")?.textContent).toBe("Home");
+    expect($("main h1")?.textContent).toBe("EneHomeworkBa – game keys");
   });
 
   it("shows the current search text in the field on the Store page", () => {
