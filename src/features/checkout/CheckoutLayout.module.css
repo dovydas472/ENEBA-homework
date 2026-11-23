@@ -102,8 +102,9 @@
   font-weight: var(--font-weight-bold);
 }
 
+/* Empty = no height, but still rendered and NOT display:none: a hidden live region may not announce text added later. */
 .changed:empty {
-  display: none;
+  margin: 0;
 }
 
 @media (max-width: 930px) {
