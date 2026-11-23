@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { APP_NAME, GITHUB_URL, IGDB_URL } from "../lib/appInfo.ts";
+import { APP_NAME, GITHUB_URL, IGDB_URL, KODMO_AUTO_URL } from "../lib/appInfo.ts";
 import { VisuallyHidden } from "../components/VisuallyHidden.tsx";
 import styles from "./Footer.module.css";
 import { NAV_LINKS } from "./navLinks.ts";
@@ -46,6 +46,13 @@ export function Footer() {
             </ul>
             <p className={styles.text}>
               Game data and cover art provided by <ExternalLink href={IGDB_URL}>IGDB</ExternalLink>.
+            </p>
+            <p className={styles.text}>
+              Other projects by the author:{" "}
+              <strong>
+                <ExternalLink href={KODMO_AUTO_URL}>Kodmo Auto</ExternalLink>
+              </strong>{" "}
+              – an offline management app for auto repair shops
             </p>
           </section>
         </div>

@@ -1,0 +1,246 @@
+/*
+ * Hero carousel (DESIGN.md 3.4). Desktop / tablet: a fixed 288px tall box, the picture fills it (object-fit: cover)
+ * and the text sits on the left over a dark scrim. Phones: a 16:9 box, the text at the bottom over a bottom scrim.
+ * The box has its size BEFORE any picture loads, so nothing on the page moves (CLS).
+ */
+.carousel {
+  position: relative;
+  height: var(--hero-height);
+  overflow: hidden;
+  background: var(--color-surface-card);
+}
+
+.skeleton {
+  width: 100%;
+  height: 100%;
+}
+
+.errorFrame {
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+}
+
+/* All slides share one grid cell (stacked); only the active one is visible. A cross-fade, not a slide-in:
+   the box never changes size and nothing outside it moves. */
+.slides {
+  display: grid;
+  /* One cell exactly the size of the box: an "auto" row would grow to the tallest picture and be cut off. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  height: 100%;
+}
+
+.slide {
+  position: relative;
+  grid-area: 1 / 1;
+  min-width: 0;
+  min-height: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--slide-transition),
+    visibility var(--slide-transition);
+}
+
+.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.picture,
+.image {
+  width: 100%;
+  height: 100%;
+}
+
+.image {
+  object-fit: cover;
+}
+
+/* The text column, over the scrim that keeps white text readable on light art. */
+.content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-7);
+  background: var(--hero-scrim);
+}
+
+.content > * {
+  max-width: var(--hero-content-max-width);
+}
+
+.badge {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-none);
+  text-transform: uppercase; /* DESIGN.md 5.2: 10px only for uppercase micro labels */
+}
+
+.title {
+  font-size: var(--font-size-hero);
+  line-height: var(--line-height-tight);
+}
+
+.subtitle {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-snug);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+/* ---- controls ---- */
+.control {
+  position: absolute;
+  z-index: var(--z-raised);
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: var(--color-overlay);
+  color: var(--color-text);
+  transition: background var(--transition-fast);
+}
+
+.control:hover {
+  background: var(--color-control-active);
+}
+
+.control svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.arrow {
+  top: 50%;
+  width: var(--hit-target-min);
+  height: var(--hit-target-min);
+  transform: translateY(-50%);
+}
+
+.prev {
+  left: var(--space-2);
+}
+
+.next {
+  right: var(--space-2);
+}
+
+.rotation {
+  right: var(--space-2);
+  bottom: var(--space-2);
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.rotation svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+/* The dots: 24px buttons with a 10px dot inside (a target of at least 24px, WCAG 2.5.8). */
+.dots {
+  position: absolute;
+  bottom: var(--space-2);
+  left: 50%;
+  z-index: var(--z-raised);
+  display: flex;
+  transform: translateX(-50%);
+}
+
+.dot {
+  display: grid;
+  place-items: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.dot::before {
+  content: "";
+  width: var(--carousel-dot-size);
+  height: var(--carousel-dot-size);
+  border: 1px solid var(--color-text);
+  border-radius: var(--radius-round);
+  background: var(--color-overlay);
+  transition: background var(--transition-fast);
+}
+
+.dot:hover::before {
+  background: var(--color-text-muted);
+}
+
+.dot[aria-current="true"]::before {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+/* ---- phones: 16:9, text at the bottom; no arrows (the dots are big tap targets), dots + Play/Pause top-right ---- */
+@media (max-width: 600px) {
+  .carousel {
+    height: auto;
+    aspect-ratio: var(--hero-aspect-ratio-sm);
+  }
+
+  .content {
+    justify-content: flex-end;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--page-gutter);
+    background: var(--hero-scrim-sm);
+  }
+
+  .title {
+    font-size: var(--font-size-lg);
+  }
+
+  .subtitle {
+    font-size: var(--font-size-xs);
+  }
+
+  .actions {
+    gap: var(--space-3);
+    margin-top: var(--space-1);
+  }
+
+  .arrow {
+    display: none;
+  }
+
+  .rotation {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    width: var(--hit-target-min);
+    height: var(--hit-target-min);
+    background: none;
+  }
+
+  .dots {
+    top: 0;
+    right: var(--hit-target-min);
+    bottom: auto;
+    left: auto;
+    transform: none;
+  }
+
+  .dot {
+    width: var(--hit-target-min);
+    height: var(--hit-target-min);
+  }
+}

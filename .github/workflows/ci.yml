@@ -127,17 +127,17 @@ jobs:
       - name: Database integration tests ran (not skipped)
         run: |
           set -o pipefail
-          go test -p 1 -count=1 -v ./pkg/catalog ./pkg/auth ./pkg/orders ./pkg/server | tee db-test.log
+          go test -p 1 -count=1 -v ./pkg/catalog ./pkg/auth ./pkg/orders ./pkg/homepage ./pkg/server | tee db-test.log
           passed="$(grep -c -e '^--- PASS' db-test.log || true)"
           skipped="$(grep -c -e '--- SKIP' db-test.log || true)"
-          echo "catalog + auth + orders tests: $passed passed, $skipped skipped"
+          echo "catalog + auth + orders + homepage tests: $passed passed, $skipped skipped"
           if [ "$skipped" != "0" ] || [ "$passed" -eq 0 ]; then
             echo "::error::Expected the database integration tests to run (0 skipped, at least 1 passed)"
             exit 1
           fi
           # The key integration tests by name, so a rename cannot silently drop them from the count:
-          # the auth rate limit, and the checkout (K6: two buyers fighting for the last key).
-          for name in TestStore_loginAttemptCounter TestAuthFlow_eleventhFailureIs429 TestK6_twoBuyersOneLastKey TestK6_manyBuyersFewKeys TestPay_concurrentDoubleClickChargesOnce TestCreate_capHoldsForParallelCreates; do
+          # the auth rate limit, the checkout (K6: two buyers fighting for the last key) and the home page registry.
+          for name in TestStore_loginAttemptCounter TestAuthFlow_eleventhFailureIs429 TestK6_twoBuyersOneLastKey TestK6_manyBuyersFewKeys TestPay_concurrentDoubleClickChargesOnce TestCreate_capHoldsForParallelCreates TestHomepageIntegration_registryOrderMatchesTable TestHomepageIntegration_togglingEnabledHidesABlock TestHomepageIntegration_productRowsReturnFiveSortedAsConfigured TestHomepageIntegration_discountTileShowsTheLiveMaxDiscount; do
             grep -q -e "^--- PASS: $name" db-test.log || { echo "::error::$name did not pass"; exit 1; }
           done
 

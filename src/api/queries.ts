@@ -4,6 +4,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { getCurrentUser } from "./auth.ts";
 import { getProduct, getProducts, getSuggestions, type ProductsParams } from "./catalog.ts";
+import { getBlock, getHomepage } from "./homepage.ts";
 import { getOrder, listOrders } from "./orders.ts";
 import type { CartLineInput } from "./types.ts";
 
@@ -24,7 +25,30 @@ export const queryKeys = {
   suggestions: (q: string) => ["suggestions", q] as const,
   /** Who is signed in (Task 14): the user or null. Sign in / out write this entry directly. */
   currentUser: ["auth", "me"] as const,
+  /** The home page block registry (Task 15). */
+  homepage: ["homepage"] as const,
+  /** One home page block's content, keyed by its endpoint: every block is cached (and retried) on its own. */
+  homeBlock: (endpoint: string) => ["homepage", "block", endpoint] as const,
 };
+
+/** Key + function of the home page registry (GET /api/homepage). */
+export function homepageQuery() {
+  return queryOptions({
+    queryKey: queryKeys.homepage,
+    queryFn: ({ signal }) => getHomepage({ signal }),
+  });
+}
+
+/**
+ * Key + function of one block. T is the block's JSON shape (HeroBlockData, ...): the renderer that asks for it
+ * knows which type it draws. Each block is its own query, so one slow or failing block never holds up the others.
+ */
+export function homeBlockQuery<T>(endpoint: string) {
+  return queryOptions({
+    queryKey: queryKeys.homeBlock(endpoint),
+    queryFn: ({ signal }) => getBlock<T>(endpoint, { signal }),
+  });
+}
 
 /** Key + function of the listing. `signal` lets TanStack Query cancel the request when it is no longer needed. */
 export function productListQuery(params: ProductsParams) {

@@ -266,3 +266,94 @@ export interface OrdersResponse {
 
 /** The simulated payment: the buyer chooses the outcome. */
 export type PaymentOutcome = "success" | "decline";
+
+// ---------------------------------------------------------------------------------------------
+// Home page (Task 15, pkg/homepage/types.go). The page is a list of blocks from the server; each block
+// has its own endpoint. The frontend has one renderer per block TYPE and no content of its own.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * One block of GET /api/homepage. `type` is a plain string on purpose: a newer server may send a type this
+ * build does not know yet (an old tab still open after a deploy), and the page must simply skip it.
+ */
+export interface HomeBlock {
+  key: string;
+  type: string;
+  /** The block's heading (visible on product rows; the accessible name of the other blocks). */
+  title: string;
+  /** Where the block's content is, e.g. "/api/blocks/hero". Built by the server. */
+  endpoint: string;
+}
+
+export interface HomepageResponse {
+  blocks: HomeBlock[];
+}
+
+/** A slide picture: desktop and phone crops; a srcset lists one picture in several widths ("url 1280w, ..."). */
+export interface SlideImage {
+  url: string;
+  srcset: string | null;
+  mobileUrl: string;
+  mobileSrcset: string | null;
+}
+
+/** A button: label + internal path. */
+export interface BlockLink {
+  label: string;
+  href: string;
+}
+
+export interface HeroSlide {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  badge: string | null;
+  image: SlideImage;
+  /** null = no button. */
+  cta: BlockLink | null;
+  /** The product's live cheapest price (cents); null = not a product slide. */
+  priceCents: number | null;
+}
+
+/** GET /api/blocks/hero */
+export interface HeroBlockData {
+  slides: HeroSlide[];
+}
+
+export interface TileCard {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  href: string;
+  /** Which token gradient to paint: "violet" | "promo" | "mint" (an unknown one falls back to violet). */
+  accent: string;
+  /** 0-3 cover images for the collage. */
+  coverUrls: string[];
+}
+
+/** GET /api/blocks/tiles */
+export interface TilesBlockData {
+  tiles: TileCard[];
+}
+
+export interface PlatformLink {
+  /** "all" or the platform slug. */
+  key: string;
+  label: string;
+  /** Products in the catalog. */
+  count: number;
+  href: string;
+  /** A generic icon name ("monitor", "gamepad-2"...); an unknown name gets a default icon. */
+  icon: string;
+}
+
+/** GET /api/blocks/platforms */
+export interface PlatformsBlockData {
+  items: PlatformLink[];
+}
+
+/** GET /api/blocks/products/{key} */
+export interface ProductRowBlockData {
+  items: ProductItem[];
+  viewAllHref: string;
+}

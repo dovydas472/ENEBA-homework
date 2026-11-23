@@ -26,6 +26,8 @@
   --color-skeleton-shine: rgba(255, 255, 255, 0.2);
   /* Added in Task 16b (cart, measured on eneba.com/checkout): */
   --color-surface-line: rgba(0, 0, 0, 0.12); /* one cart / order line inside a --color-bg-deep panel */
+  /* Added in Task 15 (home page, measured on eneba.com, S7): */
+  --color-band: #311178; /* every second full-bleed product row band on the home page ("Top games" on Eneba) */
 
   /* ---------- Colors: text ---------- */
   --color-text: #ffffff; /* default text, headings, prices */
@@ -186,6 +188,26 @@
   --cart-cover-width: 5.625rem; /* 90px: cover of a cart line (it is 127px tall: --cover-aspect-ratio) */
   --cart-cover-width-sm: 3.125rem; /* 50px: the same cover on phones */
   --key-action-min-width: 5.625rem; /* 90px: "Reveal" / "Hide" / "Copy" next to a key keep one width, so the key boxes line up (D) */
+  /* Added in Task 15 (home page, measured on eneba.com's home page, S7 - see DESIGN.md 3.4): */
+  --hero-height: 18rem; /* 288px: the full-bleed hero row (main carousel + side tiles), desktop and tablet */
+  --hero-aspect-ratio-sm: 16 / 9; /* the carousel on phones (390px -> 219px; Eneba's phone banner row is 195px) (D) */
+  --hero-tile-width: 9rem; /* 144px: one side tile next to the carousel (Eneba: three 144 x 288 tiles) */
+  --hero-tile-height-sm: 9rem; /* 144px: a tile when the tiles sit UNDER the carousel (<= 930px) (D) */
+  --hero-content-max-width: 30rem; /* 480px: the text column of a slide (D) */
+  --font-size-hero: 2.5rem; /* 40px: slide title on desktop (D; 20px = --font-size-lg on phones) */
+  --hero-scrim: linear-gradient(90deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.5) 40%, rgba(0, 0, 0, 0) 75%); /* (A) darkens the left of a slide so white text stays >= 4.5:1 on light art */
+  --hero-scrim-sm: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.55) 55%, rgba(0, 0, 0, 0) 90%); /* (A) the same from the bottom, on phones */
+  --slide-transition: 400ms ease-in-out; /* cross-fade between slides (D; off with prefers-reduced-motion, global.css) */
+  --carousel-dot-size: 0.625rem; /* 10px: the visible dot; the button around it is 24px (40px on phones) (D) */
+  --tile-cover-width: 4.5rem; /* 72px: one cover in a tile's collage (D) */
+  /* Tile backgrounds: dark at the top (behind the white text), the accent at the bottom (behind the covers) (D). */
+  --tile-gradient-violet: linear-gradient(180deg, var(--color-bg-deep) 35%, var(--color-surface) 100%);
+  --tile-gradient-promo: linear-gradient(180deg, var(--color-bg-deep) 35%, var(--color-promo) 100%);
+  --tile-gradient-mint: linear-gradient(180deg, var(--color-bg-deep) 35%, var(--color-secondary) 100%);
+  --platform-item-width: 6.25rem; /* 100px: one entry of the platform row (Eneba's category row: 100 x 60, 32px icon) */
+  --platform-icon-size: 2rem; /* 32px */
+  --row-card-width: 11.25rem; /* 180px: a card in a product row that scrolls sideways (601-930px) (D) */
+  --view-all-width: 12.125rem; /* 194px: the "View all" button under a product row (Eneba "See all": 194 x 35) */
 }
 
 /*
@@ -208,5 +230,6 @@
   :root {
     --button-height: 2.5rem; /* 40px */
     --platform-strip-height: 1.125rem; /* 18px on the small list-card cover */
+    --tile-cover-width: 3.125rem; /* 50px: a home tile is a third of the phone screen */
   }
 }

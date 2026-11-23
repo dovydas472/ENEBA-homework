@@ -52,7 +52,7 @@ Rules for every future UI task:
 
 | Code | Meaning |
 |---|---|
-| **S** | Computed style read from the live page with a headless browser (Edge) on **2026-11-20**. S1 = `/store/all` at 1440 px, S2 = a product page, S3 = same store page at 390 px. **S4** = re-measured on **2026-11-21** for Task 11b (header, store page with and without a platform filter, drawer, menu, footer; 1440 and 390 px). **S5** = product pages re-measured on **2026-11-22** for Task 12 (two multi-seller pages, 1440 and 390 px). **S6** = the cart page `eneba.com/checkout` on **2026-11-23** for Task 16b (one and two items, 1440 and 390 px) |
+| **S** | Computed style read from the live page with a headless browser (Edge) on **2026-11-20**. S1 = `/store/all` at 1440 px, S2 = a product page, S3 = same store page at 390 px. **S4** = re-measured on **2026-11-21** for Task 11b (header, store page with and without a platform filter, drawer, menu, footer; 1440 and 390 px). **S5** = product pages re-measured on **2026-11-22** for Task 12 (two multi-seller pages, 1440 and 390 px). **S6** = the cart page `eneba.com/checkout` on **2026-11-23** for Task 16b (one and two items, 1440 and 390 px). **S7** = the home page `eneba.com/` on **2026-11-23** for Task 15 (1440 and 390 px) |
 | **C** | Rule found in Eneba's published CSS bundles (`static.eneba.games/main.*.css` and the page chunks). Class names are hashed, so the rule is identified by what it styles |
 | **D** | Derived by us (Eneba has no equivalent we could read). Built only from other tokens |
 | **A** | Adjusted by us for accessibility; the original is noted |
@@ -79,6 +79,7 @@ Eneba's "dark theme" is **deep purple**, not neutral black. Page `#4618ac`, pane
 | `--color-border-dark` | `#1f0a4d` | 1px bottom line of the phone header | S4 mobile `header` border (Task 11b) |
 | `--color-skeleton` (`-shine`) | `rgba(255,255,255,.1)` (`.2`) | loading placeholder | D |
 | `--color-surface-line` | `rgba(0,0,0,.12)` | one cart / order line inside a `--color-bg-deep` panel | S6 `eneba.com/checkout` cart line `li` (Task 16b) |
+| `--color-band` | `#311178` | every second full-bleed product-row band on the home page | S7 "Top games" band, sampled at 1440 and 390 (Task 15) |
 | `--color-text` | `#fff` | text, headings, prices | S1 |
 | `--color-text-muted` | `rgba(255,255,255,.7)` | counts, hints | S1 filter counts |
 | `--color-text-subtle` | `#b3aac9` | "From", old price, placeholder | S1 "From" label; C placeholder rule |
@@ -133,6 +134,7 @@ weights, 500 and 700 — the rendering is identical.
 | `--font-size-4xl` | 30px | page title on desktop (S1 `h1`) |
 | `--font-size-section` | 18px | section heading on the product page ("4 offers", "Other details") — S5, Task 12 |
 | `--font-size-product-title` | 26px | product page `h1` on desktop (16px = `--font-size-base` ≤930px) — S5, Task 12 |
+| `--font-size-hero` | 40px | home hero slide title on desktop (20px = `--font-size-lg` ≤600px) — D, Task 15 (Eneba's banner text is part of its images) |
 | `--font-weight-regular` / `-medium` / `-bold` | 400 / 500 / 700 | body / labels, nav, small UI / headings, buttons, prices |
 | `--line-height-none` | 1 | single-line labels, buttons, prices (C: most used) |
 | `--line-height-tight` | 1.25 | headings (S1 `h1` 37.5/30) |
@@ -180,6 +182,13 @@ Added in Task 14 (auth): `--auth-panel-width` 380px (sign-in / sign-up panel = E
 Added in Task 16b (cart / payment / order pages, measured on `eneba.com/checkout`, S6): `--checkout-max-width` 1010px (635px list panel + 20px + 355px side panel),
 `--checkout-side-width` 355px (Summary / Payment panel), `--cart-cover-width` 90px (cart line cover; 50px = `--cart-cover-width-sm` ≤600px) and
 `--key-action-min-width` 90px ("Reveal" / "Hide" / "Copy" next to a key keep one width so the key boxes line up, D).
+Added in Task 15 (home page, S7 unless marked D/A; layout in 3.4): `--hero-height` 288px (the full-bleed hero row), `--hero-tile-width` 144px (one side tile),
+`--hero-aspect-ratio-sm` 16 / 9 (the carousel on phones, D), `--hero-tile-height-sm` 144px (tiles under the carousel ≤930px, D), `--hero-content-max-width` 480px (slide text, D),
+`--hero-scrim` / `--hero-scrim-sm` (A: black gradients from the left / from the bottom, so white text over light art stays readable — measured per pixel, 5.1),
+`--slide-transition` 400ms (cross-fade, D; off with reduced motion), `--carousel-dot-size` 10px (D), `--tile-cover-width` 72px (50px ≤600px, D),
+`--tile-gradient-violet` / `-promo` / `-mint` (tile backgrounds built from colour tokens: `--color-bg-deep` at the top, the accent at the bottom, D),
+`--platform-item-width` 100px and `--platform-icon-size` 32px (Eneba's category row), `--row-card-width` 180px (a card in a sideways-scrolling row, 601–930px, D),
+`--view-all-width` 194px (Eneba's "See all" button).
 
 ---
 
@@ -316,9 +325,44 @@ Desktop ≥931                                       Mobile ≤600
 - **No sticky buy bar on phones.** Eneba has none (S5), so after the owner's review the P5 bar was removed (parity wins). The buy box near the top and every offer row have their own "Add to cart".
 - **Loading:** a skeleton in the same grid; the route wrapper is at least one screen tall and always wide, so neither the width nor the footer moves when the data, a 404 or an error replaces it (CLS 0.0001).
 
-### 3.4 Home page (for reference, not part of this scope)
+### 3.4 Home page (Task 15, S7)
 
-Full-bleed banner row, category icon carousel (icon + 12px bold label), then product-card rows ("Recommended for you", `--font-size-3xl`-ish section heading 28px bold).
+The page is a list of **blocks from the server** (`GET /api/homepage`); the frontend has one renderer per block type
+(`src/features/home/`) and no content. The page is **full-bleed** (`data-full-bleed-page`: the layout drops its max width and
+padding); each block centres its own content in `--page-max-width`.
+
+**Measured on Eneba (1440 px):** a full-bleed banner row right under the header, **288px** tall: the main carousel **1008px** wide and
+**three 144 x 288 portrait tiles** on the right. 50px lower the category row: **100 x 60** entries, a **32px** icon over a 12px weight-800
+label, 5px apart, sideways scrolling. Then the product sections: a **30px / 37.5px bold** heading, the cards **30px** below it
+(5 per row, 222px), a centred **194 x 35** outlined "See all" (15px, weight 800) 40px under the cards, and every second section on a darker
+full-bleed band **`#311178`**. **390 px:** the banners become one row of four 98 x 195 portrait cards; the category row 25px lower; headings 20px;
+the product cards are the phone list cards; "See all" 194px centred.
+
+**As built:**
+
+```
+desktop >=931 +------------ carousel (1fr) ------------+ tile + tile + tile +  288px, full-bleed
+              | scrim > badge, 40px title, subtitle,    | 144  | 144  | 144  |
+              |   "From EUR 11.99" + Buy now  < o o o > || |     |      |      |
+              +-----------------------------------------+------+------+------+
+              40px  [All games][Steam][PSN] ...   100px entries, 32px icon, label + count 12px
+              band  Popular right now (30px) . 5 cards . [ View all ] 194x35   (bands alternate page / --color-band)
+<=930         carousel full width, 288px; the 3 tiles under it (144px tall, equal columns); product rows scroll sideways (180px cards)
+<=600         carousel 16:9, text at the bottom over --hero-scrim-sm, no arrows, dots + Play/Pause top-right (40px targets);
+              tiles: title only; product rows = the Store's list cards, one per line; headings 20px
+```
+
+- **Hero + tiles share the first row** only when the tiles block directly follows the hero in the registry (`.hero:has(+ .tiles)`, `BlockRenderer.module.css`);
+  if either is switched off, the other is full width. The tiles read `--tile-width` / `--tile-height`, set by that slot.
+- **Carousel** (WAI-ARIA carousel pattern): a region named by the block title, slides are "n of N" groups, Play/Pause first in the Tab order, Previous / Next (40px, `--color-overlay`),
+  24px dots (10px dot; 40px on phones), hidden slides `inert`. Autoplay 6 s, paused on hover and focus, off with `prefers-reduced-motion`.
+  Cross-fade (`--slide-transition`); the box has its size before any picture loads (no CLS). The first picture is eager + `fetchpriority="high"` with `srcset`/`sizes`; a `<picture>` `<source>` serves the phone crop ≤600px.
+- **Tiles:** our own design — text top-left on a token gradient, a fan of up to three catalog covers spilling over the bottom-right corner (rotated 8° / −2° / −12°, lifted 10px on hover/focus).
+- **Platform row:** generic lucide icons chosen by NAME from the block config (no brand logos); an unknown name gets `gamepad-2`.
+- **Product rows:** the Store's `ProductCard` (with Add to cart). "View all" is a secondary `ButtonLink` with a hidden ": {row title}", so the three links differ for screen readers.
+- **States:** while the registry loads, a hero-sized skeleton in a screen-tall page (the footer stays off screen); each block has its own skeleton of its final size; a failing block shows
+  "“Title” could not be loaded." + a secondary Retry in its own slot; a block that crashes while rendering hides itself (error boundary). Registry error = the page ErrorState with Retry; empty registry = EmptyState + "Browse the store".
+- **Not copied / no dead UI:** cashback, wishlist hearts, "Recommended for you" (no personalisation), Eneba's promo art, language/currency, the "Black Friday" countdown popup, gift-card rows.
 
 ### 3.5 Footer
 
@@ -684,6 +728,10 @@ Minimums for every screen: text contrast **≥ 4.5:1**, non-text UI (borders of 
 | Dimmed unavailable line (`--opacity-dimmed` 0.8): white / muted text on the line | 9.66 / 5.34 | pass (Task 16b) |
 | Side panel on `--color-bg-deep`: `--color-warning` ("Some items changed…") / `--color-error` (error box) / `--color-accent` (countdown, "Simulated payment" legend) / muted notes | 6.52 / 6.82 / 9.23 / 7.14 | pass (Task 16b; axe 0 violations on the cart with notices, payment, declined, expired, orders and order pages, 1440 and 390) |
 | Key box (`--color-surface-inset` over the line): `#fff` key text | 16.31 | pass (Task 16b) |
+| Home band `--color-band` `#311178`: `#fff` (heading, "View all" outline) / `--color-text-muted` / `--color-accent` / `--color-secondary` | 14.17 / 7.49 / 9.71 / 6.24 | pass (Task 15) |
+| Hero slide text over the art + `--hero-scrim`, **per pixel** (the worst pixel behind the text; all three slides, 1440 and 390): titles / subtitles / "From" / prices | ≥ 3.55 (40px title, needs 3) / ≥ 6.86 / ≥ 4.55 / ≥ 8.08 | pass (Task 15; axe reports text over images as "incomplete", so it was measured with a screenshot script) |
+| Tile text on the tile gradients (the top part is `--color-bg-deep`): titles / muted subtitles | 13.47 / ≥ 7.06 | pass (Task 15) |
+| Hero badge `#000` on `--color-accent` | 14.40 | pass (Task 15) |
 
 Disabled controls (`opacity: .5`) are exempt from the contrast rule (WCAG), but the disabled state must still be recognisable.
 The numbers were computed with a small script (sRGB → relative luminance → `(L1+.05)/(L2+.05)`); re-check whenever a color token changes.
@@ -739,3 +787,8 @@ active row. Cookie / location pop-ups removed from the DOM (no consent given). R
 then two products added and `/checkout` loaded at both widths. Computed styles of the panels, a line, cover, "Sold by", title, stepper, price, Summary title, button, rows and total.
 Cookie / location pop-ups removed from the DOM (no consent given); nothing was bought, no email entered. Reference screenshots stay outside the repo; the comparison is in
 `docs/reports/TASK_16b_checkout_ui.md`.
+
+**Task 15 home page (2026-11-23, S7):** headless Edge at 1440×900 and 390×844, one load of `eneba.com/` per width: screenshots, rectangles and computed styles
+of the banner row (main carousel and side tiles), the category row, section headings, cards and "See all"; the band colour sampled from the screenshots.
+No pop-up was clicked (no consent given). Reference screenshots stay outside the repo; the comparison is in `docs/reports/TASK_15_homepage.md`.
+Eneba's carousel controls were not measured (its banner text is part of the images).

@@ -3,7 +3,8 @@
 The whole schema of the marketplace, designed once. The **catalog** tables exist
 (migration `00002_catalog.sql`, plus `game_aliases` for search from `00003_search_aliases.sql`), and so do the **auth** tables
 (`00004_auth.sql`, Task 14). The **commerce** tables (`00005_orders.sql`, Task 16a) are built as
-documented in [Commerce tables](#commerce-tables-created--migration-00005-task-16a).
+documented in [Commerce tables](#commerce-tables-created--migration-00005-task-16a). The **home page** tables
+(`00006_homepage.sql`, Task 15) are in [Home page tables](#home-page-tables-created--migration-00006-task-15).
 
 | Group | Tables | Status |
 |---|---|---|
@@ -11,6 +12,7 @@ documented in [Commerce tables](#commerce-tables-created--migration-00005-task-1
 | Search | `game_aliases` | **created** – migration `00003` (Task 13a) |
 | Auth | `users`, `sessions`, `login_failures` | **created** – migration `00004` (Task 14) |
 | Commerce | `orders`, `order_items`, `payments` + column `keys.order_item_id` | **created** – migration `00005` (Task 16a) |
+| Home page | `homepage_blocks`, `homepage_slides`, `homepage_tiles` (+ their content rows) | **created** – migration `00006` (Task 15) |
 
 Ground rules used everywhere:
 - **Money is integer cents, EUR only** (`price_cents integer`). Never `float`/`numeric` for money.
@@ -405,6 +407,75 @@ sensitive is collected or stored, so no PCI concerns.
 ### Change to `keys`
 `ALTER TABLE keys ADD COLUMN order_item_id bigint REFERENCES order_items (id)` (RESTRICT) + the CHECK and the partial index described under [`keys`](#keys).
 A nullable column added to an existing table → backward compatible (expand).
+
+## Home page tables (created – migration `00006`, Task 15)
+
+The home page is assembled from **blocks**. The registry (`homepage_blocks`) says which blocks the page shows, in which
+order and with which titles; `GET /api/homepage` returns the enabled rows. Every block has its **own endpoint and data
+source** (`pkg/homepage`): the hero reads `homepage_slides` (+ live prices from the catalog), the tiles read `homepage_tiles`
+(+ cover images from the catalog), the platform row and the product rows read only the catalog. The frontend has one
+renderer per block **type** and no content of its own.
+
+**The content rows are inserted by the migration, not by `cmd/seed`** (owner decision): the catalog seed and its golden
+checksum stay unchanged, and production needs no reseed (`seed --reset` refuses once orders exist). `seed --reset` only
+deletes the catalog tables, so it never touches these.
+
+**No foreign key into the catalog:** `homepage_slides.product_slug` is plain text. The blocks are logically separate
+services (each could move to its own service and database), and the catalog reseed deletes and re-inserts products, which
+an FK would block. The API checks instead: a slide whose product does not exist or is out of stock is skipped.
+
+Backward compatible (expand): three new tables; the code that is live while the migration runs never reads them.
+
+### `homepage_blocks` (the registry)
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | tie-breaker of the order |
+| `key` | `text` NN UNIQUE, slug CHECK | stable name; a product row's endpoint is `/api/blocks/products/{key}` |
+| `type` | `text` NN, CHECK `IN ('hero','tiles','platforms','product_row')` | which renderer draws it. A new type needs code (endpoint + renderer), so it also needs a migration |
+| `title` | `text` NN, not blank | the heading (visible on product rows; the accessible name of the other blocks) |
+| `position` | `integer` NN | page order (`ORDER BY position, id`). Steps of 10, so a block can be put between two others |
+| `enabled` | `boolean` NN, default `true` | `false` = the block disappears from the registry and its endpoint answers 404 – **without a deploy** |
+| `config` | `jsonb` NN, default `{}`, CHECK object | per-type settings, validated strictly in Go (`pkg/homepage/config.go`: unknown field or bad value = 500, never a silent default). Product row: `{"sort","limit","viewAllHref"}`; platforms: `{"allLabel","allIcon","defaultIcon","icons":{slug: icon}}` |
+
+Partial UNIQUE index `homepage_blocks_one_per_single_type (type) WHERE type <> 'product_row'`: at most one hero, one
+tiles and one platforms block (their endpoints have no key). The **endpoint is not stored**: Go builds it from the type
+(and key), so a row can never point the page at a foreign URL.
+
+### `homepage_slides` (hero carousel)
+| Column | Type | Why |
+|---|---|---|
+| `id` | `bigint` identity, PK | |
+| `position`, `enabled` | `integer` NN, `boolean` NN | order and on/off, like the blocks |
+| `title` | `text` NN, not blank | |
+| `subtitle`, `badge` | `text`, null | optional lines ("Coming soon") |
+| `image_url`, `image_url_mobile` | `text` NN, CHECK `^(/[^/]|https://)` | the desktop and the phone (≤ 600px) picture: our own `/banners/...` files or https (IGDB) |
+| `image_srcset`, `image_srcset_mobile` | `text`, null | the same picture in several widths (`url 1280w, url 1920w`), so the browser downloads the smallest sharp-enough file. **Added to the task's column list** (the task asks for a responsive `srcset`) |
+| `product_slug` | `text`, null | a product slide: the API adds the **live** cheapest price and links the button to `/product/{slug}` |
+| `cta_label`, `cta_href` | `text`, null; `cta_href` CHECK internal path `^/([^/]|$)` | a button to a page |
+
+CHECKs: `homepage_slides_one_target` (not both `product_slug` and `cta_href`) and `homepage_slides_label_iff_target`
+(a label exactly when there is a target: no button without a link, no dead link without a label).
+
+### `homepage_tiles` (side tiles)
+| Column | Type | Why |
+|---|---|---|
+| `id`, `position`, `enabled` | as above | |
+| `title` | `text` NN, not blank | "Steam games". The token `{maxDiscount}` is replaced by the API with the biggest **live** discount of the buyable products (the first card of the Store's discount listing): "Up to −{maxDiscount}%" → "Up to −73%". No discounted product → the tile is left out (no "Up to −0%") |
+| `subtitle` | `text`, null | |
+| `href` | `text` NN, CHECK internal path | where the tile goes (`/store?sort=discount`) |
+| `accent` | `text` NN, default `'violet'`, CHECK `IN ('violet','promo','mint')` | which **token gradient** the frontend paints – a name, never a colour value |
+| `covers` | `jsonb`, null, CHECK object | which catalog products give the collage, e.g. `{"sort":"popularity","platform":"steam"}`; the API returns up to 3 different covers. `NULL` = text only |
+
+### Content (inserted by `00006`; `00007` makes the discount tile's number live)
+| Block (position) | Type | Content |
+|---|---|---|
+| `hero` (10) | hero | 1. **Innert** (a friend's game in development, art used with permission): badge "Coming soon", no button, WebP files in `public/banners/`. 2. Grand Theft Auto V and 3. The Witcher 3 (the two most popular in-stock games): IGDB artworks `ar6d9m` / `ar3lze`, "Buy now" → product page |
+| `tiles` (20) | tiles | "Up to −{maxDiscount}%" (live, e.g. "Up to −73%") → `/store?sort=discount`, "Steam games" → `/store?platform=steam`, "New releases" → `/store?sort=newest` |
+| `platforms` (30) | platforms | "All games" + every platform with products; generic lucide icon names |
+| `popular` (40), `discounts` (50), `new-releases` (60) | product_row | 5 products by popularity / discount / newest; "View all" → `/store`, `/store?sort=discount`, `/store?sort=newest` |
+
+"Turn a block off" in a database console: `UPDATE homepage_blocks SET enabled = false WHERE key = 'discounts';`
+(locally visible at once; in production within the 5-minute CDN cache).
 
 ## State machines
 

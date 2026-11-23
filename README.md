@@ -116,6 +116,40 @@ in the database before it charges anything.
 
 Typed frontend functions: `src/api/catalog.ts` (`getProducts`, `getProduct`, `getSuggestions`), types in `src/api/types.ts`.
 
+## Home page (Task 15)
+The assignment: *the landing page is assembled from several different blocks; each block gets its content from its own
+backend service or database, so the frontend only displays what it receives and nothing is hardcoded there.*
+
+- **Block registry:** the table `homepage_blocks` lists the blocks (`key`, `type`, `title`, `position`, `enabled`, `config`).
+  `GET /api/homepage` returns the enabled ones in order: `{"blocks":[{"key","type","title","endpoint"}]}`. The frontend
+  (`src/features/home/`) has **one renderer per type** (`hero`, `tiles`, `platforms`, `product_row`) and fetches every block from its
+  own `endpoint` with its own TanStack Query; it contains no block content, order or titles. An unknown type is skipped.
+- **Each block is its own service** (`pkg/homepage`; handlers in `pkg/server/homepage_handlers.go`):
+
+| Endpoint | Data source | Answers |
+|---|---|---|
+| `GET /api/homepage` | `homepage_blocks` | the registry (above) |
+| `GET /api/blocks/hero` | `homepage_slides` + the catalog (live cheapest price of a product slide) | `{"slides":[{id,title,subtitle,badge,image:{url,srcset,mobileUrl,mobileSrcset},cta:{label,href}\|null,priceCents\|null}]}` |
+| `GET /api/blocks/tiles` | `homepage_tiles` + the catalog (up to 3 cover images per tile) | `{"tiles":[{id,title,subtitle,href,accent,coverUrls}]}` |
+| `GET /api/blocks/platforms` | the catalog (the Store's platform facet) + the block's icon config | `{"items":[{key,label,count,href,icon}]}` ("All games" first) |
+| `GET /api/blocks/products/{key}` | the Store listing query, configured by the block row (`sort`, `limit`, `viewAllHref`) | `{"items":[Item],"viewAllHref"}` |
+
+  Today they share one Go function and one database, but they only meet in the registry: each could move to its own
+  service (a CMS for the hero and tiles, the catalog service for the rest) and only the endpoint URLs in Go would change.
+- **Content lives in the database, inserted by migration `00006`** (not by the seed, so the catalog checksum is unchanged and
+  production needs no reseed). Switching a block off: `UPDATE homepage_blocks SET enabled = false WHERE key = 'discounts';`
+  – the block disappears without a deploy (locally at once; in production after the 5-minute CDN cache).
+- **Caching:** every home page response `public, s-maxage=300, stale-while-revalidate=600`; errors `no-store` (503 database
+  unreachable, 500 anything else, 404 unknown or disabled block).
+- **Resilience:** one failing block shows "could not be loaded" + Retry in its own place; a block that crashes while drawing
+  hides itself (an error boundary per block); the rest of the page keeps working.
+- **Hero carousel:** arrows, dots, a Play/Pause button, Left/Right keys; autoplay every 6 s that pauses on hover and focus and is
+  off with `prefers-reduced-motion`. The first slide's picture is the LCP element: loaded eagerly with `fetchpriority="high"`
+  and a responsive `srcset`; the carousel has its size before anything loads (no layout shift).
+- **Slides:** 1. **Innert** – a friend's game in development; its art is used with the author's permission (WebP files in
+  `public/banners/`, no button because its repository is private). 2.–3. Grand Theft Auto V and The Witcher 3 with IGDB artworks
+  and the live price + "Buy now".
+
 ## Accounts and sign-in (Task 14)
 Email + password accounts, a one-click **demo user**, and pages that need a signed-in user (`/orders` now, `/checkout` later).
 
@@ -288,11 +322,18 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - [`docs/reports/`](docs/reports/) – one report per task (what changed, how it was verified, open questions)
 - [`ai-logs/`](ai-logs/) – exported Claude Code sessions
 
+## About the author
+**[Kodmo Lab](https://kodmolab.lt)** is a small software studio building practical, offline-first tools for small businesses.
+Its main product, **[Kodmo Auto](https://kodmolab.lt/auto/)**, is an offline Windows app for auto repair shops in Lithuania
+(customers, jobs, parts inventory, staff; low-stock alerts), built with Python, PySide6, FastAPI and SQLite and developed end to end
+with AI coding tools (Claude Code) using the same small-task / spec / testing workflow as this project.
+
 ## Layout
 - `api/index.go` – the only Vercel function; forwards to the router
-- `pkg/server/` – router and handlers (they depend on small interfaces: `DBPinger`, `CatalogReader`); query-string validation
+- `pkg/server/` – router and handlers (they depend on small interfaces: `DBPinger`, `CatalogReader`, `HomepageReader`, ...); query-string validation
 - `pkg/db/` – lazy, shared pgx connection pool
 - `pkg/catalog/` – catalog queries (listing + facets, product page, search + suggestions), seller rating label; pure Go + pgx, no HTTP
+- `pkg/homepage/` – the home page blocks: registry, hero, tiles, platforms and product rows (store + service; strict config parsing)
 - `pkg/testdb/` – test helper: migrated + seeded Postgres from `TEST_DATABASE_URL` (tests skip when it is empty; with `REQUIRE_TEST_DB=1`, as in the CI `migrations` job, they fail instead)
 - `cmd/local/` – local dev server using the same router (loads `.env`)
 - `cmd/migrate/` – goose migration runner (`up`/`down`/`status`/`version`/`create`)
@@ -308,7 +349,9 @@ Planning chat → task file → Claude Code works on a `task/NN-name` branch →
 - `src/api/` – `apiFetch` client (timeout, typed errors), catalog, auth and checkout / order functions + JSON types
 - `src/app/` – app frame: routes, layout, header, demo banner, footer, TanStack Query client, "waking up" notice
 - `src/components/` – base UI components (Button, Badge, Price, Skeleton, EmptyState, ErrorState, SearchField)
-- `src/pages/` – one file per route (the home page is still a placeholder)
+- `src/pages/` – one file per route
+- `src/features/home/` – the home page block renderers (hero carousel, side tiles, platform row, product row) and the type → renderer map
+- `public/banners/` – the Innert hero pictures (WebP, several widths)
 - `src/features/store/` – the parts of the Store page (product card and grid, filters, price slider, pagination, mobile drawer)
 - `src/features/cart/`, `src/features/checkout/`, `src/features/orders/` – the cart store, the cart and payment pages (quote notices, idempotency key, countdown, simulated payment) and the order pages (masked keys)
 - `src/lib/` – helpers and hooks (`formatPrice`, Store filters in the URL, ...)

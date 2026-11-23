@@ -27,6 +27,13 @@
   }
 }
 
+/* The home page runs edge to edge (Task 15: the hero row and the product row bands are full-bleed, as on Eneba,
+   directly under the header). It marks itself with data-full-bleed-page and centres each block's content itself. */
+.main:has([data-full-bleed-page]) {
+  max-width: none;
+  padding: 0;
+}
+
 .main:focus {
   outline: none; /* <main> is focused only by the skip link; ringing the whole page would be noise */
 }

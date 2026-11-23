@@ -18,6 +18,7 @@ import (
 	"github.com/dovydas472/ENEBA-homework/pkg/auth"
 	"github.com/dovydas472/ENEBA-homework/pkg/catalog"
 	"github.com/dovydas472/ENEBA-homework/pkg/db"
+	"github.com/dovydas472/ENEBA-homework/pkg/homepage"
 	"github.com/dovydas472/ENEBA-homework/pkg/orders"
 	"github.com/dovydas472/ENEBA-homework/pkg/server"
 )
@@ -49,7 +50,14 @@ func main() {
 	}
 
 	lazyDB := db.NewLazy() // one pool, shared by health, the catalog and auth
-	router := server.NewRouter(server.Deps{DB: lazyDB, Catalog: catalog.NewStore(lazyDB), Auth: auth.NewStore(lazyDB), Orders: orders.NewStore(lazyDB)})
+	catalogData := catalog.NewStore(lazyDB)
+	router := server.NewRouter(server.Deps{
+		DB:       lazyDB,
+		Catalog:  catalogData,
+		Auth:     auth.NewStore(lazyDB),
+		Orders:   orders.NewStore(lazyDB),
+		Homepage: homepage.NewService(homepage.NewStore(lazyDB), catalogData), // the blocks reuse the catalog
+	})
 
 	log.Printf("local API listening on http://%s", addr)
 	log.Fatal(http.ListenAndServe(addr, router))

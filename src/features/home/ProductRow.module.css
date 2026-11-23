@@ -1,0 +1,82 @@
+/*
+ * Product row (DESIGN.md 3.4), measured on Eneba's home page: a full-bleed band (every second row darker,
+ * BlockRenderer.module.css), a 30px bold heading 30px above five cards, and a centred 194 x 35 outlined
+ * "View all" 40px under them. Tablets: the cards scroll sideways; phones: the Store's list cards, one per line.
+ */
+.band {
+  padding: var(--space-6) 0;
+}
+
+.inner {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: 0 var(--page-gutter);
+}
+
+.title {
+  margin-bottom: var(--space-5);
+  font-size: var(--font-size-4xl);
+  line-height: var(--line-height-tight);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--grid-gap);
+}
+
+.item {
+  min-width: 0;
+}
+
+.viewAll {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-6);
+}
+
+.viewAllButton {
+  width: var(--view-all-width);
+}
+
+/* Tablets: one line of cards that scrolls sideways (snapping to a card), instead of squeezing five in. */
+@media (max-width: 930px) {
+  .grid {
+    grid-template-columns: none;
+    grid-auto-columns: var(--row-card-width);
+    grid-auto-flow: column;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: var(--space-2); /* room for the scrollbar */
+  }
+
+  .item {
+    scroll-snap-align: start;
+  }
+}
+
+/* Phones: ProductCard turns into a horizontal list card by itself; the row becomes a plain column. */
+@media (max-width: 600px) {
+  .band {
+    padding: var(--space-5) 0;
+  }
+
+  .title {
+    margin-bottom: var(--space-4);
+    font-size: var(--font-size-lg);
+  }
+
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-columns: auto;
+    grid-auto-flow: row;
+    gap: var(--space-3);
+    overflow-x: visible;
+    scroll-snap-type: none;
+    padding-bottom: 0;
+  }
+
+  .viewAll {
+    margin-top: var(--space-5);
+  }
+}
