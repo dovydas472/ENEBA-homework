@@ -11,6 +11,8 @@ type Deps struct {
 	Catalog CatalogReader
 	Auth    AuthStore
 	Orders  OrderStore
+	// Homepage serves the home page registry and its blocks (Task 15).
+	Homepage HomepageReader
 }
 
 // NewRouter builds the application router using only the standard library.
@@ -34,6 +36,19 @@ func NewRouter(deps Deps) http.Handler {
 	mux.HandleFunc("/api/products/{slug}", methodNotAllowed)
 	mux.HandleFunc("GET /api/search/suggest", suggestHandler(deps.Catalog))
 	mux.HandleFunc("/api/search/suggest", methodNotAllowed)
+
+	// Home page (Task 15): the block registry, then one endpoint per block. Public and cacheable
+	// (5 minutes); like the catalog, they never read the session cookie.
+	mux.HandleFunc("GET /api/homepage", homepageHandler(deps.Homepage, "homepage registry", loadRegistry))
+	mux.HandleFunc("/api/homepage", methodNotAllowed)
+	mux.HandleFunc("GET /api/blocks/hero", homepageHandler(deps.Homepage, "hero block", loadHero))
+	mux.HandleFunc("/api/blocks/hero", methodNotAllowed)
+	mux.HandleFunc("GET /api/blocks/tiles", homepageHandler(deps.Homepage, "tiles block", loadTiles))
+	mux.HandleFunc("/api/blocks/tiles", methodNotAllowed)
+	mux.HandleFunc("GET /api/blocks/platforms", homepageHandler(deps.Homepage, "platforms block", loadPlatforms))
+	mux.HandleFunc("/api/blocks/platforms", methodNotAllowed)
+	mux.HandleFunc("GET /api/blocks/products/{key}", homepageHandler(deps.Homepage, "product row block", loadProductRow))
+	mux.HandleFunc("/api/blocks/products/{key}", methodNotAllowed)
 
 	// Auth (Task 14): every response is Cache-Control: no-store.
 	mux.HandleFunc("POST /api/auth/register", noStore(registerHandler(deps.Auth)))

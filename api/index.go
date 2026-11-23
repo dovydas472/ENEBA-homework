@@ -9,6 +9,7 @@ import (
 	"github.com/dovydas472/ENEBA-homework/pkg/auth"
 	"github.com/dovydas472/ENEBA-homework/pkg/catalog"
 	"github.com/dovydas472/ENEBA-homework/pkg/db"
+	"github.com/dovydas472/ENEBA-homework/pkg/homepage"
 	"github.com/dovydas472/ENEBA-homework/pkg/orders"
 	"github.com/dovydas472/ENEBA-homework/pkg/server"
 )
@@ -17,8 +18,15 @@ import (
 // serves - including the DB pool (created lazily on first use, see pkg/db).
 // Env vars come from the Vercel project settings (no .env loading here).
 var (
-	lazyDB = db.NewLazy()
-	router = server.NewRouter(server.Deps{DB: lazyDB, Catalog: catalog.NewStore(lazyDB), Auth: auth.NewStore(lazyDB), Orders: orders.NewStore(lazyDB)})
+	lazyDB      = db.NewLazy()
+	catalogData = catalog.NewStore(lazyDB)
+	router      = server.NewRouter(server.Deps{
+		DB:       lazyDB,
+		Catalog:  catalogData,
+		Auth:     auth.NewStore(lazyDB),
+		Orders:   orders.NewStore(lazyDB),
+		Homepage: homepage.NewService(homepage.NewStore(lazyDB), catalogData),
+	})
 )
 
 // Handler is the entry point Vercel looks for.
