@@ -623,7 +623,9 @@ WHERE k.id = picked.id;               -- rows affected = keys actually reserved
 - **Why not `SELECT` a key, then `UPDATE` it:** between the two statements another transaction can select the same key, and both then "reserve" it (the second `UPDATE` just overwrites the first). Locking in the same statement that picks closes that gap.
 - The time is the **application's clock** (`$2`, `$4`), not `now()`: the tests move it to simulate expiry. Production uses the server clock; the few seconds it may differ from the database clock are irrelevant next to 15 minutes.
 
-The whole create-order transaction (`CreateOrder`): (1) is there already an order for this `(user, idempotency key)`? return it;
+The whole create-order transaction (`CreateOrder`): (0) lock the user's row (`SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE`) so two creates of one user run one after the other;
+(1) is there already an order for this `(user, idempotency key)`? return it (also when the user is at the cap: a retry creates nothing);
+(1b) `SELECT count(*) FROM orders WHERE user_id = $1 AND status = 'pending' AND reserved_until > $now` - at 3 or more the create is refused (`409`, rule R10: at most 3 unpaid orders per user). The user-row lock is what makes the count trustworthy: without it two parallel creates both count 2 and both pass. `NO KEY UPDATE` conflicts with itself but not with the foreign-key checks other statements take on that row; the count uses the existing index `orders_user_created_idx (user_id, …)`;
 (2) read the offers `FOR SHARE` (a seller cannot change the price until we commit; many buyers can share the lock);
 (3) `INSERT INTO orders … ON CONFLICT (user_id, idempotency_key) DO NOTHING` - two identical requests at once: the second waits for the first, then does nothing and returns the first one's order;
 (4) per line: insert the order item (snapshots), then reserve its keys as above;

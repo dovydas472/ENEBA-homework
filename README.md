@@ -181,7 +181,7 @@ the handlers are `pkg/server/orders_handlers.go`. Every endpoint is `Cache-Contr
 | Endpoint | Body | Answers |
 |---|---|---|
 | `POST /api/checkout/quote` (no sign-in) | `{"items":[{"offerId","quantity","expectedPriceCents"}]}` | `200 {"lines":[Line],"totalCents"}` · `400` |
-| `POST /api/orders` | `{"idempotencyKey" (UUID),"items":[…]}` | `201 {"order"}` new · `200 {"order"}` same key again · `409 {"error":"cart_changed","lines":[Line]}` · `400` · `401` |
+| `POST /api/orders` | `{"idempotencyKey" (UUID),"items":[…]}` | `201 {"order"}` new · `200 {"order"}` same key again · `409 {"error":"cart_changed","lines":[Line]}` · `409 {"error":"Too many unpaid orders – pay or cancel one first"}` · `400` · `401` |
 | `GET /api/orders` | – | `200 {"orders":[{id,status,totalCents,itemCount,createdAt,reservedUntil}]}`, newest first (max 100) |
 | `GET /api/orders/{id}` | – | `200 {"order","serverTime"}` · `404` (unknown **or not yours**) |
 | `POST /api/orders/{id}/pay` | `{"outcome":"success"\|"decline"}` | `200 {"order"}` (also when already paid) · `402` "Payment declined (simulated)" · `409` "Reservation expired" / "Order is not payable" · `404` |
@@ -204,6 +204,7 @@ The rules (numbered R1–R9 in `pkg/orders/rules.go`):
   key again gets the **same order** (`200`), nothing is reserved twice - decided by `UNIQUE (user_id, idempotency_key)`, so it
   also holds for two identical requests arriving at the same moment. Paying a paid order returns it unchanged; a partial unique index allows at most one
   succeeded payment per order.
+- **At most 3 unpaid orders per user (R10):** a user who already holds 3 *pending, not yet expired* orders gets `409 "Too many unpaid orders – pay or cancel one first"` on the next `POST /api/orders`. Paying, cancelling or letting one expire frees a place. It stops a script from reserving every key of an offer, 15 minutes at a time. The check runs **inside the create transaction** after locking the user's row (`SELECT … FOR NO KEY UPDATE`), so eight parallel creates of one user produce exactly three orders. A *retry* of an order that already exists (same idempotency key) is still answered with that order, also at the cap. There is no per-IP rate limit (see the shortcuts).
 - **Lazy expiry:** nothing runs in the background. A pending order whose `reservedUntil` has passed is *shown* as `expired`, and a
   key whose reservation has ended counts as available (the next buyer simply takes it over). Paying too late marks the order
   `expired`, frees its keys and answers `409`. A declined payment (`402`) leaves the order pending: try again while it is valid.
@@ -220,6 +221,7 @@ curl -s -X POST 127.0.0.1:8080/api/checkout/quote -H "Origin: http://127.0.0.1:8
 **Shortcuts (decided):**
 - **the payment is simulated:** the buyer picks `success` or `decline`; there is no card form, no card data and no payment provider;
 - **no clean-up job:** demo users and their orders (paid, expired, cancelled) stay in the database forever, just like demo users in Task 14;
+- **no rate limit** on the checkout endpoints (only the cap of 3 unpaid orders per user): a script can still create and cancel orders quickly, and a demo account is free to make. A real shop would add a per-user and per-IP rate limit and tighter quotas for anonymous accounts;
 - re-seeding the catalog (`cmd/seed --reset`) **refuses** while orders exist (they reference offers and keys), so order history is never deleted by accident;
 - expiry is lazy: an expired pending order stays `pending` in the table until someone pays, cancels or reads it (reading shows `expired` but does not write).
 
