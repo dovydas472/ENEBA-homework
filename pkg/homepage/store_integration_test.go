@@ -1,7 +1,8 @@
 package homepage_test
 
 // Integration tests: the real router + homepage.Service + homepage.Store + catalog.Store against a
-// real Postgres with every migration applied (00006 inserts the home page content) and the
+// real Postgres with every migration applied (00006 inserts the home page content, 00007 makes the
+// discount tile's number live) and the
 // deterministic demo catalog (pkg/testdb). Skipped when TEST_DATABASE_URL is empty; CI runs them.
 //
 // Some tests switch a block off and on again. They restore the row in t.Cleanup, and the tests of
@@ -10,6 +11,7 @@ package homepage_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -277,6 +279,67 @@ func TestHomepageIntegration_platformsAndTiles(t *testing.T) {
 		if len(tile.CoverURLs) != 3 {
 			t.Errorf("tile %q has %d covers, want 3", tile.Title, len(tile.CoverURLs))
 		}
+	}
+}
+
+// Migration 00007: the discount tile says "Up to −N%" where N is the biggest discount of the Store's
+// discount listing right now - and it follows the catalog without anyone editing the tile.
+func TestHomepageIntegration_discountTileShowsTheLiveMaxDiscount(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+
+	discountTile := func() string {
+		t.Helper()
+		var tiles homepage.Tiles
+		if code := e.get(t, "/api/blocks/tiles", &tiles); code != http.StatusOK {
+			t.Fatalf("tiles status %d", code)
+		}
+		for _, tile := range tiles.Tiles {
+			if tile.Href == "/store?sort=discount" {
+				return tile.Title
+			}
+		}
+		t.Fatal("no discount tile")
+		return ""
+	}
+	topOfDiscountListing := func() catalog.Item {
+		t.Helper()
+		page, err := e.catalog.ListProducts(ctx, catalog.Filter{Sort: catalog.SortDiscount, Page: 1, PageSize: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return page.Items[0]
+	}
+
+	top := topOfDiscountListing()
+	if top.DiscountPercent == nil || *top.DiscountPercent <= 0 {
+		t.Fatalf("the demo catalog must have a discounted product first, got %+v", top)
+	}
+	if got, want := discountTile(), fmt.Sprintf("Up to −%d%%", *top.DiscountPercent); got != want {
+		t.Errorf("discount tile = %q, want %q", got, want)
+	}
+
+	// Make the top product's cheapest offer cheaper: its discount grows and the tile follows.
+	// The old price is put back when the test ends.
+	d, err := e.catalog.GetProduct(ctx, top.Slug)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cheapest := d.Offers[0]
+	t.Cleanup(func() {
+		if _, err := e.pool.Exec(context.Background(), `UPDATE offers SET price_cents = $2 WHERE id = $1`, cheapest.OfferID, cheapest.PriceCents); err != nil {
+			t.Errorf("restore the offer price: %v", err)
+		}
+	})
+	if _, err := e.pool.Exec(ctx, `UPDATE offers SET price_cents = $2 WHERE id = $1`, cheapest.OfferID, cheapest.PriceCents/2); err != nil {
+		t.Fatal(err)
+	}
+	after := topOfDiscountListing()
+	if after.DiscountPercent == nil || *after.DiscountPercent <= *top.DiscountPercent {
+		t.Fatalf("halving the price did not raise the biggest discount: %v -> %v", top.DiscountPercent, after.DiscountPercent)
+	}
+	if got, want := discountTile(), fmt.Sprintf("Up to −%d%%", *after.DiscountPercent); got != want {
+		t.Errorf("after the price change the tile = %q, want %q", got, want)
 	}
 }
 

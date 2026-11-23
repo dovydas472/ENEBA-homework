@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/dovydas472/ENEBA-homework/pkg/catalog"
 )
@@ -40,6 +42,11 @@ func NewService(content Content, cat Catalog) *Service {
 
 // coversPerTile is how many cover images a tile's collage shows.
 const coversPerTile = 3
+
+// MaxDiscountToken in a tile title is replaced with the biggest LIVE discount of the catalog
+// (whole percent): "Up to −{maxDiscount}%" -> "Up to −73%". The number follows the catalog
+// without anyone editing the tile.
+const MaxDiscountToken = "{maxDiscount}"
 
 // Registry is GET /api/homepage: the enabled blocks in order, each with the endpoint of its content.
 func (s *Service) Registry(ctx context.Context) (Registry, error) {
@@ -102,6 +109,7 @@ func (s *Service) Hero(ctx context.Context) (Hero, error) {
 
 // Tiles is GET /api/blocks/tiles. A tile with a covers setting gets up to 3 DIFFERENT cover images of
 // the matching catalog products (two editions of one game share a cover, so a few extra are asked for).
+// {maxDiscount} in a title becomes the live biggest discount (see MaxDiscountToken).
 func (s *Service) Tiles(ctx context.Context) (Tiles, error) {
 	if _, err := s.content.BlockByType(ctx, TypeTiles); err != nil {
 		return Tiles{}, err
@@ -111,12 +119,29 @@ func (s *Service) Tiles(ctx context.Context) (Tiles, error) {
 		return Tiles{}, err
 	}
 	out := Tiles{Tiles: []TileCard{}}
+	var maxDiscount *int64 // nil = not asked yet
 	for _, t := range tiles {
 		covers, err := ParseCoversConfig(t.Covers)
 		if err != nil {
 			return Tiles{}, fmt.Errorf("tile %d: %w", t.ID, err)
 		}
-		card := TileCard{ID: t.ID, Title: t.Title, Subtitle: t.Subtitle, Href: t.Href, Accent: t.Accent, CoverURLs: []string{}}
+		title := t.Title
+		if strings.Contains(title, MaxDiscountToken) {
+			if maxDiscount == nil { // asked once per request, however many tiles use the token
+				pct, err := s.maxDiscount(ctx)
+				if err != nil {
+					return Tiles{}, err
+				}
+				maxDiscount = &pct
+			}
+			if *maxDiscount <= 0 {
+				// "Up to −0%" would be nonsense: without a discounted product the tile is left out.
+				log.Printf("homepage: tile %d needs %s but no product is discounted - skipped", t.ID, MaxDiscountToken)
+				continue
+			}
+			title = strings.ReplaceAll(title, MaxDiscountToken, strconv.FormatInt(*maxDiscount, 10))
+		}
+		card := TileCard{ID: t.ID, Title: title, Subtitle: t.Subtitle, Href: t.Href, Accent: t.Accent, CoverURLs: []string{}}
 		if covers != nil {
 			f := catalog.Filter{Sort: covers.Sort, Page: 1, PageSize: 2 * coversPerTile}
 			if covers.Platform != "" {
@@ -177,6 +202,25 @@ func (s *Service) ProductRow(ctx context.Context, key string) (ProductRow, error
 		return ProductRow{}, err
 	}
 	return ProductRow{Items: page.Items, ViewAllHref: cfg.ViewAllHref}, nil
+}
+
+// maxDiscount is the biggest discount (whole percent) of the products that can be bought now, or 0
+// when none is discounted. It is the first card of the Store's "discount" listing - the same list the
+// tile links to (/store?sort=discount) - so the number on the tile is the one the shopper finds there.
+func (s *Service) maxDiscount(ctx context.Context) (int64, error) {
+	page, err := s.catalog.ListProducts(ctx, catalog.Filter{Sort: catalog.SortDiscount, Page: 1, PageSize: 1})
+	if err != nil {
+		return 0, err
+	}
+	if len(page.Items) == 0 {
+		return 0, nil
+	}
+	first := page.Items[0]
+	// The discount sort puts out-of-stock products last, so an out-of-stock first card means none is buyable.
+	if !first.InStock || first.DiscountPercent == nil {
+		return 0, nil
+	}
+	return *first.DiscountPercent, nil
 }
 
 // distinctCovers returns up to n cover URLs in listing order, without repeats or missing covers.

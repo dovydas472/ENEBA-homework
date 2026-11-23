@@ -219,6 +219,66 @@ func TestTiles_badCoversConfigIsAnError(t *testing.T) {
 	}
 }
 
+// "Up to −{maxDiscount}%" shows the biggest discount the Store's discount listing has right now.
+func TestTiles_maxDiscountTokenBecomesTheLiveBiggestDiscount(t *testing.T) {
+	content := &fakeContent{blocks: defaultBlocks(), tiles: []Tile{
+		{ID: 1, Title: "Up to −{maxDiscount}%", Href: "/store?sort=discount", Accent: "promo"},
+		{ID: 2, Title: "Save {maxDiscount}% now", Href: "/store", Accent: "mint"},
+		{ID: 3, Title: "Steam games", Href: "/store?platform=steam", Accent: "violet"},
+	}}
+	cat := &fakeCatalog{page: catalog.Page{Items: []catalog.Item{{InStock: true, DiscountPercent: ptr(int64(73))}}}}
+
+	got, err := NewService(content, cat).Tiles(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	titles := []string{}
+	for _, tile := range got.Tiles {
+		titles = append(titles, tile.Title)
+	}
+	if want := []string{"Up to −73%", "Save 73% now", "Steam games"}; !reflect.DeepEqual(titles, want) {
+		t.Errorf("titles = %q, want %q", titles, want)
+	}
+	// One question to the catalog for both tiles: the first card of the discount listing.
+	want := []catalog.Filter{{Sort: catalog.SortDiscount, Page: 1, PageSize: 1}}
+	if !reflect.DeepEqual(cat.filters, want) {
+		t.Errorf("catalog filters = %+v, want %+v", cat.filters, want)
+	}
+}
+
+// "Up to −0%" would be nonsense: when nothing buyable is discounted the tile is left out.
+func TestTiles_maxDiscountTileIsSkippedWithoutADiscount(t *testing.T) {
+	cases := map[string][]catalog.Item{
+		"empty catalog":          {},
+		"no discount known":      {{InStock: true, DiscountPercent: nil}},
+		"zero discount":          {{InStock: true, DiscountPercent: ptr(int64(0))}},
+		"only out-of-stock left": {{InStock: false, DiscountPercent: ptr(int64(80))}},
+	}
+	for name, items := range cases {
+		t.Run(name, func(t *testing.T) {
+			content := &fakeContent{blocks: defaultBlocks(), tiles: []Tile{
+				{ID: 1, Title: "Up to −{maxDiscount}%", Href: "/store?sort=discount", Accent: "promo"},
+				{ID: 2, Title: "Steam games", Href: "/store?platform=steam", Accent: "violet"},
+			}}
+			got, err := NewService(content, &fakeCatalog{page: catalog.Page{Items: items}}).Tiles(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got.Tiles) != 1 || got.Tiles[0].Title != "Steam games" {
+				t.Errorf("tiles = %+v, want only Steam games", got.Tiles)
+			}
+		})
+	}
+}
+
+func TestTiles_maxDiscountCatalogFailureIsAnError(t *testing.T) {
+	content := &fakeContent{blocks: defaultBlocks(), tiles: []Tile{{ID: 1, Title: "Up to −{maxDiscount}%", Href: "/", Accent: "promo"}}}
+	boom := errors.New("connection refused")
+	if _, err := NewService(content, &fakeCatalog{err: boom}).Tiles(context.Background()); !errors.Is(err, boom) {
+		t.Errorf("got %v, want the catalog error", err)
+	}
+}
+
 func TestPlatforms_allGamesFirstThenCatalogFacet(t *testing.T) {
 	cat := &fakeCatalog{page: catalog.Page{Total: 108, Facets: catalog.Facets{Platforms: []catalog.FacetOption{
 		{Slug: "steam", Name: "Steam", Count: 54},
