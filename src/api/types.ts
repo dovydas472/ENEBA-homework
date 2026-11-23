@@ -160,3 +160,109 @@ export interface Suggestion {
 export interface SuggestResponse {
   items: Suggestion[];
 }
+
+// ---------------------------------------------------------------------------
+// Checkout (Task 16a): pkg/orders. Money is integer cents; times are ISO-8601 strings.
+// ---------------------------------------------------------------------------
+
+/** What the server found different from what the cart expected, on one line. */
+export type LineChange = "price_changed" | "quantity_reduced" | "unavailable";
+
+/** One cart line as the client sends it (POST /api/checkout/quote and POST /api/orders). */
+export interface CartLineInput {
+  offerId: number;
+  quantity: number;
+  /** The price the buyer saw. The server only COMPARES it; the buyer is charged the server's price. */
+  expectedPriceCents: number;
+}
+
+/** One cart line as the server sees it NOW. `quantity` is what can really be bought (0 = nothing). */
+export interface CheckoutLine {
+  offerId: number;
+  quantity: number;
+  unitPriceCents: number;
+  /** Keys that can be bought now. */
+  stock: number;
+  /** min(stock, 5): the most the buyer can choose. 0 when unavailable. */
+  maxQuantity: number;
+  available: boolean;
+  productSlug: string;
+  title: string;
+  edition: string;
+  platformName: string;
+  regionName: string;
+  sellerName: string;
+  coverUrl: string | null;
+  /** Empty when the line is exactly what the cart expected. */
+  changes: LineChange[];
+}
+
+/** Response of POST /api/checkout/quote. */
+export interface Quote {
+  lines: CheckoutLine[];
+  totalCents: number;
+}
+
+/** Body of the 409 answer of POST /api/orders: nothing was created; every line is listed with its changes. */
+export interface CartChangedBody {
+  error: "cart_changed";
+  lines: CheckoutLine[];
+}
+
+export type OrderStatus = "pending" | "paid" | "expired" | "cancelled";
+
+/** One line of an order: a snapshot of what was bought. */
+export interface OrderItem {
+  offerId: number;
+  productSlug: string;
+  title: string;
+  edition: string;
+  platformName: string;
+  regionName: string;
+  sellerName: string;
+  unitPriceCents: number;
+  quantity: number;
+  /** The key codes: filled ONLY when the order is paid, otherwise []. */
+  keys: string[];
+}
+
+export interface Order {
+  /** A UUID. */
+  id: string;
+  status: OrderStatus;
+  totalCents: number;
+  createdAt: string;
+  /** The keys of a pending order are held until then (15 minutes after creation). */
+  reservedUntil: string;
+  /** null until paid. */
+  paidAt: string | null;
+  items: OrderItem[];
+}
+
+/** One row of GET /api/orders (newest first). `itemCount` = number of keys in the order. */
+export interface OrderSummary {
+  id: string;
+  status: OrderStatus;
+  totalCents: number;
+  itemCount: number;
+  createdAt: string;
+  reservedUntil: string;
+}
+
+/** Response of POST /api/orders (201 new, 200 same idempotency key again), pay and cancel. */
+export interface OrderResponse {
+  order: Order;
+}
+
+/** Response of GET /api/orders/{id}. `serverTime` is the server's clock: run the countdown against it, not the browser's. */
+export interface OrderDetailResponse {
+  order: Order;
+  serverTime: string;
+}
+
+export interface OrdersResponse {
+  orders: OrderSummary[];
+}
+
+/** The simulated payment: the buyer chooses the outcome. */
+export type PaymentOutcome = "success" | "decline";

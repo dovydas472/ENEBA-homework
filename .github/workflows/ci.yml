@@ -115,28 +115,29 @@ jobs:
 
       # Same command as in the `go` job, but now TEST_DATABASE_URL points to the migrated
       # database, so database integration tests run here instead of being skipped.
-      # Only pkg/catalog resets and re-seeds the catalog tables (testdb.Pool). The auth tests
-      # (pkg/auth, pkg/server) use testdb.Migrated: schema only, their own users with unique
-      # emails, the catalog untouched - so the packages can still run in parallel. If a SECOND
-      # package ever resets the catalog, run them one after another with `go test -p 1 ./...`.
+      # -p 1 = one package at a time. pkg/catalog resets and re-seeds the catalog tables
+      # (testdb.Pool) and pkg/orders builds its own products, offers and keys in the same tables:
+      # run in parallel, a re-seed could delete the rows an orders test is working on.
+      # (The auth tests only need the schema and their own users, they never conflicted.)
       - name: go test (with the database)
-        run: go test ./...
+        run: go test -p 1 ./...
 
       # Proof that the integration tests really ran: the verbose log of every package with
       # database tests is printed, and the step fails if any test was skipped or none passed.
       - name: Database integration tests ran (not skipped)
         run: |
           set -o pipefail
-          go test -count=1 -v ./pkg/catalog ./pkg/auth ./pkg/server | tee db-test.log
+          go test -p 1 -count=1 -v ./pkg/catalog ./pkg/auth ./pkg/orders ./pkg/server | tee db-test.log
           passed="$(grep -c -e '^--- PASS' db-test.log || true)"
           skipped="$(grep -c -e '--- SKIP' db-test.log || true)"
-          echo "catalog + auth tests: $passed passed, $skipped skipped"
+          echo "catalog + auth + orders tests: $passed passed, $skipped skipped"
           if [ "$skipped" != "0" ] || [ "$passed" -eq 0 ]; then
             echo "::error::Expected the database integration tests to run (0 skipped, at least 1 passed)"
             exit 1
           fi
-          # The auth integration tests by name, so a rename cannot silently drop them from the count.
-          for name in TestStore_loginAttemptCounter TestAuthFlow_eleventhFailureIs429; do
+          # The key integration tests by name, so a rename cannot silently drop them from the count:
+          # the auth rate limit, and the checkout (K6: two buyers fighting for the last key).
+          for name in TestStore_loginAttemptCounter TestAuthFlow_eleventhFailureIs429 TestK6_twoBuyersOneLastKey TestK6_manyBuyersFewKeys TestPay_concurrentDoubleClickChargesOnce TestCreate_capHoldsForParallelCreates; do
             grep -q -e "^--- PASS: $name" db-test.log || { echo "::error::$name did not pass"; exit 1; }
           done
 

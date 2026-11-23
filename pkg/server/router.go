@@ -10,6 +10,7 @@ type Deps struct {
 	DB      DBPinger
 	Catalog CatalogReader
 	Auth    AuthStore
+	Orders  OrderStore
 }
 
 // NewRouter builds the application router using only the standard library.
@@ -45,6 +46,22 @@ func NewRouter(deps Deps) http.Handler {
 	mux.HandleFunc("/api/auth/demo", methodNotAllowed)
 	mux.HandleFunc("GET /api/auth/me", requireUser(sessionReader(deps.Auth), meHandler))
 	mux.HandleFunc("/api/auth/me", methodNotAllowed)
+
+	// Checkout (Task 16a): every response is Cache-Control: no-store. The quote is public (it only
+	// re-prices a cart); everything that touches an order needs a signed-in user, and an order id
+	// that is not yours answers 404 exactly like an unknown one.
+	sessions := sessionReader(deps.Auth)
+	mux.HandleFunc("POST /api/checkout/quote", noStore(quoteHandler(deps.Orders)))
+	mux.HandleFunc("/api/checkout/quote", methodNotAllowed)
+	mux.HandleFunc("POST /api/orders", requireUser(sessions, createOrderHandler(deps.Orders)))
+	mux.HandleFunc("GET /api/orders", requireUser(sessions, listOrdersHandler(deps.Orders)))
+	mux.HandleFunc("/api/orders", methodNotAllowed)
+	mux.HandleFunc("GET /api/orders/{id}", requireUser(sessions, getOrderHandler(deps.Orders)))
+	mux.HandleFunc("/api/orders/{id}", methodNotAllowed)
+	mux.HandleFunc("POST /api/orders/{id}/pay", requireUser(sessions, payOrderHandler(deps.Orders)))
+	mux.HandleFunc("/api/orders/{id}/pay", methodNotAllowed)
+	mux.HandleFunc("POST /api/orders/{id}/cancel", requireUser(sessions, cancelOrderHandler(deps.Orders)))
+	mux.HandleFunc("/api/orders/{id}/cancel", methodNotAllowed)
 
 	// Catch-all for everything else under /api/: JSON 404 instead of HTML/plain text.
 	mux.HandleFunc("/api/", notFound)

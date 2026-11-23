@@ -733,3 +733,77 @@ Kiekvienam svarbiam failui: **ką daro**, **kodėl taip**, **ko gali paklausti p
 - **Atsijungimo seka:** pirma `navigate("/", { flushSync: true })`, tada `logout`. Be `flushSync` React Router naviguoja kaip žemo prioriteto „transition", o „vartotojas = null" atnaujinimas yra skubus – `/orders` puslapis dar spėdavo pamatyti „neprisijungęs" ir peradresuodavo į `/login?next=/orders` (testas tai pagavo; be `flushSync` jis krenta, su juo – praeina).
 - **`apiFetch` ir 204:** atsijungimas grąžina `204 No Content` be kūno; `apiFetch` dabar tokį atsakymą grąžina kaip `undefined`, o ne „neteisingas JSON".
 - **Krepšelis** lieka `localStorage` ir prisijungus, ir atsijungus (owner sprendimas).
+
+
+---
+
+# Task 16a – apmokėjimo (checkout) backend: užsakymai, raktų rezervacija, imituotas mokėjimas
+
+## Bendras vaizdas ir failų pasidalijimas (`pkg/orders`, `pkg/server/orders_handlers.go`)
+- **Ką daro:** krepšelis yra naršyklėje. `POST /api/orders` sukuria **pending** užsakymą ir **15 min. rezervuoja raktus**; `POST /api/orders/{id}/pay` su imituotu rezultatu (`success` / `decline`) padaro jį **paid** ir tik tada parodo raktus.
+- **Kodėl taip pasidalinta:** `rules.go` – visos verslo taisyklės kaip **grynos funkcijos** (be DB, be laikrodžio): limitai, pokyčių aptikimas, būsenų perėjimai, „raktai tik apmokėtam". Jas lengva perskaityti ir testuoti vienetiniais testais. `store.go` – tik SQL ir transakcijos, kurios tas taisykles pritaiko. `orders_handlers.go` – tik HTTP: perskaito JSON, iškviečia saugyklą, klaidą paverčia statuso kodu. Taip pat kaip `catalog` / `auth`: handler'is mato mažą interfeisą `OrderStore`, ne pgx.
+- **Gali paklausti:** „Kur visos taisyklės?" – `pkg/orders/rules.go`, viršuje sunumeruotas sąrašas R1–R9 su nuoroda į funkciją.
+
+## Kodėl serveris iš naujo perskaičiuoja kainą (`ReviewLine`, R2/R3)
+- **Ką daro:** klientas siunčia `expectedPriceCents` – tai tik **„ką aš mačiau"**. Serveris perskaito tikrą kainą iš `offers` ir lygina. Jei kaina, likutis ar pasiūlymo būsena (pristabdytas / nebeegzistuoja) skiriasi – **užsakymas nesukuriamas**, o atsakyme (`409 cart_changed`) kiekviena eilutė turi `changes`: `price_changed`, `quantity_reduced`, `unavailable`.
+- **Kodėl:** naršyklės duomenis gali pakeisti bet kas (DevTools, `curl`). Jei serveris tikėtų kaina iš krepšelio, vartotojas nusipirktų žaidimą už 1 centą. Be to, kaina galėjo pasikeisti, kol krepšelis gulėjo `localStorage`; pirkėjas turi sutikti su nauja kaina, o ne būti tyliai apmokestintas kita.
+- **Užsakymo suma ir „snapshot'ai"** (pavadinimas, leidimas, platforma, regionas, pardavėjas, vieneto kaina) imami iš DB tuo momentu ir **nukopijuojami** į `order_items`: užsakymas po metų turi atrodyti taip pat, net jei pardavėjas pervadintas ar kaina pakeista.
+- **Gali paklausti:** „Kodėl 409, o ne tiesiog užsakyti už naują kainą?" – nes pirkėjas to nematė; tai ir yra „apsauga nuo netikėtos kainos". „Kodėl visas užsakymas atmetamas dėl vienos eilutės?" – paprasčiau ir saugiau; klientas gauna visų eilučių būseną ir vienu paspaudimu patvirtina atnaujintą krepšelį.
+
+## Raktų rezervavimas su `FOR UPDATE SKIP LOCKED` (`store.go` → `reserveKeys`)
+- **Ką daro:** vienu SQL sakiniu parenka N tinkamų raktų (`available` arba rezervuotų, bet jau pasibaigusių), **užrakina** juos (`FOR UPDATE`), praleidžia tuos, kuriuos kita transakcija jau užrakinusi (`SKIP LOCKED`), ir iškart pažymi `reserved` su `reserved_until` ir `order_item_id`. `RowsAffected` = kiek raktų realiai gauta.
+- **Kodėl ne `SELECT`, paskui `UPDATE`:** tarp tų dviejų sakinių kita transakcija gali pasirinkti **tą patį** raktą – abi „rezervuoja", antras `UPDATE` tiesiog perrašo pirmą, ir raktas parduodamas dviem žmonėms. Pasirinkimas ir užraktas turi vykti tame pačiame sakinyje.
+- **Kodėl `SKIP LOCKED`, o ne laukimas:** be jo visi vienu metu perkantys populiarų pasiūlymą stovėtų eilėje prie tų pačių eilučių. Su juo antras pirkėjas paima **kitus** laisvus raktus. Jei laisvų nebėra – gauna mažiau, nei prašė, ir viskas atšaukiama (`ROLLBACK`).
+- **Po užrakto Postgres dar kartą patikrina `WHERE`** naujausiai eilutės versijai, todėl raktas, kurį kažkas ką tik rezervavo ir patvirtino, nebus paimtas.
+- **Viena transakcija:** užsakymas, jo eilutės ir **visi** raktai arba atsiranda kartu, arba nieko (`ROLLBACK`). Pusiau rezervuoto krepšelio nelieka.
+- **Gali paklausti:** „Ar `SKIP LOCKED` gali praleisti raktą, kuris iš tikrųjų laisvas?" – gali trumpam: jei kitas pirkėjas jį užrakino, bet vėliau atšaukė. Tada gauname „nepavyko" ir klientas bando iš naujo; **dvigubo pardavimo** tai nesukelia, o tai ir yra svarbiausia.
+
+## Idempotentiškumo raktas (`CreateOrder`, `UNIQUE (user_id, idempotency_key)`)
+- **Ką daro:** klientas su kiekvienu *bandymu pirkti* siunčia naują UUID. Tas pats vartotojas su tuo pačiu raktu gauna **tą patį užsakymą** (`200` vietoj `201`), nieko antrą kartą nerezervuojama.
+- **Kodėl:** dvigubas paspaudimas, lėtas tinklas ir automatinis pakartojimas (naršyklė, tarpinis serveris) kitaip sukurtų du užsakymus ir rezervuotų dvigubai raktų.
+- **Kaip sprendžia lenktynes:** `INSERT … ON CONFLICT (user_id, idempotency_key) DO NOTHING`. Du vienodi užklausimai vienu metu: antras `INSERT` **laukia**, kol pirmoji transakcija baigsis, tada nieko nedaro, ir mes grąžiname pirmojo užsakymą. Sprendžia **duomenų bazės `UNIQUE`**, ne „pirma patikrinu, paskui įdedu" (tarp tų žingsnių vėlgi galėtų įsiterpti kitas). Todėl nereikia nei advisory lock'ų.
+- **Pakartojimas atsakomas iš išsaugoto užsakymo** net jei krepšelis dabar jau netiktų (pvz. paskutinis raktas jau užimtas – juk *tuo užsakymu*): pirmiausia ieškome esamo užsakymo ir tik tada tikriname kainas ir likutį.
+- **Raktas priklauso vartotojui:** `UNIQUE` yra poroje su `user_id`, todėl kito vartotojo to paties rakto užsakymas yra atskiras ir jo užsakymo pamatyti nepavyks.
+- **Mokėjimas taip pat idempotentiškas:** apmokėto užsakymo `pay` grąžina jį nepakeistą. Be to, dalinis `UNIQUE` indeksas `payments (order_id) WHERE outcome = 'succeeded'` DB lygiu neleidžia antro sėkmingo mokėjimo – net jei Go kodas suklystų.
+
+## Mokėjimas: užrakintas užsakymas ir „raktas vis dar mano" (`PayOrder`)
+- **Ką daro:** viena transakcija. Pirma `SELECT … FROM orders … FOR UPDATE` – užrakina užsakymo eilutę, todėl du vienu metu atėję `pay` (dvigubas paspaudimas) vykdomi **vienas po kito**: antras jau mato `paid`. Paskui `DecidePay` (grynoji funkcija) nusprendžia: apmokėtas → grąžinti; pasibaigęs/atšauktas → 409; pending, bet laikas praėjo → pažymėti `expired`, paleisti raktus, 409; `decline` → `payments` eilutė `declined`, 402 (užsakymas lieka pending); `success` → parduoti raktus.
+- **Prieš parduodant** užrakinami visi to užsakymo raktai, kurie vis dar `reserved`, priklauso **šiems** `order_item_id` ir nepasibaigę. Jų skaičius turi sutapti su užsakyto kiekio suma; jei ne – **nieko neparduodama**, užsakymas pažymimas `expired`. Tai antras saugiklis: pirmasis – laiko patikra.
+- **Kodėl reikia to saugiklio:** pasibaigusią rezervaciją kitas pirkėjas gali „perimti" (perrašo `order_item_id`). Jei senasis savininkas po to bandytų mokėti, jo `UPDATE` nerastų savo raktų ir **svetimo rakto niekada neparduotume**. Pasibaigus laikui tiek užsakymo, tiek raktų `reserved_until` sutampa, todėl realiai tai galėtų nutikti tik dėl dviejų serverių laikrodžių skirtumo – bet pinigų kelyje „realiai nenutiks" nepakanka.
+- **Atidavimas pagal savininką:** raktų paleidimas (`releaseKeys`) taip pat eina per `order_item_id` ir tik `status = 'reserved'` – perimto rakto ar parduoto rakto neliečia.
+- **Klaidos po `COMMIT`:** `decline` ir „per vėlu" keičia duomenis (mokėjimo eilutė, `expired`), todėl transakcija **patvirtinama**, ir tik tada grąžinama klaida (`commitThen`).
+
+## „Tingus" galiojimo pabaigos apdorojimas (`EffectiveStatus`)
+- **Ką daro:** jokia foninė užduotis nieko neišjungia. Rezervuotas raktas su `reserved_until` praeityje **laikomas laisvu**, o `GET` rodo `pending` užsakymą po `reserved_until` kaip `expired`. DB eilutė pakeičiama tik tada, kai kas nors realiai paliečia užsakymą (`pay`, `cancel`).
+- **Kodėl:** serverless'e (Vercel) nėra proceso, kuris „kas minutę praeitų per lentelę"; cron darbas – papildoma dalis, kurią reikia prižiūrėti. Taisyklė „pasibaigęs = laisvas" užtikrina teisingumą be jos (tą pačią naudoja ir katalogo likutis).
+- **Laikas įšvirkščiamas** (`Store.WithClock`): testai paslenka laikrodį +16 min. be `sleep`. Visi laiko palyginimai Go kode ir SQL parametruose naudoja tą patį laikrodį, ne DB `now()`, kad testas keistų viską vienodai.
+- **Gali paklausti:** „O jei Vercel serverio ir DB laikrodžiai skiriasi?" – keliomis sekundėmis nuo 15 minučių nesvarbu; svarbu tai, kad vienas užsakymas ir jo raktai naudoja tą pačią reikšmę.
+
+## Kodėl svetimas užsakymas – 404, ne 403 (`loadOrder`, `lockOrder`)
+- **Ką daro:** `user_id = $2` yra **pačioje užklausoje**, todėl svetimas užsakymas yra „nėra eilutės" – lygiai toks pat atsakymas kaip neegzistuojančiam ir kaip sugadintam id (`404 order not found`).
+- **Kodėl:** `403` pasakytų „toks užsakymas yra, bet ne tavo" – užpuolikas galėtų sužinoti, kurie id egzistuoja. Be to, `uuid` (ne `1, 2, 3`) neišduoda užsakymų skaičiaus.
+- **Raktai** tik savininkui ir tik apmokėtam užsakymui: DB skaitomi **tik** kai statusas `paid`, o JSON'e dar kartą filtruoja `VisibleKeys` (antras užraktas tos pačios durys). Nesumokėtam – `"keys": []`, niekada `null`.
+
+## K6 testas: du pirkėjai, vienas paskutinis raktas (`TestK6_twoBuyersOneLastKey`)
+- **Ką daro:** du vartotojai **vienu metu** (goroutine'ai, paleisti uždarius vieną `channel`) perka paskutinį pasiūlymo raktą, su tikromis transakcijomis tikroje Postgres. Kartojama 25 kartus, kiekvieną kartą su nauju pasiūlymu. Tikrinama: **tiksliai vienas** gauna užsakymą, kitas – `cart_changed` su `unavailable`; DB yra **vienas** rezervuotas raktas ir **vienas** užsakymas. Antras testas: 10 pirkėjų, 4 raktai – tiksliai 4 užsakymai ir 4 skirtingi `order_item_id`.
+- **Ką tai įrodo:** kad „nepardavimas dukart" yra DB savybė (užraktai), o ne sėkmė. Vienas bandymas galėtų praeiti ir su klaidingu kodu, jei lenktynės neįvyktų; 25 kartojimai su vienu starto signalu jas labai tikėtinai sukelia.
+- **Ko neįrodo:** nėra formalus įrodymas – tik stiprus testas; tikrąją garantiją duoda `FOR UPDATE SKIP LOCKED` semantika.
+- **Papildomi testai:** 6 vienodi `POST /api/orders` vienu metu (vienas užsakymas, viena rezervacija) ir 5 vienu metu `pay` (vienas `succeeded` mokėjimas, raktai parduoti vieną kartą).
+
+## Duomenų bazė: `orders`, `order_items`, `payments`, `keys.order_item_id` (`migrations/00005_orders.sql`)
+- **Ką daro:** žr. `docs/DATA_MODEL.md`. `orders.id` – UUID; `status` CHECK; `paid_at` yra **tada ir tik tada**, kai `paid`; `order_items` saugo kainos ir tekstų snapshot'us; `payments` – bandymai (gali būti keli `declined` ir vienas `succeeded`); `keys.order_item_id` – kas rezervavo / nupirko raktą.
+- **Kodėl taip:** taisyklės DB lygyje (`CHECK`, `UNIQUE`), nes DB yra paskutinė gynybos linija. Migracija **atgal suderinama** (naujos lentelės + nullable stulpelis): seną kodą, kuris veikia deploy metu, ji nepaliečia. Todėl prieš merge ją paleidžiame į production (CLAUDE.md).
+- **Kodėl `CHECK` ant `keys` tik viena kryptimi** (`available` ⇒ nėra `order_item_id`): seed turi `reserved` ir `sold` raktų be užsakymų (fono duomenys); „reserved/sold ⇒ yra užsakymas" juos atmestų.
+- **`order_items → orders` – `CASCADE`** (antra išimtis po `sessions`): eilutė be užsakymo neturi prasmės; tačiau užsakymo ištrinti vis tiek negalima, kol į jį rodo raktai ar mokėjimai.
+- **Seed `--reset` atsisako veikti, jei yra užsakymų** (`seedgen.ErrOrdersExist`): katalogas jų nebepaprasta perrašyti, o užsakymų istorijos seed'as tyliai ištrinti neturi.
+- **Gali paklausti:** „Kodėl `FOR SHARE` ant pasiūlymų?" – kad pardavėjas negalėtų pakeisti kainos tarp mūsų palyginimo ir `COMMIT`; keli pirkėjai tą užraktą dalijasi (suderinami), todėl nėra eilės.
+
+## Riba: ne daugiau kaip 3 neapmokėti užsakymai vienam vartotojui (`rules.go` → R10, `store.go` → `CreateOrder`)
+- **Ką daro:** vartotojas, kuris jau turi **3 `pending` užsakymus, kurių rezervacija dar nesibaigė**, ketvirtam `POST /api/orders` gauna `409 "Too many unpaid orders – pay or cancel one first"`. Apmokėjus, atšaukus arba pasibaigus galiojimui vieta atsilaisvina.
+- **Kodėl:** be ribos skriptas galėtų be galo kurti užsakymus ir rezervuoti **visus** pasiūlymo raktus po 15 min. – tikri pirkėjai nieko nebegautų („inventoriaus laikymas įkaitu"). Riba maža ir aiški, o keičia tik tai, ką galima rezervuoti vienu metu.
+- **Kodėl tikrinama transakcijos viduje ir užrakinama `users` eilutė:** riba remiasi skaičiavimu „kiek jau turiu". Jei du užklausimai vienam vartotojui ateitų vienu metu, **abu** suskaičiuotų, pvz., 2 ir **abu** praeitų – gautume 4 užsakymus. `SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE` priverčia tokius `create` vykdytis **vienas po kito**: antras palaukia, kol pirmas baigsis, tada skaičiuoja iš naujo ir mato 3. Naudojame `NO KEY UPDATE`, o ne `UPDATE`, nes jis nekonfliktuoja su išorinių raktų tikrinimu (pvz. su nauja sesija ar mūsų pačių `INSERT INTO orders`) – niekas kitas nestringa.
+- **Kodėl pakartotinė užklausa (tas pats idempotentiškumo raktas) vis tiek atsakoma:** ji nieko nekuria, o jei atmestume ties riba, vartotojas po dvigubo paspaudimo gautų klaidą vietoj savo užsakymo. Todėl eilė tokia: užrakinti vartotoją → ieškoti esamo užsakymo pagal raktą → tik tada skaičiuoti ribą.
+- **Kodėl pasibaigę užsakymai neskaičiuojami be jokio darbo:** skaičiuojame `reserved_until > $now` – ta pati „tingaus galiojimo" taisyklė kaip ir raktams.
+- **Testai:** vienetinis (`PendingCapReached`: 0–2 leidžia, 3+ ne), integracinis (3 sukuriami, 4-tas atmestas ir nieko nerezervuoja; atšaukimas, apmokėjimas ir pasibaigimas atlaisvina vietą; riba atskira kiekvienam vartotojui) ir **lygiagretus**: 8 gijos vienam vartotojui su skirtingais raktais, 5 raundai – visada tiksliai 3 užsakymai ir 3 rezervuoti raktai.
+- **Ko riba neapsaugo:** nėra užklausų dažnio ribojimo (per IP / per vartotoją); skriptas vis tiek gali greitai kurti ir atšaukti. Tai README „shortcuts" – tikra parduotuvė pridėtų dažnio ribas.
+- **Gali paklausti:** „Kodėl ne advisory lock?" – užtenka eilutės užrakto, ir jis susijęs su pačiu vartotoju; „kodėl 3?" – owner sprendimas: pakankamai, kad žmogus galėtų turėti kelis krepšelius, bet ne daug daugiau.

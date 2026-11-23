@@ -2,15 +2,15 @@
 
 The whole schema of the marketplace, designed once. The **catalog** tables exist
 (migration `00002_catalog.sql`, plus `game_aliases` for search from `00003_search_aliases.sql`), and so do the **auth** tables
-(`00004_auth.sql`, Task 14). The **commerce** tables are *planned*: they are
-created in their own task and must follow this document (or update it in the same PR).
+(`00004_auth.sql`, Task 14). The **commerce** tables (`00005_orders.sql`, Task 16a) are built as
+documented in [Commerce tables](#commerce-tables-created--migration-00005-task-16a).
 
 | Group | Tables | Status |
 |---|---|---|
 | Catalog | `platforms`, `regions`, `games`, `products`, `sellers`, `offers`, `keys` | **created** – migration `00002` |
 | Search | `game_aliases` | **created** – migration `00003` (Task 13a) |
 | Auth | `users`, `sessions`, `login_failures` | **created** – migration `00004` (Task 14) |
-| Commerce | `orders`, `order_items`, `payments` + column `keys.order_item_id` | planned – checkout task |
+| Commerce | `orders`, `order_items`, `payments` + column `keys.order_item_id` | **created** – migration `00005` (Task 16a) |
 
 Ground rules used everywhere:
 - **Money is integer cents, EUR only** (`price_cents integer`). Never `float`/`numeric` for money.
@@ -18,14 +18,12 @@ Ground rules used everywhere:
 - **Slugs** (`the-witcher-3-pc-global`) are the public, URL-friendly identifiers; numeric ids stay internal. Every slug column has the same CHECK `^[a-z0-9]+(-[a-z0-9]+)*$` (lowercase letters/digits, single `-` between groups) and is UNIQUE.
 - **Required text is never blank:** every required name/title/code has CHECK `btrim(x) <> ''` (`NOT NULL` alone still allows `''` or `'   '`). The only exception is `games.description`, where `''` deliberately means "no description".
 - **All timestamps are `timestamptz`, default `now()`**, so time zones are never ambiguous.
-- **Foreign keys are `ON DELETE RESTRICT`** (one deliberate exception: `sessions`). See [Why RESTRICT](#why-restrict-and-not-cascade).
+- **Foreign keys are `ON DELETE RESTRICT`** (two deliberate exceptions: `sessions` and `order_items`). See [Why RESTRICT](#why-restrict-and-not-cascade).
 - **Rules live in the database** (`NOT NULL`, `UNIQUE`, `CHECK`, FKs), not only in Go. See [Why CHECK in the DB](#why-check-constraints-in-the-database).
 - **Derived values are not stored** (P2): stock, cheapest price, discount % and the seller's tier label are computed (by queries or in Go).
 - Data access is hand-written `pgx` SQL (no ORM, no sqlc, P8). The sketches below are that SQL.
 
 ## ER diagram
-
-Planned tables are marked **(planned)**; the planned column `keys.order_item_id` is marked in its comment.
 
 ```mermaid
 erDiagram
@@ -94,7 +92,7 @@ erDiagram
         text status "available | reserved | sold"
         timestamptz reserved_until "nullable"
         timestamptz sold_at "nullable"
-        bigint order_item_id FK "PLANNED column, nullable"
+        bigint order_item_id FK "nullable: the order item that reserved or bought it"
         timestamptz created_at
     }
     users {
@@ -115,33 +113,34 @@ erDiagram
         integer attempt_count
         timestamptz window_start
     }
-    orders["orders (planned)"] {
+    orders {
         uuid id PK
         bigint user_id FK
-        text status "pending | paid | failed | expired"
+        text status "pending | paid | expired | cancelled"
         integer total_cents
-        uuid idempotency_key
-        timestamptz expires_at
-        timestamptz paid_at "nullable"
+        uuid idempotency_key "UNIQUE with user_id"
+        timestamptz reserved_until
         timestamptz created_at
-        timestamptz updated_at
+        timestamptz paid_at "nullable, set iff paid"
     }
-    order_items["order_items (planned)"] {
+    order_items {
         bigint id PK
         uuid order_id FK
         bigint offer_id FK
-        text product_title "snapshot"
-        text seller_name "snapshot"
+        integer quantity "1-5"
         integer unit_price_cents "snapshot"
-        integer quantity
-        timestamptz created_at
+        text product_slug "snapshot"
+        text product_title "snapshot"
+        text edition "snapshot"
+        text platform_name "snapshot"
+        text region_name "snapshot"
+        text seller_name "snapshot"
     }
-    payments["payments (planned)"] {
+    payments {
         bigint id PK
         uuid order_id FK
+        text outcome "succeeded | declined"
         integer amount_cents
-        text status "succeeded | declined"
-        text failure_reason "nullable"
         timestamptz created_at
     }
 
@@ -278,7 +277,7 @@ One seller's price for one product.
 
 - **UNIQUE `(product_id, seller_id)`** (`offers_product_seller_key`): one offer per seller per product – a seller changes their price, they do not add a second offer. Its first column also serves the FK from `products`.
 - **Partial index `offers_active_product_price_idx ON offers (product_id, price_cents) WHERE is_active`:** exactly the product-page query ("active offers of this product, cheapest first") – the index returns the rows already in price order (verified: index scan, no Sort step); and `MIN(price_cents)` per product for the listing. Inactive offers are never read by the store, so they are not in the index.
-- **Trigger `offers_set_updated_at`** (`BEFORE UPDATE … FOR EACH ROW`) calls the small function `set_updated_at()`, which sets `NEW.updated_at := now()`. Generic, so later tables (e.g. `orders`) reuse it. Note: inside one transaction `now()` is the transaction start time.
+- **Trigger `offers_set_updated_at`** (`BEFORE UPDATE … FOR EACH ROW`) calls the small function `set_updated_at()`, which sets `NEW.updated_at := now()`. Generic, so a later table can reuse it (the checkout tables did not need it). Note: inside one transaction `now()` is the transaction start time.
 - Not indexed on purpose (decided): `seller_id` alone – there is no "offers of a seller" page; add an index when one appears.
 
 ### `keys`
@@ -293,13 +292,16 @@ One activation code. **Stock = number of sellable keys** (P2).
 | `reserved_until` | `timestamptz`, null | set while reserved; **a past value = the reservation expired = the key is sellable again** (P3) |
 | `sold_at` | `timestamptz`, null | when it was sold |
 | `created_at` | `timestamptz` NN, default `now()` | |
-| `order_item_id` | *planned* `bigint`, null, FK → `order_items` | which order item reserved/bought it (added in the checkout task) |
+| `order_item_id` | `bigint`, null, FK → `order_items` RESTRICT (migration `00005`) | which order item reserved/bought it: a reservation has an explicit owner. NULL = nobody |
 
 Constraints:
 - **UNIQUE `(offer_id, code)`** – the same code cannot be uploaded twice into one offer; first column also serves the FK from `offers`.
 - **`keys_reserved_until_only_when_reserved`:** `reserved_until` is set **if and only if** `status = 'reserved'`.
 - **`keys_sold_at_only_when_sold`:** `sold_at` is set **if and only if** `status = 'sold'`.
   These two make impossible combinations ("available but reserved until 18:00", "sold but no sale time") unrepresentable.
+- **`keys_available_has_no_order_item`** (migration `00005`): `status <> 'available' OR order_item_id IS NULL` - an available key belongs to nobody.
+  One direction only on purpose: the seed contains `reserved` and `sold` keys that were never part of an order (background data), so "reserved/sold implies order item set" would reject the seed.
+- **Index `keys_order_item_id_idx ON keys (order_item_id) WHERE order_item_id IS NOT NULL`:** "the keys of this order" and the RESTRICT check; partial because most keys never belong to an order.
 
 **Partial index `keys_unsold_offer_idx ON keys (offer_id, reserved_until) WHERE status <> 'sold'`:**
 - "Sellable" means `available` **or** `reserved` with an expired `reserved_until`. `now()` cannot be used in an index predicate (it must be immutable), so the index holds every **unsold** key and the query checks the expiry on `reserved_until`.
@@ -347,37 +349,37 @@ Constraints:
 - **Fixed window:** it starts at the first attempt; after 15 minutes the next attempt deletes the old row and starts again at 1. The same batch deletes every ended window, so the table does not keep rows for one-off typos.
 - **Trade-off (known):** anyone who knows an email can lock its password sign-in for 15 minutes (existing sessions keep working). See the Task 14 report, open questions.
 
-## Commerce tables (planned – checkout task)
+## Commerce tables (created – migration `00005`, Task 16a)
 
 **The cart lives in the browser** (decided) – there is no cart table. At checkout the frontend sends
-the list of `(offer_id, quantity)`; the server re-reads prices from `offers` (never trusts client
+the list of `(offerId, quantity, expectedPriceCents)`; the server re-reads prices from `offers` (never trusts client
 prices) and creates the order. Reservations last **15 minutes** (decided).
+Backward compatible (expand): three new tables and one new nullable column; the code deployed while the migration runs never touches them.
 
 ### `orders`
 | Column | Type | Why |
 |---|---|---|
 | `id` | `uuid` PK, default `gen_random_uuid()` | appears in URLs; not guessable, does not reveal the order count |
 | `user_id` | `bigint` NN, FK → `users`, RESTRICT | orders are financial records – a user with orders is not hard-deleted |
-| `status` | `text` NN, default `'pending'`, CHECK `IN ('pending','paid','failed','expired')` | state machine below |
-| `total_cents` | `integer` NN, CHECK `> 0` | sum of the items at checkout time |
-| `idempotency_key` | `uuid` NN | sent by the client (one per checkout attempt); **UNIQUE `(user_id, idempotency_key)`** – a double click or a network retry returns the *same* order instead of reserving keys twice |
-| `expires_at` | `timestamptz` NN | = the keys' `reserved_until`; after it the order can no longer be paid |
-| `paid_at` | `timestamptz`, null | CHECK: set **iff** `status = 'paid'` |
-| `created_at`, `updated_at` | `timestamptz` NN, default `now()` | `updated_at` via the same `set_updated_at()` trigger |
+| `status` | `text` NN, default `'pending'`, CHECK `IN ('pending','paid','expired','cancelled')` | state machine below |
+| `total_cents` | `integer` NN, CHECK `> 0` | sum of `unit_price_cents x quantity`, computed by the server from the database prices |
+| `idempotency_key` | `uuid` NN | sent by the client (one per checkout attempt); **UNIQUE `(user_id, idempotency_key)`** – a double click or a network retry returns the *same* order instead of reserving keys twice. Per user, so one user can never reach another's order by guessing a key |
+| `reserved_until` | `timestamptz` NN | `created_at + 15 minutes` = the keys' `reserved_until`; after it the order can no longer be paid |
+| `created_at` | `timestamptz` NN, default `now()` | the application passes its (injectable) clock, so tests can move time |
+| `paid_at` | `timestamptz`, null | CHECK `orders_paid_at_only_when_paid`: set **iff** `status = 'paid'` |
 
-Index: `(user_id, created_at DESC)` for "my orders".
+Index `orders_user_created_idx (user_id, created_at DESC)` for "my orders, newest first".
+Differences from the earlier plan: no `updated_at` (nothing needs it), and `reserved_until` instead of `expires_at` (the same name as on `keys`).
 
 ### `order_items`
 | Column | Type | Why |
 |---|---|---|
-| `id` | `bigint` identity, PK | |
-| `order_id` | `uuid` NN, FK → `orders`, RESTRICT | |
-| `offer_id` | `bigint` NN, FK → `offers`, RESTRICT | which seller's offer was bought |
-| `product_title` | `text` NN, CHECK not blank | **snapshot** ("The Witcher 3 – PC – Global – Standard"): the order must look the same even if the catalog changes later |
-| `seller_name` | `text` NN, CHECK not blank | **snapshot** of who sold it, for the same reason (a seller can be renamed) |
+| `id` | `bigint` identity, PK | keys point to it (`keys.order_item_id`) |
+| `order_id` | `uuid` NN, FK → `orders`, **ON DELETE CASCADE** | the second CASCADE (decided): an item has no meaning without its order; deleting an order is still blocked while a key or a payment points at it |
+| `offer_id` | `bigint` NN, FK → `offers`, RESTRICT | which seller's offer was bought; index `order_items_offer_id_idx` for the RESTRICT check |
+| `quantity` | `integer` NN, CHECK `BETWEEN 1 AND 5` | number of keys (the same limit as the API) |
 | `unit_price_cents` | `integer` NN, CHECK `> 0` | **snapshot** of the price paid; the offer's price may change tomorrow |
-| `quantity` | `integer` NN, CHECK `> 0` | number of keys |
-| `created_at` | `timestamptz` NN, default `now()` | |
+| `product_slug`, `product_title`, `edition`, `platform_name`, `region_name`, `seller_name` | `text` NN, CHECK not blank (one constraint) | **snapshots**: the order must look the same even if the catalog changes later (a seller is renamed, a platform is renamed) |
 
 UNIQUE `(order_id, offer_id)` – one line per offer in an order (more keys = higher `quantity`).
 
@@ -386,24 +388,22 @@ Simulated payment attempts (P4). A separate table because one order can have **s
 ("declined" → the user retries).
 
 **No card data at all** (decided): there is no card form and no card column. The payment step is a
-simple choice **"Mock payment: Success / Decline"**; the choice decides the attempt's `status`. Nothing
+simple choice **"Mock payment: Success / Decline"** (`outcome` in the API); the choice decides the attempt's `outcome`. Nothing
 sensitive is collected or stored, so no PCI concerns.
 
 | Column | Type | Why |
 |---|---|---|
 | `id` | `bigint` identity, PK | |
-| `order_id` | `uuid` NN, FK → `orders`, RESTRICT | |
-| `amount_cents` | `integer` NN, CHECK `> 0` | |
-| `status` | `text` NN, CHECK `IN ('succeeded','declined')` | the user's mock choice: Success → `succeeded`, Decline → `declined` |
-| `failure_reason` | `text`, null | e.g. "Declined (mock payment)"; CHECK: set only when declined |
+| `order_id` | `uuid` NN, FK → `orders`, RESTRICT | payment history is never deleted with an order |
+| `outcome` | `text` NN, CHECK `IN ('succeeded','declined')` | Success → `succeeded`, Decline → `declined` |
+| `amount_cents` | `integer` NN, CHECK `> 0` | the order total at that moment |
 | `created_at` | `timestamptz` NN, default `now()` | |
 
-- Index `(order_id)`.
-- **Partial UNIQUE `(order_id) WHERE status = 'succeeded'`:** at most one successful payment per order – a double charge is impossible at the database level.
+- Index `payments_order_id_idx (order_id)`.
+- **Partial UNIQUE `payments_one_success_per_order (order_id) WHERE outcome = 'succeeded'`:** at most one successful payment per order – a double charge is impossible at the database level, whatever the Go code does.
 
-### Planned change to `keys` (checkout task)
-`ALTER TABLE keys ADD COLUMN order_item_id bigint NULL REFERENCES order_items (id) ON DELETE RESTRICT;`
-+ CHECK `(status = 'available') = (order_item_id IS NULL)` + index on `order_item_id` ("keys of my order").
+### Change to `keys`
+`ALTER TABLE keys ADD COLUMN order_item_id bigint REFERENCES order_items (id)` (RESTRICT) + the CHECK and the partial index described under [`keys`](#keys).
 A nullable column added to an existing table → backward compatible (expand).
 
 ## State machines
@@ -412,28 +412,28 @@ A nullable column added to an existing table → backward compatible (expand).
 ```mermaid
 stateDiagram-v2
     [*] --> available : seller uploads the key
-    available --> reserved : checkout (status, reserved_until = now() + 15 min)
-    reserved --> sold : payment succeeded (sold_at = now(), reserved_until = NULL)
-    reserved --> available : order failed / cancelled (reserved_until = NULL)
-    reserved --> reserved : reservation EXPIRED and another checkout takes it
+    available --> reserved : create order (reserved_until = now + 15 min, order_item_id = the item)
+    reserved --> sold : payment succeeded (sold_at = now, reserved_until = NULL)
+    reserved --> available : order cancelled / expired (reserved_until = NULL, order_item_id = NULL)
+    reserved --> reserved : reservation EXPIRED and another order takes it (new reserved_until, new order_item_id)
     sold --> [*]
 ```
-- **Expiry needs no job (P3):** an expired reservation stays `status = 'reserved'` with a past `reserved_until`. Every "sellable" query treats `reserved_until < now()` as available, so the next checkout simply takes it (and overwrites `reserved_until` and, later, `order_item_id`).
-- **Who owns a reserved key?** The order item in `order_item_id`. A payment is accepted only before the order's `expires_at`; as a second safety, keys are sold with `WHERE order_item_id = $item AND status = 'reserved'`. If another checkout already took one of the keys (its reservation had expired), fewer rows match, the transaction is rolled back and the order is marked `expired` – someone else's key is never sold.
+- **Expiry needs no job (P3):** an expired reservation stays `status = 'reserved'` with a past `reserved_until`. Every "sellable" query treats `reserved_until < now` as available, so the next order simply takes it and **overwrites** `reserved_until` and `order_item_id`.
+- **Who owns a reserved key?** The order item in `order_item_id`. Every statement that releases or sells keys matches on it: *release* is `WHERE status = 'reserved' AND order_item_id IN (items of this order)`; *sell* locks `WHERE order_item_id IN (items of this order) AND status = 'reserved' AND reserved_until > now` and requires the count to equal the order's total quantity. If another order already took a key over, that key carries the other item's id: the old owner's release leaves it alone, and the old owner's payment finds fewer keys than it needs and **sells nothing** - the order expires instead. Someone else's key is never sold, and a sold key is never released.
 
 ### Order
 ```mermaid
 stateDiagram-v2
-    [*] --> pending : checkout (keys reserved)
+    [*] --> pending : create order (keys reserved for 15 min)
     pending --> pending : payment declined (user may retry)
-    pending --> paid : payment succeeded (keys sold)
-    pending --> failed : cancelled / unrecoverable error (keys released)
-    pending --> expired : expires_at passed (noticed on next read or payment attempt)
+    pending --> paid : payment succeeded (keys sold, paid_at set)
+    pending --> cancelled : user cancels (keys released)
+    pending --> expired : reserved_until passed (shown on read, stored when pay / cancel finds it)
     paid --> [*]
-    failed --> [*]
+    cancelled --> [*]
     expired --> [*]
 ```
-`paid`, `failed`, `expired` are final. `expired` is set lazily (when the order is read or paid after `expires_at`); until then the order is "pending but past expiry", which the code treats the same way.
+`paid`, `cancelled`, `expired` are final. `expired` is lazy: a pending order past `reserved_until` is *shown* as `expired` by every read (list, get), and *stored* as `expired` (with its keys released) the moment a pay or cancel request finds it. Paying a paid order is not a transition: it returns the order unchanged. In every transaction that changes an order, the order row is locked first (`SELECT … FOR UPDATE`), so two requests on one order (a double click) run one after the other.
 
 ## Query sketches
 
@@ -441,7 +441,7 @@ SQL that the Go code (hand-written `pgx`) runs. User input is never concatenated
 query parameters (`$n`; in `pkg/catalog` written as named parameters `@name`, which pgx rewrites to `$n`).
 Sketches 1, 1b and 2 are **implemented in `pkg/catalog/store.go`** (Task 09) and tested against the
 deterministic seed (`pkg/catalog/store_integration_test.go`, run in CI); sketch 4 (search) is implemented in
-`pkg/catalog/search.go` (Task 13a); sketch 3 is still a plan for the checkout task. The "sellable key" condition appears in all of them:
+`pkg/catalog/search.go` (Task 13a); sketch 3 (reserve keys) and 3b (pay) in `pkg/orders/store.go` (Task 16a, tested against a real Postgres in CI). The "sellable key" condition appears in all of them:
 
 ```sql
 k.status <> 'sold' AND (k.reserved_until IS NULL OR k.reserved_until < now())
@@ -595,31 +595,56 @@ ORDER BY o.price_cents, o.id;
 - `offers_active_product_price_idx` returns the offers already in price order; each `stock` count is an index-only scan of `keys_unsold_offer_idx`. The product header (title, cover, platform …) is a separate one-row query.
 - `GET /api/products/{slug}` sends three queries as one pgx batch: the header (no row -> `404`), these offers, and the **variants** (the other products of the same game, `JOIN products v ON v.game_id = p.game_id AND v.id <> p.id`, each with its own cheapest buyable price from the same `product_stats` CTE as the listing). The product's own `priceCents` is simply the first offer. The seller tier label and `isNew` (rating `NULL`) are made in Go.
 
-### 3. Reserve N keys of one offer (checkout)
+### 3. Reserve N keys of one offer (checkout, implemented in `pkg/orders/store.go` → `reserveKeys`)
 ```sql
--- inside the checkout transaction (BEGIN … COMMIT); $1 offer id, $2 quantity
+-- inside the create-order transaction (BEGIN … COMMIT)
+-- $1 offer id, $2 now (the application's clock), $3 quantity, $4 now + 15 minutes, $5 order item id
 WITH picked AS (
     SELECT id
     FROM keys
     WHERE offer_id = $1
       AND status <> 'sold'
-      AND (reserved_until IS NULL OR reserved_until < now())  -- expired = available (P3)
+      AND (reserved_until IS NULL OR reserved_until < $2)  -- expired = available (P3)
     ORDER BY id                       -- oldest keys first
-    LIMIT $2
+    LIMIT $3
     FOR UPDATE SKIP LOCKED            -- lock the picked rows; skip rows another checkout holds
 )
 UPDATE keys k
 SET status         = 'reserved',
-    reserved_until = now() + interval '15 minutes'
-    -- checkout task adds: , order_item_id = $3
+    reserved_until = $4,
+    order_item_id  = $5               -- the explicit owner of the reservation
 FROM picked
-WHERE k.id = picked.id
-RETURNING k.id;
+WHERE k.id = picked.id;               -- rows affected = keys actually reserved
 ```
-- If fewer than `$2` rows come back → `ROLLBACK` and answer "not enough stock". Nothing half-reserved remains.
+- If fewer than `$3` rows are affected → the whole order is rolled back (nothing half-reserved remains) and the answer is `409 cart_changed` with the line marked `quantity_reduced` / `unavailable`.
 - **`FOR UPDATE`** locks the chosen rows until the transaction ends, so two buyers can never get the same key.
 - **`SKIP LOCKED`**: a second buyer at the same moment does not *wait* for the first one's locks – they skip those rows and take the next free keys. Without it, all concurrent checkouts of a popular offer would queue on the same rows.
 - After locking, Postgres re-checks the `WHERE` on the newest row version, so a key that someone else reserved and committed in the meantime is not taken.
+- **Why not `SELECT` a key, then `UPDATE` it:** between the two statements another transaction can select the same key, and both then "reserve" it (the second `UPDATE` just overwrites the first). Locking in the same statement that picks closes that gap.
+- The time is the **application's clock** (`$2`, `$4`), not `now()`: the tests move it to simulate expiry. Production uses the server clock; the few seconds it may differ from the database clock are irrelevant next to 15 minutes.
+
+The whole create-order transaction (`CreateOrder`): (0) lock the user's row (`SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE`) so two creates of one user run one after the other;
+(1) is there already an order for this `(user, idempotency key)`? return it (also when the user is at the cap: a retry creates nothing);
+(1b) `SELECT count(*) FROM orders WHERE user_id = $1 AND status = 'pending' AND reserved_until > $now` - at 3 or more the create is refused (`409`, rule R10: at most 3 unpaid orders per user). The user-row lock is what makes the count trustworthy: without it two parallel creates both count 2 and both pass. `NO KEY UPDATE` conflicts with itself but not with the foreign-key checks other statements take on that row; the count uses the existing index `orders_user_created_idx (user_id, …)`;
+(2) read the offers `FOR SHARE` (a seller cannot change the price until we commit; many buyers can share the lock);
+(3) `INSERT INTO orders … ON CONFLICT (user_id, idempotency_key) DO NOTHING` - two identical requests at once: the second waits for the first, then does nothing and returns the first one's order;
+(4) per line: insert the order item (snapshots), then reserve its keys as above;
+(5) if any line differs from what the client expected, or got fewer keys than it wanted → `ROLLBACK` and report every line; else `COMMIT`.
+
+### 3b. Pay (`PayOrder`) - one transaction, the order row locked
+```sql
+SELECT status, reserved_until, total_cents FROM orders WHERE id = $1 AND user_id = $2 FOR UPDATE;   -- not yours = no row = 404
+-- paid -> return it | expired / cancelled -> 409 | pending but reserved_until <= now -> UPDATE orders SET status='expired' + release keys, then 409
+-- decline -> INSERT INTO payments (…, 'declined', …), commit, 402
+-- success:
+SELECT k.id FROM keys k JOIN order_items oi ON oi.id = k.order_item_id
+WHERE oi.order_id = $1 AND k.status = 'reserved' AND k.reserved_until > $now ORDER BY k.id FOR UPDATE OF k;
+-- the count must equal SUM(order_items.quantity), else nothing is sold and the order expires; then:
+UPDATE keys SET status = 'sold', sold_at = $now, reserved_until = NULL WHERE id = ANY($ids);
+UPDATE orders SET status = 'paid', paid_at = $now WHERE id = $1;
+INSERT INTO payments (order_id, outcome, amount_cents, created_at) VALUES ($1, 'succeeded', $total, $now);
+```
+Key codes are read back (`SELECT code FROM keys WHERE order_item_id = ANY(…) AND status = 'sold'`) **only** when the order is paid.
 
 ### 4. Search: title + aliases, typos allowed (Task 13a, `pkg/catalog/search.go`)
 `GET /api/products?q=…` (items and facets) and `GET /api/search/suggest?q=…` share these CTEs.
@@ -675,9 +700,10 @@ game_matches AS (         -- one row per game: its BEST term decides the rank
 
 ## Why RESTRICT and not CASCADE
 `ON DELETE CASCADE` would turn one mistaken `DELETE FROM games` into the silent loss of its products,
-offers, keys – and later order history. `RESTRICT` makes such a delete fail with an error; data that
-is referenced must be retired explicitly (e.g. `offers.is_active = false`). The only CASCADE is
-`sessions → users`: sessions are throw-away login state.
+offers, keys – and order history. `RESTRICT` makes such a delete fail with an error; data that
+is referenced must be retired explicitly (e.g. `offers.is_active = false`). The only CASCADEs are
+`sessions → users` (sessions are throw-away login state) and `order_items → orders` (an item is part of its order; the order itself
+cannot be deleted while keys or payments reference it).
 
 ## Why CHECK constraints in the database
 The Go code will validate input too (for friendly error messages), but the database is the last line
@@ -690,7 +716,7 @@ can trust the data without re-checking it.
 - **Multi-currency:** a `currency char(3)` next to every amount, prices per currency or FX rates with the rate snapshot on the order; today everything is EUR cents.
 - **Cache the cheapest price / stock** at scale: a `product_stats` table or materialized view refreshed by triggers/events, or a search engine (Elasticsearch/Meilisearch) for listing, filtering and search; today they are computed per request (P2) – correct and simple at this size.
 - **Keyset pagination** (`WHERE (price, id) > ($last_price, $last_id)`) instead of `OFFSET`, which gets slower on deep pages.
-- **Background job** to mark expired orders and release reservations eagerly (for reporting), instead of only lazy expiry.
+- **Background job** to mark expired orders and release reservations eagerly (for reporting), instead of only lazy expiry; and a clean-up of old demo users together with their orders (today nothing is ever deleted).
 - **Real payment provider** with webhooks, idempotent payment intents and refunds; seller payouts, fees, VAT.
 - **Audit/history** tables (price history, key status changes), soft deletes, and partitioning or archiving of sold keys.
 - **Seller accounts** with their own auth, key upload API and per-seller stock limits.
