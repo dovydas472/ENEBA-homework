@@ -139,8 +139,8 @@ Reference: headless Edge, one load per page and width of `eneba.com/`, `/store/a
 - **DESIGN.md `lang` line corrected** (`en`, as in `index.html`) – a pre-existing documentation error found during this pass.
 
 ## 6. Open questions
-- Should the README embed some of `docs/screenshots/` now, or in the planned README task?
-- Is the remaining Home LCP (~2.7 s locally) acceptable, or should a later task look at heavier options (a prerendered shell)?
+- Should the README embed some of `docs/screenshots/` now, or in the planned README task? **Owner's answer: in Task 18** – nothing changed here.
+- Is the remaining Home LCP (~2.7 s locally) acceptable, or should a later task look at heavier options (a prerendered shell)? **Owner's answer: ~2.7 s locally is accepted; no prerendered shell.**
 
 ### Parity pass – what intentionally differs from eneba.com
 - **Home:** Eneba's phone banner is a row of four portrait promo cards; ours is the 16:9 carousel + tiles (Task 15 decision). Not copied or no such feature: promo art, the "Black Friday" countdown popup, the cookie and location popups, wishlist hearts, the language / currency switcher, cashback, gift-card rows.
