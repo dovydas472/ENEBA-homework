@@ -25,10 +25,6 @@
   font-weight: var(--font-weight-bold);
 }
 
-.soldBy {
-  color: var(--color-text-muted);
-}
-
 .title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);

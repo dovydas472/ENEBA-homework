@@ -38,10 +38,6 @@
   line-height: var(--line-height-snug);
 }
 
-.soldBy {
-  color: var(--color-text-muted);
-}
-
 .title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);

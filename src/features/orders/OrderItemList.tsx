@@ -22,9 +22,7 @@ export function OrderItemList({ items, renderExtra }: OrderItemListProps) {
         <li key={item.offerId} className={styles.item}>
           <div className={styles.head}>
             <div className={styles.info}>
-              <p className={styles.seller}>
-                <span className={styles.soldBy}>Sold by</span> {item.sellerName}
-              </p>
+              <p className={styles.seller}>Sold by {item.sellerName}</p>
               <h2 className={styles.title}>
                 <Link to={`/product/${item.productSlug}`}>{item.title}</Link>
               </h2>

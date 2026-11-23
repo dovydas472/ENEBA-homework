@@ -52,7 +52,7 @@ Rules for every future UI task:
 
 | Code | Meaning |
 |---|---|
-| **S** | Computed style read from the live page with a headless browser (Edge) on **2026-11-20**. S1 = `/store/all` at 1440 px, S2 = a product page, S3 = same store page at 390 px. **S4** = re-measured on **2026-11-21** for Task 11b (header, store page with and without a platform filter, drawer, menu, footer; 1440 and 390 px). **S5** = product pages re-measured on **2026-11-22** for Task 12 (two multi-seller pages, 1440 and 390 px) |
+| **S** | Computed style read from the live page with a headless browser (Edge) on **2026-11-20**. S1 = `/store/all` at 1440 px, S2 = a product page, S3 = same store page at 390 px. **S4** = re-measured on **2026-11-21** for Task 11b (header, store page with and without a platform filter, drawer, menu, footer; 1440 and 390 px). **S5** = product pages re-measured on **2026-11-22** for Task 12 (two multi-seller pages, 1440 and 390 px). **S6** = the cart page `eneba.com/checkout` on **2026-11-23** for Task 16b (one and two items, 1440 and 390 px) |
 | **C** | Rule found in Eneba's published CSS bundles (`static.eneba.games/main.*.css` and the page chunks). Class names are hashed, so the rule is identified by what it styles |
 | **D** | Derived by us (Eneba has no equivalent we could read). Built only from other tokens |
 | **A** | Adjusted by us for accessibility; the original is noted |
@@ -78,6 +78,7 @@ Eneba's "dark theme" is **deep purple**, not neutral black. Page `#4618ac`, pane
 | `--color-backdrop` | `rgba(0,0,0,.4)` | dims the page behind the filter drawer | S4 drawer overlay (Task 11b) |
 | `--color-border-dark` | `#1f0a4d` | 1px bottom line of the phone header | S4 mobile `header` border (Task 11b) |
 | `--color-skeleton` (`-shine`) | `rgba(255,255,255,.1)` (`.2`) | loading placeholder | D |
+| `--color-surface-line` | `rgba(0,0,0,.12)` | one cart / order line inside a `--color-bg-deep` panel | S6 `eneba.com/checkout` cart line `li` (Task 16b) |
 | `--color-text` | `#fff` | text, headings, prices | S1 |
 | `--color-text-muted` | `rgba(255,255,255,.7)` | counts, hints | S1 filter counts |
 | `--color-text-subtle` | `#b3aac9` | "From", old price, placeholder | S1 "From" label; C placeholder rule |
@@ -176,6 +177,9 @@ Added in Task 12 (S5, product page): `--product-cover-width` 224px (72px = `--pr
 Added in Task 13b (header search suggestions, measured on eneba.com): `--suggestion-cover-width` 72px (cover in a suggestion row, 4.13).
 Added in Task 14 (auth): `--auth-panel-width` 380px (sign-in / sign-up panel = Eneba's 300px column + 2 × 40px padding, S), `--account-menu-width` 240px
 (header account popup, D) and `--account-name-max-width` 180px (a long email in the header button is cut with "…", D).
+Added in Task 16b (cart / payment / order pages, measured on `eneba.com/checkout`, S6): `--checkout-max-width` 1010px (635px list panel + 20px + 355px side panel),
+`--checkout-side-width` 355px (Summary / Payment panel), `--cart-cover-width` 90px (cart line cover; 50px = `--cart-cover-width-sm` ≤600px) and
+`--key-action-min-width` 90px ("Reveal" / "Hide" / "Copy" next to a key keep one width so the key boxes line up, D).
 
 ---
 
@@ -328,8 +332,43 @@ No social links, app badges, newsletter or locale button (we have none).
 
 ### 3.6 Cart and sign-in
 
-**Cart: not researched** (not a fetchable page; some probes returned HTTP 429, so we stopped). Until the owner supplies screenshots, build it from the same
-components: a list of offer-row-like rows on `--color-surface-row` with a summary panel on `--color-surface` and a primary button.
+**Cart (Task 16b, S6, measured on `eneba.com/checkout`).** Reached as a user does: a product page → "Add to cart" → the header cart button (a popup on desktop with
+"View cart" / "Checkout now"; on phones it opens `/checkout` directly). Eneba's cart page has its own header with three steps (Cart · Payment · Get your product).
+At 1440px the content is **1010px wide and centred**: a **635px "My cart" panel** and, 20px to the right, a **355px column** with "Where to deliver the order?" (an email field)
+above the **"Summary" panel**; both panels `#351183` (= `--color-bg-deep`).
+- "My cart": padding 20, title 18px bold, then the lines 10px apart. A **line** = `rgba(0,0,0,.12)`, 127px tall, padding `10 20 5 0`; a **90×127 cover** flush left, 20px to the text:
+  "Sold by {seller}" (12px bold white, with the seller's logo), title (14px/20px bold, a link), "Digital product ⓘ" (12px, 70% white), **"− 1 +"** (16px semibold, 85×25) and the price
+  (**unit** price, 14px bold) on one row at the bottom; heart + trash icons (70% white) in the top-right corner; "Cashback: €2.82" (12px lime) under it.
+- "Summary": padding 25 30; title 18px bold; the yellow **"Proceed to checkout"** (full width, 35px) comes FIRST, then "2 products €35.73" (12px, the amount 14px bold), "Service fee",
+  a line, "Total:" (16px bold) with the amount at **30px bold**, cashback, two consent checkboxes, a discount-code fold and a Trustpilot row.
+- Phone (390px): one column, everything edge to edge on `--color-bg-deep`; lines with padding `20 20 10` and a **50×71 cover**; the Summary on `#2c0e6c`.
+
+**As built (`src/features/checkout/CartView.tsx`, `CartLineItem.tsx`, `CheckoutLayout.module.css`):** inside our normal layout (header and footer stay), the same two panels:
+`--checkout-max-width` (1010px) centred, list panel + `--checkout-side-width` (355px) side panel, `--space-4` apart, both `--color-bg-deep`; one column at ≤930px; edge to edge at ≤600px.
+- "My cart" (`h1`, `--font-size-section` bold); a `role="status"` line in `--color-warning` ("Some items changed since you added them…") when any line has a notice.
+- A line: `--color-surface-line`, `--cart-cover-width` cover (90px; `--cart-cover-width-sm` 50px and padding `20 20 10` ≤600px), "Sold by {seller}" 12px bold, the title as an `h2` link (14px bold),
+  the edition (only when not "Standard") and "platform · region" in 12px muted, the **notices** (12px bold with an alert icon: `--color-warning` for "Price updated: €x → €y" /
+  "Only N left – quantity reduced", `--color-error` for "No longer available"), then the stepper (`QuantityStepper`, 24px buttons, 40px ≤600px; − disabled at 1, + at min(stock, 5))
+  and the **line total** (owner decision; Eneba shows the unit price) with "€x each" under it when the quantity is above 1. Trash icon (muted, accent on hover) top-right.
+  An **unavailable** line: cover and texts at `--opacity-dimmed`, no stepper and no price, only the trash icon.
+- "Summary": `h2`, the primary **"Checkout"** first (full width, as Eneba), a muted note when signed out ("You will be asked to sign in first…"), an error box if checkout failed,
+  "N products  €x" and "Total:" with the 30px (`--font-size-4xl`) amount above a `--color-border` line. Lines that are no longer available are left out of both.
+- Empty cart: the empty state (4.9) as `h1` "Your cart is empty" + primary "Browse the store".
+- **Not copied:** Eneba's step header, the email field (we have accounts), heart/wishlist, seller logos, "Digital product ⓘ", cashback, service fee, consent checkboxes,
+  discount codes, donation block, Trustpilot, "Inspired by your picks".
+
+**Payment page (`/checkout/:orderId`, D — Eneba's step 2 needs an email and shows real payment methods):** the same two panels. Left: "Your order" with the order items
+(the line look without cover or stepper: "1 × €12.49" muted over the line total). Right: "Payment" — "Reserved for **mm:ss**" (16px bold, the time `--color-accent` in the tabular font,
+`role="timer"`), a muted note, the **simulated payment box** (a `<fieldset>` with a 1px **dashed** `--color-accent` outline and its legend on the border, "Simulated payment – no real money,
+no card details", 14px bold accent; two radios "Success" / "Decline" with the SortRadios look, 4.6), the primary **"Pay €X"**, an error box for a decline, the total, and a secondary
+**"Cancel order"**. **No card number / CVC / expiry fields anywhere** (owner rule). Expired or cancelled: the empty state with "Back to cart".
+
+**Orders (`/orders`) and one order (`/orders/:id`), D — Eneba's account pages need a real purchase:** the list is one `--color-bg-deep` panel as wide as the cart ("My orders"), rows in the
+line look; each row is ONE link (so it has the `--color-surface-hover` hover): "Order #0B9F2C1E" (14px bold), date · item count (12px muted), the **status pill**, the total, and
+"Complete payment" (pending → payment page) or "View" (accent, chevron). Status pill: 1px outline in the text colour, 12px bold, `--radius-pill`: Paid `--color-secondary`,
+Pending payment `--color-warning`, Expired / Cancelled `--color-text-muted` (the word is always written). The order page uses the cart layout: title + pill, the items, and for a paid
+order each key in a sunken box (input look, 4.2) **masked** as `DEMO-••••-••••-••••` with **"Reveal"** (`aria-pressed`, becomes "Hide") and **"Copy"** (accent text buttons with icons,
+`--key-action-min-width`); a "Copied" toast. The side panel: "Ordered" / "Paid" times, the total, "Complete payment" for a pending order, a sentence for expired / cancelled, "All orders".
 
 **Sign-in / sign-up (Task 14, measured on `my.eneba.com/login` at 1440 and 390 — the page loaded without a challenge this time).** Eneba's sign-in is a separate site
 with no shop header: dark page (`#1f0a4e`), a big "Hi! It's nice to see you!" on the left, and on the right a **380px panel** (`#4618ac`, 40px padding → 300px column):
@@ -640,6 +679,10 @@ Minimums for every screen: text contrast **≥ 4.5:1**, non-text UI (borders of 
 | Non-text: `--color-error-border` on `--color-bg-deep` (field and server-error outline) | 4.39 | pass (≥3:1) |
 | Account popup (`--color-bg-deep`): `#fff` on a hovered row (`--color-surface-hover`) / muted "Signed in as" | 10.51 / 7.14 | pass (Task 14) |
 | Suggestion row on `--color-bg` / on `--color-bg-deep` (active): `--color-accent` (typed part) / `--color-text-muted` (alias) / `--color-secondary` (platform · region) / `--color-text-nav` ("Out of stock") / `--color-text-subtle` ("From") | 7.25 / 5.83 / 4.65 / 7.55 / 4.79 · 9.23 / 7.14 / 5.93 / 9.62 / 6.10 | pass (Task 13b; axe 0 violations with the list open and a row active) |
+| Cart / order line (`--color-surface-line` over `--color-bg-deep` = `#2f0f73`): `#fff` / `--color-text-muted` / `--color-warning` (notices, "Pending payment") / `--color-error` ("No longer available") / `--color-accent` (Reveal, Copy, "Complete payment") / `--color-secondary` ("Paid") | 14.62 / 7.65 / 7.08 / 7.41 / 10.02 / 6.44 | pass (Task 16b) |
+| Dimmed unavailable line (`--opacity-dimmed` 0.8): white / muted text on the line | 9.66 / 5.34 | pass (Task 16b) |
+| Side panel on `--color-bg-deep`: `--color-warning` ("Some items changed…") / `--color-error` (error box) / `--color-accent` (countdown, "Simulated payment" legend) / muted notes | 6.52 / 6.82 / 9.23 / 7.14 | pass (Task 16b; axe 0 violations on the cart with notices, payment, declined, expired, orders and order pages, 1440 and 390) |
+| Key box (`--color-surface-inset` over the line): `#fff` key text | 16.31 | pass (Task 16b) |
 
 Disabled controls (`opacity: .5`) are exempt from the contrast rule (WCAG), but the disabled state must still be recognisable.
 The numbers were computed with a small script (sRGB → relative luminance → `(L1+.05)/(L2+.05)`); re-check whenever a color token changes.
@@ -666,7 +709,8 @@ and rectangles of the real DOM and took screenshots. The screenshots are not com
 | Page | Why | What we did meanwhile |
 |---|---|---|
 | Sign-in (`my.eneba.com/login`) | behind a Cloudflare "verify you are human" challenge in Task 06. We do **not** try to bypass it. **Task 14:** one plain load per width (1440, 390) showed the page without a challenge; measured then (3.6) | built from shared components (4.1, 4.2), then aligned with the measurements (3.6) |
-| Cart | not a fetchable page (a drawer/page that needs a session); some probes returned HTTP 429, so we stopped probing | described as composed from offer row + summary panel (3.6) |
+| Cart | not a fetchable page (a drawer/page that needs a session); some probes returned HTTP 429, so we stopped probing. **Task 16b:** reached as a user does (product page → "Add to cart" → cart button) and measured (S6, 3.6) | built from the measurements (3.6) |
+| Payment step, order history, key page | need an email / a real purchase on Eneba | built from the cart's panels and lines (3.6, D) |
 
 **Derived without an Eneba source (D):** skeleton, toast, empty state, error state, select menu, seller rating, loading spinner,
 focus ring, z-index scale. They only use tokens from this file, so they will look consistent.
@@ -689,3 +733,8 @@ comparison is in `docs/reports/TASK_12_product_page_cart_state.md`.
 **Task 13b search suggestions (2026-11-22):** headless Edge at 1440×900 and 390×844 on the home page: the field focused, then `witcher` typed (normal list), `qwertyzz` (Eneba still
 found one product by similarity) and `xqzjvwkq` (no matches); computed styles of the popup, rows, cover, pill, title, price, "Show all" button; ARIA of the input and options; ↓↓ to see the
 active row. Cookie / location pop-ups removed from the DOM (no consent given). Reference screenshots stay outside the repo; the comparison is in `docs/reports/TASK_13b_search_ui.md`.
+
+**Task 16b cart (2026-11-23, S6):** headless Edge at 1440×900 and 390×844: one product page load, its "Add to cart", then the header cart button (desktop: a popup; phone: `/checkout`);
+then two products added and `/checkout` loaded at both widths. Computed styles of the panels, a line, cover, "Sold by", title, stepper, price, Summary title, button, rows and total.
+Cookie / location pop-ups removed from the DOM (no consent given); nothing was bought, no email entered. Reference screenshots stay outside the repo; the comparison is in
+`docs/reports/TASK_16b_checkout_ui.md`.

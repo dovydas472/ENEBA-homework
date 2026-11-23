@@ -185,6 +185,7 @@
   --checkout-side-width: 22.1875rem; /* 355px: the Summary / payment panel */
   --cart-cover-width: 5.625rem; /* 90px: cover of a cart line (it is 127px tall: --cover-aspect-ratio) */
   --cart-cover-width-sm: 3.125rem; /* 50px: the same cover on phones */
+  --key-action-min-width: 5.625rem; /* 90px: "Reveal" / "Hide" / "Copy" next to a key keep one width, so the key boxes line up (D) */
 }
 
 /*

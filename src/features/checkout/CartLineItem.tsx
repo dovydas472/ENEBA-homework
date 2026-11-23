@@ -36,9 +36,7 @@ export function CartLineItem({ line, status, onQuantity, onRemove }: CartLineIte
       </Link>
 
       <div className={styles.body}>
-        <p className={styles.seller}>
-          <span className={styles.soldBy}>Sold by</span> {line.sellerName}
-        </p>
+        <p className={styles.seller}>Sold by {line.sellerName}</p>
         <h2 className={styles.title}>
           <Link to={productLink}>{line.title}</Link>
         </h2>
