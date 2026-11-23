@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type FormEvent } from "react";
-import { Link, Navigate, useSearchParams } from "react-router";
+import { Navigate, useSearchParams } from "react-router";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
 import { authErrorMessage, displayName, type User } from "../../api/auth.ts";
 import { Button } from "../../components/Button.tsx";
 import { TextField } from "../../components/TextField.tsx";
@@ -122,7 +123,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
             {page.title}
           </h1>
           <p className={styles.switch}>
-            {page.switchText} <Link to={authPageLink(page.switchTo, next)}>{page.switchLink}</Link>
+            {page.switchText} <PrefetchLink to={authPageLink(page.switchTo, next)}>{page.switchLink}</PrefetchLink>
           </p>
         </div>
 

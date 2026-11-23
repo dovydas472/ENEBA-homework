@@ -1,5 +1,5 @@
 import { ShoppingCart, Star } from "lucide-react";
-import { Link } from "react-router";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
 import type { ProductDetail } from "../../api/types.ts";
 import { Button, ButtonLink } from "../../components/Button.tsx";
 import { Price } from "../../components/Price.tsx";
@@ -75,10 +75,10 @@ export function OutOfStockBox({ detail }: { detail: ProductDetail }) {
           <ul className={styles.available}>
             {available.map((variant) => (
               <li key={variant.slug}>
-                <Link to={`/product/${variant.slug}`} className={styles.availableLink}>
+                <PrefetchLink to={`/product/${variant.slug}`} className={styles.availableLink}>
                   <span>{variantName(variant)}</span>
                   <span className={styles.availablePrice}>{formatPrice(variant.priceCents)}</span>
-                </Link>
+                </PrefetchLink>
               </li>
             ))}
           </ul>

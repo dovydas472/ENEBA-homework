@@ -1,7 +1,7 @@
 import type { ComponentProps, MouseEvent } from "react";
-import { Link } from "react-router";
 import { cx } from "../lib/cx.ts";
 import styles from "./Button.module.css";
+import { PrefetchLink, type PrefetchLinkProps } from "./PrefetchLink.tsx";
 
 export interface ButtonProps extends ComponentProps<"button"> {
   /** primary = the main action (once per view area), secondary = outlined, ghost = text-like. */
@@ -46,7 +46,7 @@ export function Button({
   );
 }
 
-export interface ButtonLinkProps extends ComponentProps<typeof Link> {
+export interface ButtonLinkProps extends PrefetchLinkProps {
   variant?: "primary" | "secondary";
 }
 
@@ -54,11 +54,12 @@ export interface ButtonLinkProps extends ComponentProps<typeof Link> {
  * A router link that LOOKS like a Button (e.g. "Browse the store" on the home page).
  * Going to another page is navigation, so the right element is a link (<a>), not a <button>:
  * it can be opened in a new tab, and screen readers announce it as a link.
+ * It is a PrefetchLink (Task 17): the target page starts loading on hover / focus / touch.
  */
 export function ButtonLink({ variant = "primary", className, children, ...rest }: ButtonLinkProps) {
   return (
-    <Link {...rest} className={cx(styles.button, styles[variant], className)}>
+    <PrefetchLink {...rest} className={cx(styles.button, styles[variant], className)}>
       <span className={styles.label}>{children}</span>
-    </Link>
+    </PrefetchLink>
   );
 }

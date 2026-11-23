@@ -74,9 +74,19 @@ type RegistryEntry struct {
 	Endpoint string `json:"endpoint"`
 }
 
-// Registry is the body of GET /api/homepage: the enabled blocks in page order.
+// Registry is the body of GET /api/homepage: the enabled blocks in page order, and the preload hint.
 type Registry struct {
-	Blocks []RegistryEntry `json:"blocks"`
+	Blocks  []RegistryEntry `json:"blocks"`
+	Preload Preload         `json:"preload"`
+}
+
+// Preload (Task 17) names what the page will need first, so the browser can start downloading it while the
+// block requests are still on their way. Without it the hero picture - the biggest thing on the first screen
+// (the page's LCP element) - is found only after three steps: the app's code, then this registry, then
+// GET /api/blocks/hero. With it, the frontend preloads the picture right after the registry arrives.
+type Preload struct {
+	// HeroImage is the picture of the first slide the hero shows; null = no hero block or no slide.
+	HeroImage *SlideImage `json:"heroImage"`
 }
 
 // SlideImage is the picture of a slide in two crops: desktop and phone (<= 600px). A srcset lists the

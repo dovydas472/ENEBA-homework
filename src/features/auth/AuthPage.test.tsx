@@ -3,9 +3,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "../../api/auth.ts";
 import { apiFetch } from "../../api/client.ts";
+import { loadAllPages } from "../../app/lazyPages.ts";
 import { routes } from "../../app/routes.ts";
 import { render, setControlValue } from "../../test-utils.tsx";
 import { fakeAuthServer, httpError, newFakeAuthState, type FakeAuthState } from "./fakeAuthServer.ts";
@@ -21,6 +22,8 @@ const demoUser: User = { id: 2, email: "demo-0123456789abcdef@demo.invalid", isD
 let server: FakeAuthState;
 let cleanup: (() => void) | undefined;
 
+// Task 17: the lazily loaded pages (lazyPages.ts) are loaded once up front, so no test waits for a module mid-render.
+beforeAll(() => loadAllPages());
 beforeEach(() => {
   window.scrollTo = vi.fn() as never; // jsdom has no scrolling; the layout's ScrollRestoration calls it
   server = newFakeAuthState();

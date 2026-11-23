@@ -48,13 +48,15 @@ const coversPerTile = 3
 // without anyone editing the tile.
 const MaxDiscountToken = "{maxDiscount}"
 
-// Registry is GET /api/homepage: the enabled blocks in order, each with the endpoint of its content.
+// Registry is GET /api/homepage: the enabled blocks in order, each with the endpoint of its content,
+// plus the preload hint (Task 17, see Preload).
 func (s *Service) Registry(ctx context.Context) (Registry, error) {
 	blocks, err := s.content.Blocks(ctx)
 	if err != nil {
 		return Registry{}, err
 	}
 	out := Registry{Blocks: []RegistryEntry{}}
+	hasHero := false
 	for _, b := range blocks {
 		endpoint, ok := Endpoint(b)
 		if !ok {
@@ -63,23 +65,55 @@ func (s *Service) Registry(ctx context.Context) (Registry, error) {
 			continue
 		}
 		out.Blocks = append(out.Blocks, RegistryEntry{Key: b.Key, Type: b.Type, Title: b.Title, Endpoint: endpoint})
+		hasHero = hasHero || b.Type == TypeHero
+	}
+	if hasHero {
+		out.Preload.HeroImage = s.firstHeroImage(ctx)
 	}
 	return out, nil
 }
 
-// Hero is GET /api/blocks/hero. A product slide gets the product's LIVE cheapest price and a button to
-// its product page; a product that no longer exists or is out of stock drops its slide ("Buy now" for
-// something you cannot buy would be a dead end).
+// firstHeroImage is the picture of the first slide the hero block will show, or nil. It is only a hint: if
+// it cannot be worked out, the registry is still answered (the hero block reports its own error).
+func (s *Service) firstHeroImage(ctx context.Context) *SlideImage {
+	slides, err := s.heroSlides(ctx, 1)
+	if err != nil {
+		log.Printf("homepage: preload hint skipped: %v", err)
+		return nil
+	}
+	if len(slides) == 0 {
+		return nil
+	}
+	return &slides[0].Image
+}
+
+// Hero is GET /api/blocks/hero (the slide rules are in heroSlides).
 func (s *Service) Hero(ctx context.Context) (Hero, error) {
 	if _, err := s.content.BlockByType(ctx, TypeHero); err != nil {
 		return Hero{}, err // disabled = 404, like a block that does not exist
 	}
-	slides, err := s.content.Slides(ctx)
+	slides, err := s.heroSlides(ctx, 0)
 	if err != nil {
 		return Hero{}, err
 	}
-	out := Hero{Slides: []HeroSlide{}}
+	return Hero{Slides: slides}, nil
+}
+
+// heroSlides builds the slides the hero SHOWS, in order; limit > 0 stops after that many (the preload hint
+// needs only the first, so it does not look up the prices of the others). The ONE place of the slide rules,
+// shared by the hero block and the preload hint, so the hint always names the picture the block will draw:
+// a product slide gets the product's LIVE cheapest price and a button to its product page; a product that no
+// longer exists or is out of stock drops its slide ("Buy now" for something you cannot buy would be a dead end).
+func (s *Service) heroSlides(ctx context.Context, limit int) ([]HeroSlide, error) {
+	slides, err := s.content.Slides(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := []HeroSlide{}
 	for _, sl := range slides {
+		if limit > 0 && len(out) == limit {
+			break
+		}
 		hs := HeroSlide{
 			ID: sl.ID, Title: sl.Title, Subtitle: sl.Subtitle, Badge: sl.Badge,
 			Image: SlideImage{URL: sl.ImageURL, Srcset: sl.ImageSrcset, MobileURL: sl.ImageURLMobile, MobileSrcset: sl.ImageSrcsetMobile},
@@ -92,7 +126,7 @@ func (s *Service) Hero(ctx context.Context) (Hero, error) {
 				continue
 			}
 			if err != nil {
-				return Hero{}, err
+				return nil, err
 			}
 			if !detail.Product.InStock || detail.Product.PriceCents == nil {
 				continue // out of stock right now: the slide comes back when stock does
@@ -102,7 +136,7 @@ func (s *Service) Hero(ctx context.Context) (Hero, error) {
 		case sl.CTAHref != nil:
 			hs.CTA = &Link{Label: deref(sl.CTALabel), Href: *sl.CTAHref}
 		}
-		out.Slides = append(out.Slides, hs)
+		out = append(out, hs)
 	}
 	return out, nil
 }

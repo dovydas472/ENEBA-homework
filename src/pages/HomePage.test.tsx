@@ -6,7 +6,8 @@ import { act } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, apiFetch } from "../api/client.ts";
-import { discounts, homeResponses, registry, tiles } from "../features/home/fixtures.ts";
+import { discounts, homeResponses, makeSlide, registry, tiles } from "../features/home/fixtures.ts";
+import { HERO_PHONE_MEDIA, HERO_SIZES } from "../features/home/heroImage.ts";
 import { render } from "../test-utils.tsx";
 import { HomePage } from "./HomePage.tsx";
 
@@ -190,5 +191,63 @@ describe("HomePage: block links", () => {
     expect([...row.querySelectorAll("button")].some((b) => b.textContent?.startsWith("Add to cart"))).toBe(true);
     const viewAll = row.querySelector<HTMLAnchorElement>("a[href='/store?sort=discount']");
     expect(viewAll?.textContent).toBe("View all: Biggest discounts"); // the hidden part tells the three apart
+  });
+});
+
+describe("HomePage: early hero picture (Task 17, LCP)", () => {
+  const preloadLinks = () => $$<HTMLLinkElement>("head link[rel=preload][as=image]");
+  afterEach(() => preloadLinks().forEach((link) => link.remove()));
+
+  it("preloads the picture the registry names, before the hero block has answered", async () => {
+    const image = makeSlide().image;
+    responses["/api/homepage"] = { ...registry, preload: { heroImage: image } };
+    // The hero block never answers: the picture must not wait for it.
+    fakeApi.mockImplementation(async (path: string) => {
+      if (path === "/api/blocks/hero") return new Promise(() => {}) as never;
+      const answer = responses[path];
+      if (answer === undefined || answer instanceof Error) throw new ApiError("http", "HTTP 500", 500);
+      return structuredClone(answer) as never;
+    });
+    await mount();
+    expect($("section[aria-roledescription=carousel]")).toBeNull(); // the hero is still loading
+    const links = preloadLinks();
+    expect(links).toHaveLength(1);
+    // jsdom has no matchMedia: the desktop crop, with the same sizes as the carousel's <img>.
+    expect(links[0].getAttribute("imagesrcset")).toBe(image.srcset);
+    expect(links[0].getAttribute("imagesizes")).toBe(HERO_SIZES);
+    expect(links[0].getAttribute("fetchpriority")).toBe("high");
+    // ...and the hero's placeholder already SHOWS that picture (same srcset, so the preloaded file is the one drawn).
+    const placeholder = $("[data-block-type=hero] img");
+    expect(placeholder?.getAttribute("srcset")).toBe(image.srcset);
+    expect(placeholder?.getAttribute("fetchpriority")).toBe("high");
+  });
+
+  it("without a hint the hero placeholder is the plain skeleton", async () => {
+    fakeApi.mockImplementation(async (path: string) => {
+      if (path === "/api/blocks/hero") return new Promise(() => {}) as never;
+      return structuredClone(responses[path]) as never;
+    });
+    await mount();
+    expect($("[data-block-type=hero] img")).toBeNull();
+    expect($("[data-block-type=hero] [aria-hidden=true]")).not.toBeNull();
+  });
+
+  it("on a phone preloads the phone crop", async () => {
+    window.matchMedia = vi.fn((query: string) => ({ matches: query === HERO_PHONE_MEDIA })) as never;
+    const image = makeSlide().image;
+    responses["/api/homepage"] = { ...registry, preload: { heroImage: image } };
+    await mount();
+    const links = preloadLinks();
+    expect(links).toHaveLength(1);
+    expect(links[0].getAttribute("imagesrcset")).toBe(image.mobileSrcset);
+    expect(links[0].getAttribute("imagesizes")).toBe("100vw");
+    // @ts-expect-error -- jsdom has no matchMedia; remove the fake again
+    delete window.matchMedia;
+  });
+
+  it("no hint (no hero, or an older server) -> no preload", async () => {
+    responses["/api/homepage"] = { ...registry, preload: { heroImage: null } };
+    await mount();
+    expect(preloadLinks()).toHaveLength(0);
   });
 });

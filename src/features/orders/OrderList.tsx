@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { Link } from "react-router";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
 import type { OrderSummary } from "../../api/types.ts";
 import { ButtonLink } from "../../components/Button.tsx";
 import { EmptyState } from "../../components/EmptyState.tsx";
@@ -32,7 +32,7 @@ export function OrderList({ orders }: { orders: readonly OrderSummary[] }) {
           const pending = order.status === "pending";
           return (
             <li key={order.id}>
-              <Link to={pending ? `/checkout/${order.id}` : `/orders/${order.id}`} className={styles.row}>
+              <PrefetchLink to={pending ? `/checkout/${order.id}` : `/orders/${order.id}`} className={styles.row}>
                 <span className={styles.main}>
                   <span className={styles.title}>Order {shortOrderId(order.id)}</span>
                   <span className={styles.meta}>
@@ -45,7 +45,7 @@ export function OrderList({ orders }: { orders: readonly OrderSummary[] }) {
                   {pending ? "Complete payment" : "View"}
                   <ChevronRight className={styles.chevron} aria-hidden="true" />
                 </span>
-              </Link>
+              </PrefetchLink>
             </li>
           );
         })}

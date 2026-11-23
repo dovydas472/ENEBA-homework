@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Link } from "react-router";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
 import { Button, ButtonLink } from "../../components/Button.tsx";
 import { EmptyState } from "../../components/EmptyState.tsx";
 import { formatPrice } from "../../lib/formatPrice.ts";
@@ -104,9 +104,9 @@ export function CartView() {
         {checkout.tooManyUnpaidMessage && (
           <p className={layout.error} role="alert">
             {checkout.tooManyUnpaidMessage}.{" "}
-            <Link to="/orders" className={layout.errorLink}>
+            <PrefetchLink to="/orders" className={layout.errorLink}>
               View your orders
-            </Link>
+            </PrefetchLink>
           </p>
         )}
         <p className={layout.row}>

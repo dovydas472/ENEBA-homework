@@ -116,6 +116,93 @@ func TestRegistry_skipsUnknownTypeAndIsNeverNull(t *testing.T) {
 	}
 }
 
+// countingCatalog counts the product look-ups (the preload hint must not price every slide).
+type countingCatalog struct {
+	fakeCatalog
+	lookups int
+}
+
+func (c *countingCatalog) GetProduct(ctx context.Context, slug string) (catalog.ProductDetail, error) {
+	c.lookups++
+	return c.fakeCatalog.GetProduct(ctx, slug)
+}
+
+func image(name string) SlideImage {
+	return SlideImage{URL: "/banners/" + name + ".webp", Srcset: ptr("/banners/" + name + "-1280.webp 1280w"), MobileURL: "/banners/" + name + "-m.webp"}
+}
+
+func slideWith(id int64, name string, productSlug *string) Slide {
+	img := image(name)
+	return Slide{ID: id, Title: name, ImageURL: img.URL, ImageSrcset: img.Srcset, ImageURLMobile: img.MobileURL, ProductSlug: productSlug, CTALabel: ptr("Buy now")}
+}
+
+// Task 17: the preload hint is the picture of the first slide the hero will SHOW (the same rules as
+// GET /api/blocks/hero): an out-of-stock product slide before it is skipped, and the slides after the first
+// shown one are not looked up at all.
+func TestRegistry_preloadIsTheFirstShownSlidesImage(t *testing.T) {
+	content := &fakeContent{blocks: defaultBlocks(), slides: []Slide{
+		slideWith(1, "sold-out", ptr("sold-out")),
+		slideWith(2, "ok", ptr("ok")),
+		slideWith(3, "later", ptr("later")),
+	}}
+	cat := &countingCatalog{fakeCatalog: fakeCatalog{products: map[string]catalog.ProductDetail{
+		"sold-out": {Product: catalog.ProductInfo{InStock: false}},
+		"ok":       inStock(500),
+		"later":    inStock(700),
+	}}}
+	got, err := NewService(content, cat).Registry(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := image("ok")
+	if got.Preload.HeroImage == nil || !reflect.DeepEqual(*got.Preload.HeroImage, want) {
+		t.Errorf("preload = %+v, want %+v", got.Preload.HeroImage, want)
+	}
+	if cat.lookups != 2 {
+		t.Errorf("product look-ups = %d, want 2 (sold-out, ok; not the third slide)", cat.lookups)
+	}
+	// The hero block itself shows that same picture first.
+	hero, err := NewService(content, &cat.fakeCatalog).Hero(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(hero.Slides[0].Image, want) {
+		t.Errorf("hero's first slide image = %+v, want the preloaded %+v", hero.Slides[0].Image, want)
+	}
+}
+
+func TestRegistry_noPreloadWithoutAHeroBlockOrSlides(t *testing.T) {
+	noHero := &fakeContent{blocks: defaultBlocks()[1:], slides: []Slide{slideWith(1, "x", nil)}}
+	got, err := NewService(noHero, &fakeCatalog{}).Registry(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Preload.HeroImage != nil {
+		t.Errorf("hero block off: preload = %+v, want nil", got.Preload.HeroImage)
+	}
+	noSlides := &fakeContent{blocks: defaultBlocks()}
+	got, err = NewService(noSlides, &fakeCatalog{}).Registry(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Preload.HeroImage != nil {
+		t.Errorf("no slides: preload = %+v, want nil", got.Preload.HeroImage)
+	}
+}
+
+// The hint is optional: when the slide's product cannot be looked up, the registry still answers (the hero
+// block will report its own error), only without the hint.
+func TestRegistry_preloadFailureDoesNotFailTheRegistry(t *testing.T) {
+	content := &fakeContent{blocks: defaultBlocks(), slides: []Slide{slideWith(1, "x", ptr("x"))}}
+	got, err := NewService(content, &fakeCatalog{err: errors.New("connection refused")}).Registry(context.Background())
+	if err != nil {
+		t.Fatalf("got %v, want the registry without the hint", err)
+	}
+	if len(got.Blocks) != len(defaultBlocks()) || got.Preload.HeroImage != nil {
+		t.Errorf("got %+v, want all blocks and no hint", got)
+	}
+}
+
 func TestHero_productSlidesGetLivePriceAndProductLink(t *testing.T) {
 	content := &fakeContent{blocks: defaultBlocks(), slides: []Slide{
 		{ID: 1, Title: "INNERT", Badge: ptr("Coming soon"), ImageURL: "/banners/a.webp", ImageURLMobile: "/banners/m.webp"},

@@ -4,6 +4,7 @@ import { ApiError } from "../api/client.ts";
 import { productQuery } from "../api/queries.ts";
 import { ErrorState } from "../components/ErrorState.tsx";
 import { ProductView, ProductViewSkeleton } from "../features/product/ProductView.tsx";
+import { variantName } from "../features/product/variantName.ts";
 import { useDocumentTitle } from "../lib/useDocumentTitle.ts";
 import { NotFoundPage } from "./NotFoundPage.tsx";
 import styles from "./ProductPage.module.css";
@@ -20,7 +21,10 @@ export function ProductPage() {
   const notFound = query.error instanceof ApiError && query.error.status === 404;
 
   // One title for every state (NotFoundPage sets the same one; the parent's effect would run last otherwise).
-  useDocumentTitle(notFound ? "Page not found" : (query.data?.game.title ?? "Product"));
+  // Task 17: the platform and region are part of it ("Grand Theft Auto V (Steam · GLOBAL)"), so every version of a
+  // game has its own tab title (they would all be "Grand Theft Auto V" otherwise).
+  const data = query.data;
+  useDocumentTitle(notFound ? "Page not found" : data ? `${data.game.title} (${variantName(data.product)})` : "Product");
 
   // Every state sits in the same box (no layout shift when the skeleton is replaced by the page, the 404 or the error):
   //  - at least one screen tall (CSS), so the footer stays below the fold and does not jump;

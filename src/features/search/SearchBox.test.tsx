@@ -7,6 +7,7 @@ import { createMemoryRouter, RouterProvider, useLocation, useSearchParams } from
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "../../api/client.ts";
 import type { Suggestion, SuggestResponse } from "../../api/types.ts";
+import { HOVER_DELAY_MS } from "../../app/prefetch.ts";
 import { fire, render, setControlValue } from "../../test-utils.tsx";
 import { SearchBox, SUGGEST_DEBOUNCE_MS } from "./SearchBox.tsx";
 
@@ -262,6 +263,7 @@ describe("SearchBox: the list", () => {
     mount();
     await typeAndWait("witcher");
     fire(options()[1], new MouseEvent("mouseover", { bubbles: true })); // React's onMouseEnter listens to mouseover
+    await wait(HOVER_DELAY_MS); // PrefetchLink waits this long before it prefetches (Task 17)
     await settle();
     expect(fakeApi.mock.calls.map((c) => c[0])).toContain("/api/products/the-witcher-2-gog-global");
   });

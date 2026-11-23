@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { Link } from "react-router";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
 import type { Suggestion } from "../../api/types.ts";
 import { Price } from "../../components/Price.tsx";
 import { cx } from "../../lib/cx.ts";
@@ -16,7 +16,6 @@ interface SuggestionOptionProps {
   /** Moved to with ↓/↑: drawn like a hovered row and announced by screen readers. */
   active: boolean;
   onChoose: () => void;
-  onPrefetch: () => void;
 }
 
 /** Keeps the focus in the text field when a row is clicked (the field must stay the focused element). */
@@ -42,10 +41,11 @@ function Highlighted({ text, query }: { text: string; query: string }) {
  * details in the middle, price on the right.
  * It is a real link (so middle-click / "open in new tab" work) with role="option": inside the listbox it is an
  * option, and the keyboard never stops on it (tabIndex -1) - ↓/↑ in the field move between the rows instead.
+ * As a PrefetchLink (Task 17) it requests the product page data when the pointer rests on it.
  */
-export function SuggestionOption({ item, id, query, active, onChoose, onPrefetch }: SuggestionOptionProps) {
+export function SuggestionOption({ item, id, query, active, onChoose }: SuggestionOptionProps) {
   return (
-    <Link
+    <PrefetchLink
       to={`/product/${item.productSlug}`}
       id={id}
       role="option"
@@ -53,7 +53,6 @@ export function SuggestionOption({ item, id, query, active, onChoose, onPrefetch
       tabIndex={-1}
       className={cx(styles.option, active && styles.active)}
       onMouseDown={keepFocusInField}
-      onMouseEnter={onPrefetch}
       onClick={onChoose}
     >
       <div className={styles.cover}>
@@ -82,6 +81,6 @@ export function SuggestionOption({ item, id, query, active, onChoose, onPrefetch
           <p className={styles.outOfStock}>Out of stock</p>
         )}
       </div>
-    </Link>
+    </PrefetchLink>
   );
 }

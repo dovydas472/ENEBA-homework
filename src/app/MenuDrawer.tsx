@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { useRef } from "react";
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
+import { PrefetchLink } from "../components/PrefetchLink.tsx";
 import { displayName } from "../api/auth.ts";
 import { useCurrentUser } from "../features/auth/useCurrentUser.ts";
 import { useSignOut } from "../features/auth/useSignOut.ts";
@@ -35,9 +36,9 @@ export function MenuDrawer({ open, onClose }: MenuDrawerProps) {
     // `onClose` also fires when the browser closed the dialog (Esc): then the state follows the DOM.
     <dialog ref={dialog} className={styles.menu} aria-label="Menu" onClose={onClose}>
       <div className={styles.top}>
-        <Link to="/" className={styles.wordmark} onClick={onClose}>
+        <PrefetchLink to="/" className={styles.wordmark} onClick={onClose}>
           {APP_NAME}
-        </Link>
+        </PrefetchLink>
         <button type="button" className={styles.close} aria-label="Close menu" onClick={onClose}>
           <X className={styles.icon} aria-hidden="true" />
         </button>
@@ -48,9 +49,9 @@ export function MenuDrawer({ open, onClose }: MenuDrawerProps) {
           <ul className={styles.list}>
             {NAV_LINKS.map((link) => (
               <li key={link.to}>
-                <Link to={link.to} className={styles.link} onClick={onClose}>
+                <PrefetchLink to={link.to} className={styles.link} onClick={onClose}>
                   {link.label}
-                </Link>
+                </PrefetchLink>
               </li>
             ))}
           </ul>
@@ -67,9 +68,9 @@ export function MenuDrawer({ open, onClose }: MenuDrawerProps) {
             {user ? (
               <>
                 <li>
-                  <Link to="/orders" className={styles.link} onClick={onClose}>
+                  <PrefetchLink to="/orders" className={styles.link} onClick={onClose}>
                     Orders
-                  </Link>
+                  </PrefetchLink>
                 </li>
                 <li>
                   <button
@@ -87,14 +88,14 @@ export function MenuDrawer({ open, onClose }: MenuDrawerProps) {
             ) : (
               <>
                 <li>
-                  <Link to={authPageLink("/login", here)} className={styles.link} onClick={onClose}>
+                  <PrefetchLink to={authPageLink("/login", here)} className={styles.link} onClick={onClose}>
                     Sign in
-                  </Link>
+                  </PrefetchLink>
                 </li>
                 <li>
-                  <Link to={authPageLink("/register", here)} className={styles.link} onClick={onClose}>
+                  <PrefetchLink to={authPageLink("/register", here)} className={styles.link} onClick={onClose}>
                     Create account
-                  </Link>
+                  </PrefetchLink>
                 </li>
               </>
             )}

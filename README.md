@@ -121,14 +121,15 @@ The assignment: *the landing page is assembled from several different blocks; ea
 backend service or database, so the frontend only displays what it receives and nothing is hardcoded there.*
 
 - **Block registry:** the table `homepage_blocks` lists the blocks (`key`, `type`, `title`, `position`, `enabled`, `config`).
-  `GET /api/homepage` returns the enabled ones in order: `{"blocks":[{"key","type","title","endpoint"}]}`. The frontend
+  `GET /api/homepage` returns the enabled ones in order: `{"blocks":[{"key","type","title","endpoint"}],"preload":{"heroImage":{...}|null}}`
+  (`preload.heroImage`, Task 17: the picture of the first slide the hero will show, so the browser can download it early). The frontend
   (`src/features/home/`) has **one renderer per type** (`hero`, `tiles`, `platforms`, `product_row`) and fetches every block from its
   own `endpoint` with its own TanStack Query; it contains no block content, order or titles. An unknown type is skipped.
 - **Each block is its own service** (`pkg/homepage`; handlers in `pkg/server/homepage_handlers.go`):
 
 | Endpoint | Data source | Answers |
 |---|---|---|
-| `GET /api/homepage` | `homepage_blocks` | the registry (above) |
+| `GET /api/homepage` | `homepage_blocks` (+ `homepage_slides` and the catalog for the preload hint) | the registry (above) |
 | `GET /api/blocks/hero` | `homepage_slides` + the catalog (live cheapest price of a product slide) | `{"slides":[{id,title,subtitle,badge,image:{url,srcset,mobileUrl,mobileSrcset},cta:{label,href}\|null,priceCents\|null}]}` |
 | `GET /api/blocks/tiles` | `homepage_tiles` + the catalog (up to 3 cover images per tile) | `{"tiles":[{id,title,subtitle,href,accent,coverUrls}]}` |
 | `GET /api/blocks/platforms` | the catalog (the Store's platform facet) + the block's icon config | `{"items":[{key,label,count,href,icon}]}` ("All games" first) |
@@ -347,8 +348,10 @@ with AI coding tools (Claude Code) using the same small-task / spec / testing wo
 - `migrations/` – numbered SQL migrations, embedded with `go:embed`
 - `docs/DATA_MODEL.md` – the data model (ER diagram, tables, state machines, query sketches)
 - `src/api/` – `apiFetch` client (timeout, typed errors), catalog, auth and checkout / order functions + JSON types
-- `src/app/` – app frame: routes, layout, header, demo banner, footer, TanStack Query client, "waking up" notice
-- `src/components/` – base UI components (Button, Badge, Price, Skeleton, EmptyState, ErrorState, SearchField)
+- `src/app/` – app frame: routes (lazily loaded pages in `lazyPages.ts`), layout, header, demo banner, footer, TanStack Query client, "waking up" notice,
+  error pages (`RouteError`, `AppError`), focus + title announcement on page change (`RouteAnnouncer`), prefetch on intent (`prefetch.ts`)
+- `src/components/` – base UI components (Button, Badge, Price, Skeleton, PageSkeleton, EmptyState, ErrorState, SearchField, `PrefetchLink` – every internal link)
+- `docs/screenshots/` – our screenshots of every page at 1440 px (`*-desktop.png`) and 390 px (`*-mobile.png`)
 - `src/pages/` – one file per route
 - `src/features/home/` – the home page block renderers (hero carousel, side tiles, platform row, product row) and the type → renderer map
 - `public/banners/` – the Innert hero pictures (WebP, several widths)

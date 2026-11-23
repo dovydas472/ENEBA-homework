@@ -6,11 +6,12 @@ import { act } from "react";
 import { createMemoryRouter } from "react-router";
 // The same provider as main.tsx: it wires ReactDOM.flushSync, which sign-out's navigation relies on.
 import { RouterProvider } from "react-router/dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "../api/auth.ts";
 import { apiFetch } from "../api/client.ts";
 import { fakeAuthServer, newFakeAuthState, type FakeAuthState } from "../features/auth/fakeAuthServer.ts";
 import { polyfillDialog, pressKey, render } from "../test-utils.tsx";
+import { loadAllPages } from "./lazyPages.ts";
 import { routes } from "./routes.ts";
 
 vi.mock("../api/client.ts", async (importOriginal) => ({
@@ -23,6 +24,8 @@ const me: User = { id: 1, email: "me@example.com", isDemo: false };
 let server: FakeAuthState;
 let cleanup: (() => void) | undefined;
 
+// Task 17: the lazily loaded pages (lazyPages.ts) are loaded once up front, so no test waits for a module mid-render.
+beforeAll(() => loadAllPages());
 beforeEach(() => {
   window.scrollTo = vi.fn() as never;
   polyfillDialog();

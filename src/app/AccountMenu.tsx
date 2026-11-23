@@ -1,6 +1,6 @@
 import { ChevronDown, User as UserIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
-import { Link } from "react-router";
+import { PrefetchLink } from "../components/PrefetchLink.tsx";
 import { displayName, type User } from "../api/auth.ts";
 import { useSignOut } from "../features/auth/useSignOut.ts";
 import { cx } from "../lib/cx.ts";
@@ -77,9 +77,9 @@ export function AccountMenu({ user, buttonClassName }: AccountMenuProps) {
         </p>
         <ul className={styles.list}>
           <li>
-            <Link to="/orders" className={styles.item} onClick={() => setOpen(false)}>
+            <PrefetchLink to="/orders" className={styles.item} onClick={() => setOpen(false)}>
               Orders
-            </Link>
+            </PrefetchLink>
           </li>
           <li>
             <button

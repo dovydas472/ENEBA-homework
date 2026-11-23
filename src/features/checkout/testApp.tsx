@@ -4,6 +4,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { loadAllPages } from "../../app/lazyPages.ts";
 import { routes } from "../../app/routes.ts";
 import { render } from "../../test-utils.tsx";
 import { cartStore } from "../cart/cartStore.ts";
@@ -35,6 +36,7 @@ export async function settle() {
 export const flush = () => act(settle);
 
 export async function mountApp(url: string) {
+  await loadAllPages(); // Task 17: the cart / payment / order pages are lazily loaded; have their modules ready
   const router = createMemoryRouter(routes, { initialEntries: [url] });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const view = render(
@@ -43,6 +45,9 @@ export async function mountApp(url: string) {
     </QueryClientProvider>,
   );
   cleanup = view.unmount;
+  // Two rounds (Task 17): the router first resolves the lazily loaded page (route `lazy`) and React commits it; only
+  // then does the page start its own requests, which the second round lets finish. React commits at the end of an act().
+  await flush();
   await flush();
   return { router, queryClient };
 }

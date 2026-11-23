@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router";
+import { PrefetchLink } from "../../components/PrefetchLink.tsx";
 import { homeBlockQuery } from "../../api/queries.ts";
 import type { TilesBlockData } from "../../api/types.ts";
 import { Skeleton } from "../../components/Skeleton.tsx";
@@ -46,7 +46,7 @@ export function SideTiles({ block }: BlockProps) {
       <ul className={styles.list}>
         {query.data.tiles.map((tile) => (
           <li key={tile.id}>
-            <Link to={tile.href} className={cx(styles.tile, ACCENTS[tile.accent] ?? styles.violet)}>
+            <PrefetchLink to={tile.href} className={cx(styles.tile, ACCENTS[tile.accent] ?? styles.violet)}>
               <span className={styles.title}>{tile.title}</span>
               {tile.subtitle && <span className={styles.subtitle}>{tile.subtitle}</span>}
               {/* Decoration only: the link's name is the text above. */}
@@ -57,7 +57,7 @@ export function SideTiles({ block }: BlockProps) {
                   ))}
                 </span>
               )}
-            </Link>
+            </PrefetchLink>
           </li>
         ))}
       </ul>

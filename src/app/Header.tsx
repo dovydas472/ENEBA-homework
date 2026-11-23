@@ -1,6 +1,7 @@
 import { Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
+import { PrefetchLink } from "../components/PrefetchLink.tsx";
 import { Badge } from "../components/Badge.tsx";
 import { useCurrentUser } from "../features/auth/useCurrentUser.ts";
 import { SearchBox } from "../features/search/SearchBox.tsx";
@@ -67,9 +68,9 @@ export function Header() {
           <Menu className={styles.icon} aria-hidden="true" />
         </button>
 
-        <Link to="/" className={styles.wordmark}>
+        <PrefetchLink to="/" className={styles.wordmark}>
           {APP_NAME}
-        </Link>
+        </PrefetchLink>
 
         <div className={styles.search} onKeyDown={handleSearchKeyDown}>
           <SearchBox
@@ -97,7 +98,7 @@ export function Header() {
           >
             <Search className={styles.icon} aria-hidden="true" />
           </button>
-          <Link
+          <PrefetchLink
             to="/cart"
             className={styles.iconLink}
             aria-label={`Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}
@@ -109,15 +110,15 @@ export function Header() {
                 {cartCount}
               </Badge>
             )}
-          </Link>
+          </PrefetchLink>
           {user ? (
             <AccountMenu user={user} buttonClassName={styles.iconLink} />
           ) : (
             // aria-label keeps the name on phones, where the text is hidden and only the icon shows.
-            <Link to={authPageLink("/login", pathname + search)} className={styles.iconLink} aria-label="Sign in">
+            <PrefetchLink to={authPageLink("/login", pathname + search)} className={styles.iconLink} aria-label="Sign in">
               <User className={styles.icon} aria-hidden="true" />
               <span className={styles.signInText}>Sign in</span>
-            </Link>
+            </PrefetchLink>
           )}
         </nav>
       </div>
@@ -127,9 +128,9 @@ export function Header() {
         <ul className={styles.navList}>
           {NAV_LINKS.map((link) => (
             <li key={link.to}>
-              <Link to={link.to} className={styles.navLink}>
+              <PrefetchLink to={link.to} className={styles.navLink}>
                 {link.label}
-              </Link>
+              </PrefetchLink>
             </li>
           ))}
         </ul>

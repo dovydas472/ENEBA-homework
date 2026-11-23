@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // The visual states are checked by eye; this file tests the one piece of LOGIC in Button:
 // a loading button ignores clicks (so a double click cannot submit twice).
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "../test-utils.tsx";
@@ -62,9 +63,12 @@ describe("Button", () => {
 describe("ButtonLink", () => {
   it("is a real link (an <a> with the href), not a button", () => {
     const view = render(
-      <MemoryRouter>
-        <ButtonLink to="/store">Browse the store</ButtonLink>
-      </MemoryRouter>,
+      // ButtonLink is a PrefetchLink (Task 17): it needs the query cache, like everywhere in the app.
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <ButtonLink to="/store">Browse the store</ButtonLink>
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
     cleanup = view.unmount;
     const link = view.container.querySelector("a")!;

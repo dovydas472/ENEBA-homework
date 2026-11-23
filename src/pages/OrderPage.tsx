@@ -4,6 +4,7 @@ import { isHttpStatus } from "../api/orders.ts";
 import { orderQuery } from "../api/queries.ts";
 import { ErrorState } from "../components/ErrorState.tsx";
 import { OrderLoading } from "../features/orders/OrderLoading.tsx";
+import { shortOrderId } from "../features/orders/orderText.ts";
 import { OrderView } from "../features/orders/OrderView.tsx";
 import { useDocumentTitle } from "../lib/useDocumentTitle.ts";
 import { NotFoundPage } from "./NotFoundPage.tsx";
@@ -16,7 +17,8 @@ export function OrderPage() {
   const { id = "" } = useParams();
   const query = useQuery(orderQuery(id));
   const notFound = isHttpStatus(query.error, 404);
-  useDocumentTitle(notFound ? "Page not found" : "Order");
+  // "Order #1A2B3C4D": every order has its own tab title (Task 17).
+  useDocumentTitle(notFound ? "Page not found" : `Order ${shortOrderId(id)}`);
 
   if (query.isPending) return <OrderLoading label="Loading the order…" />;
   if (notFound) return <NotFoundPage />;

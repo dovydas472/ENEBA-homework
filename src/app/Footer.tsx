@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { PrefetchLink } from "../components/PrefetchLink.tsx";
 import { APP_NAME, GITHUB_URL, IGDB_URL, KODMO_AUTO_URL } from "../lib/appInfo.ts";
 import { VisuallyHidden } from "../components/VisuallyHidden.tsx";
 import styles from "./Footer.module.css";
@@ -28,9 +28,9 @@ export function Footer() {
             <ul>
               {NAV_LINKS.map((link) => (
                 <li key={link.to}>
-                  <Link to={link.to} className={styles.link}>
+                  <PrefetchLink to={link.to} className={styles.link}>
                     {link.label}
-                  </Link>
+                  </PrefetchLink>
                 </li>
               ))}
             </ul>

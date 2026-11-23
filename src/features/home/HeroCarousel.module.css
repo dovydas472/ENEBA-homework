@@ -8,6 +8,9 @@
   height: var(--hero-height);
   overflow: hidden;
   background: var(--color-surface-card);
+  /* Swipe (Task 17, useCarousel): the browser keeps vertical scrolling and pinch-zoom; sideways finger movement is
+     left to the carousel, so a swipe changes the slide instead of nudging the page. */
+  touch-action: pan-y pinch-zoom;
 }
 
 .skeleton {

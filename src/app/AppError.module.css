@@ -1,0 +1,17 @@
+/* App-level error page (AppError.tsx): no header or footer (the frame is what failed), so it centres itself
+   on the page background and shows the wordmark as plain text. */
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--space-4) var(--page-gutter);
+}
+
+.wordmark {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}

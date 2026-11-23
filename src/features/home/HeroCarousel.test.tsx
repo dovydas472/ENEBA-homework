@@ -11,7 +11,7 @@ import type { HeroBlockData } from "../../api/types.ts";
 import { render } from "../../test-utils.tsx";
 import { hero } from "./fixtures.ts";
 import { HeroCarousel } from "./HeroCarousel.tsx";
-import { AUTOPLAY_MS } from "./useCarousel.ts";
+import { AUTOPLAY_MS, SWIPE_MIN_PX, swipeDirection } from "./useCarousel.ts";
 
 vi.mock("../../api/client.ts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../api/client.ts")>()),
@@ -231,5 +231,56 @@ describe("HeroCarousel", () => {
   it("no slides: the block takes no space", () => {
     mount({ slides: [] });
     expect(document.querySelector("section[aria-roledescription=carousel]")).toBeNull();
+  });
+});
+
+describe("swipe (Task 17)", () => {
+  /** A finger (or mouse) going down at (x0, y0) and up at (x1, y1). React listens to pointerdown / pointerup. */
+  function gesture(x0: number, y0: number, x1: number, y1: number, pointerType = "touch") {
+    act(() => {
+      carousel().dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: x0, clientY: y0, pointerType }));
+      carousel().dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: x1, clientY: y1, pointerType }));
+    });
+  }
+
+  it("swipeDirection: long and mostly sideways = a swipe; left = next, right = previous", () => {
+    expect(swipeDirection(-SWIPE_MIN_PX, 0)).toBe("next");
+    expect(swipeDirection(SWIPE_MIN_PX + 10, 5)).toBe("prev");
+    expect(swipeDirection(-(SWIPE_MIN_PX - 1), 0)).toBeNull(); // too short (a wobbly tap)
+    expect(swipeDirection(-80, 120)).toBeNull(); // more vertical than sideways: the user is scrolling
+    expect(swipeDirection(0, 0)).toBeNull();
+  });
+
+  it("a swipe to the left shows the next slide, to the right the previous one", () => {
+    mount();
+    gesture(300, 100, 200, 110);
+    expect(active()).toBe(1);
+    gesture(100, 100, 250, 95);
+    expect(active()).toBe(0);
+    gesture(100, 100, 250, 95); // wraps around like the arrows
+    expect(active()).toBe(2);
+  });
+
+  it("a vertical scroll or a short wobble does not change the slide", () => {
+    mount();
+    gesture(200, 300, 170, 100); // mostly up: a page scroll
+    gesture(200, 100, 180, 100); // 20 px: a tap that moved a little
+    expect(active()).toBe(0);
+  });
+
+  it("pointercancel (the browser took over to scroll) forgets the gesture", () => {
+    mount();
+    act(() => {
+      carousel().dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 300, clientY: 100, pointerType: "touch" }));
+      carousel().dispatchEvent(new PointerEvent("pointercancel", { bubbles: true, pointerType: "touch" }));
+      carousel().dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: 100, clientY: 100, pointerType: "touch" }));
+    });
+    expect(active()).toBe(0);
+  });
+
+  it("a mouse drag is not a swipe (desktop has the arrow buttons)", () => {
+    mount();
+    gesture(300, 100, 100, 100, "mouse");
+    expect(active()).toBe(0);
   });
 });

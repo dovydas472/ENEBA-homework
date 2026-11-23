@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 // The toast: shown by showToast(), replaced by the next one, gone after 5 s unless hovered, closable with ×.
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,9 +12,12 @@ let cleanup: (() => void) | undefined;
 beforeEach(() => {
   vi.useFakeTimers();
   const view = render(
-    <MemoryRouter>
-      <Toaster />
-    </MemoryRouter>,
+    // The toast's link is a PrefetchLink (Task 17): it needs the query cache, like everywhere in the app.
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <Toaster />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
   cleanup = view.unmount;
 });

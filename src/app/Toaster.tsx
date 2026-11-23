@@ -1,6 +1,6 @@
 import { CircleCheck, Info, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { PrefetchLink } from "../components/PrefetchLink.tsx";
 import { cx } from "../lib/cx.ts";
 import { dismissToast, useToast, type Toast } from "../lib/toast.ts";
 import styles from "./Toaster.module.css";
@@ -50,9 +50,9 @@ function ToastBox({ toast }: { toast: Toast }) {
       <Icon className={styles.icon} aria-hidden="true" />
       <p className={styles.message}>{toast.message}</p>
       {toast.action && (
-        <Link to={toast.action.to} className={styles.action} onClick={() => dismissToast(toast.id)}>
+        <PrefetchLink to={toast.action.to} className={styles.action} onClick={() => dismissToast(toast.id)}>
           {toast.action.label}
-        </Link>
+        </PrefetchLink>
       )}
       <button type="button" className={styles.close} aria-label="Dismiss" onClick={() => dismissToast(toast.id)}>
         <X className={styles.closeIcon} aria-hidden="true" />

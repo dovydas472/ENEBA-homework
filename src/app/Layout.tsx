@@ -3,6 +3,7 @@ import { DemoBanner } from "./DemoBanner.tsx";
 import { Footer } from "./Footer.tsx";
 import { Header } from "./Header.tsx";
 import styles from "./Layout.module.css";
+import { RouteAnnouncer } from "./RouteAnnouncer.tsx";
 import { SlowServerNotice } from "./SlowServerNotice.tsx";
 import { Toaster } from "./Toaster.tsx";
 
@@ -14,6 +15,7 @@ import { Toaster } from "./Toaster.tsx";
 export function Layout() {
   return (
     <div className={styles.layout}>
+      {/* The first thing Tab reaches: jumps over the banner and the header straight to the page (WCAG 2.4.1). */}
       <a href="#main" className={styles.skipLink}>
         Skip to content
       </a>
@@ -23,6 +25,8 @@ export function Layout() {
         <Outlet />
       </main>
       <Footer />
+      {/* After the page: its effects (document title) have run when this one moves the focus. */}
+      <RouteAnnouncer />
       {/* Bottom corner: the toast ("Added to cart") and the "waking up" notice, stacked so they never overlap. */}
       <div className={styles.notices}>
         <Toaster />

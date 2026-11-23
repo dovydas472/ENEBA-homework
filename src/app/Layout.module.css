@@ -38,6 +38,12 @@
   outline: none; /* <main> is focused only by the skip link; ringing the whole page would be noise */
 }
 
+/* After a page change RouteAnnouncer focuses the page's h1 (by script, it is not in the Tab order): a ring around a
+   heading would look like a bug, and the heading is not something to activate. */
+.main h1:focus {
+  outline: none;
+}
+
 /* "Skip to content": invisible until a keyboard user tabs to it. */
 .skipLink {
   position: absolute;

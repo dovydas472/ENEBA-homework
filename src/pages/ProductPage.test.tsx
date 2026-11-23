@@ -4,9 +4,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, apiFetch } from "../api/client.ts";
 import type { ProductDetail } from "../api/types.ts";
+import { loadAllPages } from "../app/lazyPages.ts";
 import { routes } from "../app/routes.ts";
 import { CART_STORAGE_KEY } from "../features/cart/cart.ts";
 import { cartStore } from "../features/cart/cartStore.ts";
@@ -33,6 +34,8 @@ function answerWith(detail: ProductDetail) {
   fakeApi.mockImplementation(async () => detail as never);
 }
 
+// Task 17: the lazily loaded pages (lazyPages.ts) are loaded once up front, so no test waits for a module mid-render.
+beforeAll(() => loadAllPages());
 beforeEach(() => {
   window.scrollTo = vi.fn() as never; // jsdom has no scrolling; the layout's ScrollRestoration calls it
   fakeApi.mockReset();
@@ -72,10 +75,11 @@ const cartLink = () => $("header a[href='/cart']")!;
 const toast = () => $("[role=status] p")?.textContent;
 
 describe("ProductPage: content", () => {
-  it("shows the title, breadcrumb, cover, platform and region; tab title '{title} – EneHomeworkBa'", async () => {
+  it("shows the title, breadcrumb, cover, platform and region; tab title '{title} ({platform} · {region}) – EneHomeworkBa'", async () => {
     await mount();
     expect($$("main h1").map((h) => h.textContent)).toEqual(["The Witcher 3: Wild Hunt"]);
-    expect(document.title).toBe("The Witcher 3: Wild Hunt – EneHomeworkBa");
+    // Task 17: platform and region in the title, so every version of a game has its own tab title.
+    expect(document.title).toBe("The Witcher 3: Wild Hunt (Steam · GLOBAL) – EneHomeworkBa");
 
     const crumbs = $("nav[aria-label=Breadcrumb]")!;
     expect(crumbs.querySelector("a")?.getAttribute("href")).toBe("/store");
