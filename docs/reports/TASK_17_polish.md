@@ -47,6 +47,7 @@ No new dependency, no new token (the skeleton and error page use existing tokens
 | `npm run lint` | clean |
 | `npm test` (PowerShell) | **50 files, 625 tests pass** (`main`: 46 files / 573 tests) |
 | `npm run build` | passes; bundle table below |
+| GitHub CI on PR #20 | **all green**: `go` (1 m 0 s), `migrations` (48 s, incl. the DB integration tests), `frontend` (32 s); Vercel preview deployed. The preview is behind Vercel Authentication, so it could not be fetched from here (manual step §3) |
 | axe-core 4 (WCAG 2.0/2.1 A + AA, best practice), headless Edge | **0 violations in all 22 runs**: home, store, store with search, product, cart, payment, order, orders, login, register, 404 – each at 1440 and 390 px (the 404 again after its button change: 0 / 0) |
 | Unique tab titles | all 11 pages differ: "EneHomeworkBa – internship demo", "Store", "Results for 'witcher'", "The Witcher 3: Wild Hunt (Steam · GLOBAL)", "Cart", "Payment for order #4EDF29C6", "Order #4EDF29C6", "Orders", "Sign in", "Create account", "Page not found" (each + " – EneHomeworkBa") |
 | Loopback | API `cmd/local` on 127.0.0.1:8095 (Neon `dev`); `vite preview` on 127.0.0.1:4197 (baseline build), 4198 (branch), 4199 (A/B variants); Vite dev on 127.0.0.1:5174 (error-page check). Nothing on 0.0.0.0. Scripts, preview configs and Eneba's reference screenshots stayed in the session scratchpad. A Node server on 4195, a Vite server on 5173 and a `local` process on `:::8080` were already running before this session; they are not mine and were left alone. |
