@@ -8,6 +8,7 @@ import { act } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "../test-utils.tsx";
+import { pageLoaders } from "./lazyPages.ts";
 import { createQueryClient } from "./queryClient.ts";
 import { routes } from "./routes.ts";
 
@@ -95,6 +96,19 @@ describe("a page that crashes", () => {
     await flush();
     expect(router.state.location.pathname).toBe("/");
     expect($("main [role=alert]")).toBeNull();
+  });
+});
+
+describe("a page whose code cannot be downloaded (Task 17, lazy routes)", () => {
+  it("shows the same error page inside the layout, not a blank screen", async () => {
+    // E.g. offline, or an old tab after a new deploy removed the chunk.
+    vi.spyOn(pageLoaders, "cart").mockRejectedValue(new TypeError("Failed to fetch dynamically imported module"));
+    renderApp("/cart");
+    await flush();
+    await flush();
+    expect($("main h1")?.textContent).toBe("Something went wrong");
+    expect(buttonNamed("Retry")).toBeDefined(); // Retry reloads: a fresh document fetches the current chunks
+    expect($("header input[type=search]")).not.toBeNull();
   });
 });
 
