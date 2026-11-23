@@ -33,7 +33,7 @@ Task file: [`docs/tasks/TASK_16b_checkout_ui.md`](../tasks/TASK_16b_checkout_ui.
 Changed (Task 14 tests used `/orders` as "the protected page" and read its placeholder text): `src/features/auth/fakeAuthServer.ts` (answers `GET /api/orders` with an empty list), `src/app/routes.test.tsx`, `src/app/AccountMenu.test.tsx`; `src/api/orders.test.ts` (16a's file: + `isHttpStatus` / `orderErrorMessage` tests).
 
 **Docs** – `docs/DESIGN.md` (S6 source; token `--color-surface-line` in 2.1; layout tokens in 2.4; 3.6 Eneba's cart measured + as built for cart, payment, orders; 5.1 contrast rows; 6 research notes),
-`docs/PAAISKINIMAI_LT.md` (Task 16b block), `README.md` (folder list), this report, `docs/reports/assets/task16b_*.png` (our screenshots), `docs/tasks/TASK_16b_checkout_ui.md`.
+`docs/PAAISKINIMAI_LT.md` (Task 16b block), `README.md` (folder list; checkout shortcuts after the review: second pending order for the same cart, no cart popup, no cancel confirmation), this report, `docs/reports/assets/task16b_*.png` (our screenshots), `docs/tasks/TASK_16b_checkout_ui.md`.
 
 **Tokens added:** `--color-surface-line` `rgba(0,0,0,.12)`, `--checkout-max-width` 1010px, `--checkout-side-width` 355px, `--cart-cover-width` 90px / `--cart-cover-width-sm` 50px, `--key-action-min-width` 90px.
 
@@ -111,9 +111,13 @@ The **order page** shows what was bought (a snapshot taken when ordering). Keys 
 
 ## 6. Open questions
 
-1. Eneba's desktop cart button opens a **popup** (lines, total, "View cart", "Checkout now"). Should we add one, or is the cart page enough?
-2. **Back from the payment page and Checkout again** with the same cart creates a **second** pending order (the key is forgotten once an order exists, as the task says), and the first order's keys stay reserved until it expires (15 min, lazy expiry) unless the user presses "Cancel order". 16a's cap now limits this to 3 such orders. Alternative: remember the pending order per cart and open it again. Keep as is?
-3. "Cancel order" has no "Are you sure?" step (nothing is lost: the cart stays). Fine?
+None left. The owner answered the three questions of the review:
+
+| Question | Owner's answer | Done |
+|---|---|---|
+| 1. Eneba's desktop cart button opens a **popup** (lines, total, "View cart", "Checkout now"). Add one? | **No popup** – the cart page is enough | Nothing to build; README "Shortcuts" says the cart is a page only |
+| 2. **Back from the payment page and Checkout again** with the same cart creates a **second** pending order (the key is forgotten once an order exists, as the task says); the first order's keys stay reserved until it is paid, cancelled or expires. | **Keep**; the 3-order cap limits it – document it as a known simplification | README "Checkout → Shortcuts": "a second Checkout of the same cart creates a second pending order", with what a real shop would do |
+| 3. "Cancel order" has no "Are you sure?" step (nothing is lost: the cart stays). | **No confirmation needed** | Kept; noted in README "Shortcuts" |
 
 ## 7. Self-review (task-reviewer)
 

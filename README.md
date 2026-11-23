@@ -223,7 +223,11 @@ curl -s -X POST 127.0.0.1:8080/api/checkout/quote -H "Origin: http://127.0.0.1:8
 - **no clean-up job:** demo users and their orders (paid, expired, cancelled) stay in the database forever, just like demo users in Task 14;
 - **no rate limit** on the checkout endpoints (only the cap of 3 unpaid orders per user): a script can still create and cancel orders quickly, and a demo account is free to make. A real shop would add a per-user and per-IP rate limit and tighter quotas for anonymous accounts;
 - re-seeding the catalog (`cmd/seed --reset`) **refuses** while orders exist (they reference offers and keys), so order history is never deleted by accident;
-- expiry is lazy: an expired pending order stays `pending` in the table until someone pays, cancels or reads it (reading shows `expired` but does not write).
+- expiry is lazy: an expired pending order stays `pending` in the table until someone pays, cancels or reads it (reading shows `expired` but does not write);
+- **a second Checkout of the same cart creates a second pending order** (Task 16b, known simplification): the browser forgets the idempotency key once an
+  order exists, so going Back from the payment page and pressing Checkout again reserves keys again, while the first order keeps its keys until it is paid,
+  cancelled or expires (15 minutes). The cap of 3 unpaid orders per user limits this. A real shop would reopen the existing pending order when the cart is unchanged;
+- the cart is a page only (`/cart`; no header popup as on Eneba), and "Cancel order" has no confirmation step (nothing is lost: the cart stays).
 
 **Running the database tests locally.** They need a throw-away Postgres in `TEST_DATABASE_URL` (never a Neon branch) and must run
 one package at a time because `pkg/catalog` re-seeds the tables `pkg/orders` uses: `go test -p 1 ./...` (CI does this).
