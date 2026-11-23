@@ -14,6 +14,7 @@ package orders
 //	R7  Keys are secret  Key codes leave the server only inside a PAID order.          VisibleKeys
 //	R8  Idempotency      The same (user, key) is the same order.                       store.go + UNIQUE in the DB
 //	R9  Owner only       Another user's order does not exist for you (404).            store.go (user_id in every query)
+//	R10 Unpaid cap       At most 3 pending, not-yet-expired orders per user.           PendingCapReached + store.go (user row lock)
 
 import (
 	"errors"
@@ -31,6 +32,14 @@ const (
 // R4: how long the keys of a pending order are reserved.
 const ReservationTTL = 15 * time.Minute
 
+// R10: how many unpaid orders (pending, reservation still running) one user may hold at once.
+// Without it a script could keep reserving keys, 15 minutes at a time, and starve real buyers.
+const MaxPendingOrders = 3
+
+// PendingCapReached is R10: a user who already holds `pending` open orders may not create another.
+// Paid, cancelled and expired orders do not count - only keys that are still being held.
+func PendingCapReached(pending int) bool { return pending >= MaxPendingOrders }
+
 // ValidationError is a bad request (HTTP 400). Its text is written for the client.
 type ValidationError string
 
@@ -43,6 +52,7 @@ var (
 	ErrNotPayable         = errors.New("orders: order is not payable")         // 409
 	ErrNotPending         = errors.New("orders: order is not pending")         // 409 (cancel)
 	ErrPaymentDeclined    = errors.New("orders: payment declined (simulated)") // 402
+	ErrTooManyPending     = errors.New("orders: too many unpaid orders")       // 409 (create, R10)
 )
 
 // ChangedError is returned instead of an order when the cart no longer matches the database (R3).

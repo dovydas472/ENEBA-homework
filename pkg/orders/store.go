@@ -201,7 +201,9 @@ func stockCounts(ctx context.Context, q querier, ids []int64, now time.Time) (ma
 // the client expected (R3) it returns *ChangedError and the database is untouched.
 //
 // Steps:
+//  0. Lock the user's row, so that two creates of one user run one after the other.
 //  1. Same (user, key) already an order? -> return it.
+//     1b. The user already holds 3 open unpaid orders? -> ErrTooManyPending (rule R10).
 //  2. Read + lock the offers (FOR SHARE): live price and state.
 //  3. INSERT the order. The UNIQUE (user_id, idempotency_key) decides a race between two requests
 //     with the same key: the second INSERT waits for the first, then does nothing (ON CONFLICT DO
@@ -229,12 +231,33 @@ func (s *Store) CreateOrder(ctx context.Context, userID int64, req CreateRequest
 	defer rollback(tx)
 	now := s.clock()
 
-	// 1. A retry of an order that already exists.
+	// 0. Lock the USER row. Everything below counts what the user already holds, so two creates of
+	// the same user must not run side by side: both would count 2 open orders and both would pass.
+	// The second one waits here until the first has committed, then counts again and sees 3.
+	// FOR NO KEY UPDATE conflicts with itself but not with the foreign-key checks that other
+	// statements (a new session, our own order INSERT) take on the same user row, so nothing else stalls.
+	if _, err := tx.Exec(ctx, `SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE`, userID); err != nil {
+		return Order{}, false, fmt.Errorf("orders: lock user: %w", err)
+	}
+
+	// 1. A retry of an order that already exists. Before the cap: a retry creates nothing, so it
+	// must be answered even when the user is at the cap right now.
 	if id, found, err := orderIDByKey(ctx, tx, userID, key); err != nil {
 		return Order{}, false, err
 	} else if found {
 		o, err := loadOrder(ctx, tx, userID, id, now)
 		return o, false, err
+	}
+
+	// 1b. R10: at most 3 unpaid orders whose reservation is still running.
+	var pending int
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*) FROM orders
+		WHERE user_id = $1 AND status = 'pending' AND reserved_until > $2`, userID, now).Scan(&pending); err != nil {
+		return Order{}, false, fmt.Errorf("orders: count pending orders: %w", err)
+	}
+	if PendingCapReached(pending) {
+		return Order{}, false, ErrTooManyPending
 	}
 
 	// 2. The live offers, locked until we finish.

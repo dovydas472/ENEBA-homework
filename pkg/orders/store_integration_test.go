@@ -801,3 +801,114 @@ func TestSeedReset_refusesWhenOrdersExist(t *testing.T) {
 		t.Fatalf("Reset with orders: err = %v, want seedgen.ErrOrdersExist", err)
 	}
 }
+
+// R10: at most 3 unpaid (pending, not expired) orders per user.
+func TestCreate_capsUnpaidOrdersAtThree(t *testing.T) {
+	f := newFixture(t)
+	buyer, other := f.newUser(t), f.newUser(t)
+	o := f.newOffer(t, 1000, 12)
+	ctx := context.Background()
+	pending := func() int {
+		return f.count(t, `SELECT count(*) FROM orders WHERE user_id = $1 AND status = 'pending'`, buyer)
+	}
+
+	// Three open orders are fine.
+	var first orders.Order
+	var firstReq orders.CreateRequest
+	var open []orders.Order
+	for i := 0; i < 3; i++ {
+		req := orders.CreateRequest{IdempotencyKey: newUUID(), Items: []orders.CartItem{{OfferID: o.id, Quantity: 1, ExpectedPriceCents: 1000}}}
+		order, created, err := f.store.CreateOrder(ctx, buyer, req)
+		if err != nil || !created {
+			t.Fatalf("order %d: created=%v err=%v", i+1, created, err)
+		}
+		if i == 0 {
+			first, firstReq = order, req
+		}
+		open = append(open, order)
+	}
+
+	// The fourth is refused: a plain "too many" error (not "cart changed"), nothing reserved or created.
+	_, _, err := f.create(buyer, o, 1)
+	if !errors.Is(err, orders.ErrTooManyPending) {
+		t.Fatalf("fourth order: err = %v, want ErrTooManyPending", err)
+	}
+	if n := pending(); n != 3 {
+		t.Errorf("%d pending orders, want 3", n)
+	}
+	if c := f.keyCounts(t, o.id); c["reserved"] != 3 {
+		t.Errorf("key states = %v, want exactly 3 reserved (the refused order reserved nothing)", c)
+	}
+
+	// A RETRY of an existing order is still answered at the cap: it creates nothing.
+	again, created, err := f.store.CreateOrder(ctx, buyer, firstReq)
+	if err != nil || created || again.ID != first.ID {
+		t.Errorf("retry at the cap: id %q created=%v err=%v; want the first order again", again.ID, created, err)
+	}
+	// The cap is per user.
+	f.mustCreate(t, other, o, 1)
+
+	// Cancelling one frees a place...
+	if _, err := f.store.CancelOrder(ctx, buyer, open[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	f.mustCreate(t, buyer, o, 1) // pending: open[1], open[2], new
+	if _, _, err := f.create(buyer, o, 1); !errors.Is(err, orders.ErrTooManyPending) {
+		t.Fatalf("at the cap again: err = %v", err)
+	}
+	// ...and so does paying one (a paid order holds no reservation).
+	if _, err := f.pay(buyer, open[1].ID, orders.OutcomeSuccess); err != nil {
+		t.Fatal(err)
+	}
+	f.mustCreate(t, buyer, o, 1) // pending: open[2], two new
+	if _, _, err := f.create(buyer, o, 1); !errors.Is(err, orders.ErrTooManyPending) {
+		t.Fatalf("at the cap after paying: err = %v", err)
+	}
+
+	// Expired orders do not count: 16 minutes later nothing is held any more (no job needed).
+	f.clock.Advance(orders.ReservationTTL + time.Minute)
+	f.mustCreate(t, buyer, o, 1)
+}
+
+// The cap must hold when one user fires many creates at the same moment (a script): without the
+// user-row lock all of them would count "0 open orders" and all would pass.
+func TestCreate_capHoldsForParallelCreates(t *testing.T) {
+	f := newFixture(t)
+	for round := 0; round < 5; round++ {
+		buyer := f.newUser(t)
+		o := f.newOffer(t, 1000, 10)
+
+		const n = 8
+		results := make(chan error, n)
+		start := make(chan struct{})
+		for i := 0; i < n; i++ {
+			go func() {
+				<-start
+				_, _, err := f.create(buyer, o, 1) // a different idempotency key every time
+				results <- err
+			}()
+		}
+		close(start)
+
+		ok, refused := 0, 0
+		for i := 0; i < n; i++ {
+			switch err := <-results; {
+			case err == nil:
+				ok++
+			case errors.Is(err, orders.ErrTooManyPending):
+				refused++
+			default:
+				t.Fatalf("round %d: unexpected error %v", round, err)
+			}
+		}
+		if ok != orders.MaxPendingOrders || refused != n-orders.MaxPendingOrders {
+			t.Fatalf("round %d: %d created and %d refused, want %d and %d", round, ok, refused, orders.MaxPendingOrders, n-orders.MaxPendingOrders)
+		}
+		if got := f.count(t, `SELECT count(*) FROM orders WHERE user_id = $1 AND status = 'pending'`, buyer); got != orders.MaxPendingOrders {
+			t.Fatalf("round %d: %d pending orders in the database, want %d", round, got, orders.MaxPendingOrders)
+		}
+		if c := f.keyCounts(t, o.id); c["reserved"] != orders.MaxPendingOrders {
+			t.Fatalf("round %d: key states %v, want %d reserved", round, c, orders.MaxPendingOrders)
+		}
+	}
+}

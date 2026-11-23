@@ -33,7 +33,8 @@ export function quoteCart(items: CartLineInput[], options?: ApiOptions): Promise
  * POST /api/orders: creates a pending order and reserves its keys for 15 minutes.
  * Send ONE `idempotencyKey` (a UUID, see `newIdempotencyKey`) per checkout attempt and reuse it for a
  * retry or a double click: the server then returns the same order instead of reserving twice.
- * Throws ApiError status 409 when the cart changed (read it with `cartChangedLines`), 401 when signed out.
+ * Throws ApiError status 409 when the cart changed (read it with `cartChangedLines`) or when the user already
+ * holds 3 unpaid orders (`isTooManyPendingOrders`), 401 when signed out.
  */
 export async function createOrder(idempotencyKey: string, items: CartLineInput[], options?: ApiOptions): Promise<Order> {
   return (await postJSON<OrderResponse>("/api/orders", { idempotencyKey, items }, options)).order;
@@ -84,4 +85,13 @@ export function isPaymentDeclined(err: unknown): boolean {
 export function isReservationExpired(err: unknown): boolean {
   if (!(err instanceof ApiError) || err.code !== "http" || err.status !== 409) return false;
   return (err.body as { error?: unknown } | undefined)?.error === "Reservation expired";
+}
+
+/** The text of the 409 answer of POST /api/orders when the user already holds 3 open unpaid orders. */
+export const TOO_MANY_PENDING_MESSAGE = "Too many unpaid orders – pay or cancel one first";
+
+/** True for that 409: the buyer must pay or cancel one of their pending orders first. */
+export function isTooManyPendingOrders(err: unknown): boolean {
+  if (!(err instanceof ApiError) || err.code !== "http" || err.status !== 409) return false;
+  return (err.body as { error?: unknown } | undefined)?.error === TOO_MANY_PENDING_MESSAGE;
 }

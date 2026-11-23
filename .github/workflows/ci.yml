@@ -137,7 +137,7 @@ jobs:
           fi
           # The key integration tests by name, so a rename cannot silently drop them from the count:
           # the auth rate limit, and the checkout (K6: two buyers fighting for the last key).
-          for name in TestStore_loginAttemptCounter TestAuthFlow_eleventhFailureIs429 TestK6_twoBuyersOneLastKey TestK6_manyBuyersFewKeys TestPay_concurrentDoubleClickChargesOnce; do
+          for name in TestStore_loginAttemptCounter TestAuthFlow_eleventhFailureIs429 TestK6_twoBuyersOneLastKey TestK6_manyBuyersFewKeys TestPay_concurrentDoubleClickChargesOnce TestCreate_capHoldsForParallelCreates; do
             grep -q -e "^--- PASS: $name" db-test.log || { echo "::error::$name did not pass"; exit 1; }
           done
 

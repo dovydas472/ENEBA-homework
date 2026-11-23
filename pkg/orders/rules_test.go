@@ -203,6 +203,18 @@ func TestVisibleKeys_onlyWhenPaid(t *testing.T) {
 	}
 }
 
+// R10: the cap is 3 open unpaid orders; the fourth is refused.
+func TestPendingCapReached(t *testing.T) {
+	for n, want := range map[int]bool{0: false, 1: false, 2: false, 3: true, 4: true, 100: true} {
+		if got := PendingCapReached(n); got != want {
+			t.Errorf("PendingCapReached(%d) = %v, want %v", n, got, want)
+		}
+	}
+	if MaxPendingOrders != 3 {
+		t.Errorf("MaxPendingOrders = %d, the owner decided 3", MaxPendingOrders)
+	}
+}
+
 func TestValidOutcome(t *testing.T) {
 	for _, o := range []string{OutcomeSuccess, OutcomeDecline} {
 		if !ValidOutcome(o) {

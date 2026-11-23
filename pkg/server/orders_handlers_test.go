@@ -190,6 +190,7 @@ func TestOrderErrors_mapToTheContract(t *testing.T) {
 		{"not payable", orders.ErrNotPayable, 409, "Order is not payable"},
 		{"not pending", orders.ErrNotPending, 409, "Order is not pending"},
 		{"declined", orders.ErrPaymentDeclined, 402, "Payment declined (simulated)"},
+		{"too many unpaid orders", orders.ErrTooManyPending, 409, "Too many unpaid orders – pay or cancel one first"},
 		{"database down", fmt.Errorf("%w: connect to db.secret-host:5432", db.ErrUnavailable), 503, "service temporarily unavailable"},
 		{"sql error", errors.New(`ERROR: relation "orders" does not exist (SQLSTATE 42P01)`), 500, "internal error"},
 	}

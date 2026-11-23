@@ -7,6 +7,7 @@ import {
   getOrder,
   isPaymentDeclined,
   isReservationExpired,
+  isTooManyPendingOrders,
   listOrders,
   newIdempotencyKey,
   payOrder,
@@ -127,6 +128,20 @@ describe("error helpers", () => {
     expect(isReservationExpired(http(409, { error: "Reservation expired" }))).toBe(true);
     expect(isReservationExpired(http(409, { error: "Order is not payable" }))).toBe(false);
     expect(isReservationExpired(http(402))).toBe(false);
+  });
+});
+
+describe("isTooManyPendingOrders", () => {
+  const http = (status: number, body?: unknown) => new ApiError("http", `HTTP ${status}`, status, body);
+
+  it("recognises the cap answer of POST /api/orders and nothing else", async () => {
+    mockFetch(() => json({ error: "Too many unpaid orders – pay or cancel one first" }, 409));
+    const err = await createOrder("k", items).catch((e: unknown) => e);
+    expect(isTooManyPendingOrders(err)).toBe(true);
+    expect(cartChangedLines(err)).toBeNull();
+    expect(isTooManyPendingOrders(http(409, { error: "cart_changed", lines: [] }))).toBe(false);
+    expect(isTooManyPendingOrders(http(402))).toBe(false);
+    expect(isTooManyPendingOrders(new Error("x"))).toBe(false);
   });
 });
 

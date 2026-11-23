@@ -29,6 +29,7 @@ const (
 	msgNotPayable         = "Order is not payable"
 	msgNotPending         = "Order is not pending"
 	msgPaymentDeclined    = "Payment declined (simulated)"
+	msgTooManyPending     = "Too many unpaid orders – pay or cancel one first"
 	msgOrderNotFound      = "order not found"
 	msgBadOrderBody       = "Request body must be JSON, see the API section of the README"
 )
@@ -88,6 +89,8 @@ func orderFailed(w http.ResponseWriter, what string, err error) {
 		writeError(w, http.StatusConflict, msgNotPayable)
 	case errors.Is(err, orders.ErrNotPending):
 		writeError(w, http.StatusConflict, msgNotPending)
+	case errors.Is(err, orders.ErrTooManyPending):
+		writeError(w, http.StatusConflict, msgTooManyPending)
 	case errors.Is(err, orders.ErrPaymentDeclined):
 		writeError(w, http.StatusPaymentRequired, msgPaymentDeclined)
 	default:
@@ -122,6 +125,7 @@ func quoteHandler(store OrderStore) http.HandlerFunc {
 //   - 201 {order}: a new pending order, its keys reserved for 15 minutes
 //   - 200 {order}: the same user sent the same idempotencyKey before - the same order, nothing new
 //   - 409 {error:"cart_changed", lines}: price, stock or offer state differs; nothing was created
+//   - 409 "Too many unpaid orders – pay or cancel one first": the user already holds 3 open unpaid orders
 //   - 400 invalid body
 func createOrderHandler(store OrderStore) userHandler {
 	return func(w http.ResponseWriter, r *http.Request, user auth.User) {
