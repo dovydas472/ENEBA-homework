@@ -357,6 +357,13 @@ desktop >=931 +------------ carousel (1fr) ------------+ tile + tile + tile +  2
 - **Carousel** (WAI-ARIA carousel pattern): a region named by the block title, slides are "n of N" groups, Play/Pause first in the Tab order, Previous / Next (40px, `--color-overlay`),
   24px dots (10px dot; 40px on phones), hidden slides `inert`. Autoplay 6 s, paused on hover and focus, off with `prefers-reduced-motion`.
   Cross-fade (`--slide-transition`); the box has its size before any picture loads (no CLS). The first picture is eager + `fetchpriority="high"` with `srcset`/`sizes`; a `<picture>` `<source>` serves the phone crop ≤600px.
+  **Swipe** on touch screens (Task 17): a mostly sideways finger move of ≥ 40px = next / previous slide; `touch-action: pan-y pinch-zoom` keeps vertical
+  scrolling and zoom with the browser; a mouse drag is not a swipe (desktop has the arrows).
+- **Hero picture early (Task 17, LCP):** `GET /api/homepage` names the first shown slide's picture (`preload.heroImage`); the page preloads it
+  (`<link rel="preload" as="image" imagesrcset imagesizes fetchpriority="high">`, the crop chosen with the same media query as the `<picture>`) and the
+  hero's loading placeholder already draws it, so the slide text arrives on top of a picture that is already there. `sizes` = `(max-width: 930px) 100vw, 70vw`
+  (`heroImage.ts`, shared by both): exact at 1440 (1008px); the true width above 930 is `100vw − tiles`, but the tiles are server content, and 70vw picks the
+  same file as the real width at 1024, 1200, 1440 and 1920.
 - **Tiles:** our own design — text top-left on a token gradient, a fan of up to three catalog covers spilling over the bottom-right corner (rotated 8° / −2° / −12°, lifted 10px on hover/focus).
 - **Platform row:** generic lucide icons chosen by NAME from the block config (no brand logos); an unknown name gets `gamepad-2`.
 - **Product rows:** the Store's `ProductCard` (with Add to cart). "View all" is a secondary `ButtonLink` with a hidden ": {row title}", so the three links differ for screen readers.
@@ -623,6 +630,12 @@ Centered block inside the content area (not a modal), `padding: var(--space-6) v
 - **Error with Retry:** title ("Something went wrong") `--font-size-lg` bold; message `--font-size-sm` `--color-text-muted` — a **generic** message, never a raw server/DB error;
   **primary** button "Retry"; `role="alert"`. While retrying the button is in its loading state. For a slow server (cold start) show "Waking up the server, this can take a few seconds…" as helper text (matches the existing health page).
 - Inline (inside a small component, like a filter group): same copy, `--font-size-xs`, text button "Retry".
+- **Error page (Task 17):** a page that crashes while rendering (or whose code cannot be downloaded) shows the error state **as the page** (`h1`),
+  inside the layout: "Something went wrong" + "This page could not be shown. Please try again." + primary **Retry** (reloads) + secondary **Home**.
+  If the frame itself (header / footer) crashes, a full page of its own replaces it: the wordmark as text, the same block, Home reloads the document.
+  The tab title is "Something went wrong". Never a white screen.
+- **404:** EmptyState as the page (`h1` "Page not found") with a **secondary button** "Back to the home page" (Task 17 parity: Eneba's 404 has an outlined
+  "Continue browsing"; its big illustration is not copied).
 
 ### 4.10 Skeleton loader
 
@@ -630,6 +643,9 @@ Centered block inside the content area (not a modal), `padding: var(--space-6) v
 - Skeleton **product card** = same outer size as the real card (bg `--color-surface-card`): cover block 5:7, then three bars (title 12px × 90%, regions 12px × 60%, price 22px × 40%).
 - Skeleton **offer row** = same height as the real row; skeleton text uses bars, never the word "Loading…" (except the visible fallback on slow server, see 4.9).
 - Use `aria-busy="true"` on the list while loading; skeleton elements are `aria-hidden`.
+- **Page skeleton** (Task 17, `PageSkeleton`): while a lazily loaded page's code downloads on a direct visit (cart, payment, orders, order, sign-in,
+  sign-up), the page area shows a title bar (40% wide, `--font-size-4xl` tall) and a `--color-bg-deep` panel of three lines, `--checkout-max-width` wide,
+  at least one screen tall (the footer does not jump). Header and footer are already there.
 
 ### 4.11 Toast
 
@@ -742,7 +758,13 @@ The numbers were computed with a small script (sRGB → relative luminance → `
 - **Tap targets:** icon buttons, checkbox rows, nav items, toast close ≥ **40×40px** on screens ≤600px (`--hit-target-min`). Buttons become 40px high via `--button-height`.
 - **Color is never the only signal** (errors need text/icon, selected filter needs a check, cashback needs the word).
 - **Small text:** `--font-size-2xs` (10px) is only for uppercase micro-labels (it is what Eneba does); informational text is ≥ 12px.
-- Language: the document is `lang="lt"` (set in `index.html`); the font covers Lithuanian letters.
+- Language: the document is `lang="en"` (set in `index.html`; the UI is English — corrected in Task 17, this line said `lt`); the font also covers Lithuanian letters.
+- **Skip link:** "Skip to content" is the first Tab stop on every page; hidden until focused, then a yellow (`--color-accent`) bar top-left; it focuses `<main>`.
+- **Page changes (Task 17):** after the PATH changes, the focus moves to the new page's `h1` (or `<main>` while the page has none) without scrolling, and
+  the new tab title is announced in a polite live region. A query-string change (Store filters, sort, page) keeps the focus where it is. The focused
+  `h1` has no focus ring (it is focused by script only, `tabindex="-1"`).
+- **Tab titles:** "{page} – {APP_NAME}", unique per page: products include the version ("The Witcher 3: Wild Hunt (Steam · GLOBAL)"), orders the short id
+  ("Order #1A2B3C4D", "Payment for order #1A2B3C4D"); the home page is "{APP_NAME} – internship demo".
 
 ---
 
