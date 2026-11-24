@@ -241,7 +241,12 @@ It opens a popup under it, right-aligned: `--account-menu-width`, `--color-bg-de
 bottom line `--color-border`), then 40px rows "Orders" and "Sign out" (14px medium, hover `--color-surface-hover`). It is a **disclosure** (button with `aria-expanded` +
 `aria-controls`), not an ARIA `menu`: the items are a normal link and button, Tab moves through them; Esc closes and returns focus to the button; a click outside or focus leaving closes it.
 The phone menu (☰) has the same choices under the nav links, after a `--color-border` line: "Sign in" / "Create account", or "Signed in as …", "Orders", "Sign out".
-Eneba shows "Log in | Register" (15px, extra-bold) and, signed in, an avatar menu; we keep the single "Sign in" link (Task 11b) and do not copy the avatar.
+Eneba shows "Log in | Register" (15px, extra-bold) and, signed in, an avatar menu; we do not copy the avatar.
+
+**As built in Task 19:** signed out, desktop shows **"Sign in | Register"** like Eneba: user icon + "Sign in" (`/login?next=…`), a decorative `|` (`aria-hidden`,
+`--space-1` on each side, the links' inner padding dropped so the three sit close), then "Register" (`/register?next=…`); all `--font-size-sm` medium, hover → accent.
+Both keep the return path. ≤930px only the account icon (= Sign in) stays; "Create account" is in the ☰ menu. Password fields hide Edge's own reveal button
+(`::-ms-reveal`), because `PasswordField` already has one (Edge showed two eyes).
 
 ### 3.2 Store page (catalog with filters)
 

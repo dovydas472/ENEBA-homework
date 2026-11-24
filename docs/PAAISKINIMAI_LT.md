@@ -1014,3 +1014,17 @@ Trumpi atsakymai į labiausiai tikėtinus klausimus (2–4 sakiniai); nuoroda ve
 - **Kodėl taip:** alias'ų niekas nereferencijuoja, todėl juos pridėti saugu net DB su pardavimais. Eilučių sąrašą (tvarką) abu keliai gauna iš tos pačios funkcijos `aliasRows`, todėl pilnas seed'as (COPY) ir šis režimas (INSERT … ON CONFLICT) negali išsiskirti.
 - **Testai:** `pkg/seedgen/aliases_db_test.go` (integraciniai, CI): ištrynus alias'us ir paleidus `InsertAliases`, katalogo checksum lygiai toks pat kaip po pilno seed'o (tos pačios eilutės ir ID); antras ir trečias paleidimas įrašo 0 (checksum nepasikeičia); jei trūksta vieno žaidimo alias'ų – įrašomi tik jie, kitu raidžių dydžiu esantis alias praleidžiamas, snapshot'e nesantis – paliekamas; jei DB trūksta žaidimo – nieko neįrašo. Visi testai dirba transakcijoje, kuri atšaukiama.
 - **Gali paklausti:** „Kodėl ne migracija?“ – alias'ai yra seed'o duomenys iš snapshot'o; migracijoje jie būtų nukopijuoti antrą kartą ir galėtų išsiskirti. „Kodėl checksum'as nespausdinamas?“ – produkcijoje dalis raktų jau parduota, todėl viso katalogo checksum'as natūraliai skiriasi nuo švaraus seed'o.
+
+# Task 19 – galutinis auditas
+
+## „Sign in | Register" header'yje (`src/app/Header.tsx`, `Header.module.css`)
+- **Ką daro:** neprisijungus darbalaukyje dešinėje rodoma „👤 Sign in | Register" – kaip Eneba („Log in | Register"). Abi nuorodos grąžina į tą patį puslapį: `authPageLink("/login", here)` ir `authPageLink("/register", here)`, kur `here = pathname + search` (pvz., `/register?next=%2Fstore%3Fq%3Dwitcher`). Pagrindiniame puslapyje `next` nepridedamas (numatytas tikslas ir taip `/`).
+- **Kodėl `|` su `aria-hidden`:** brūkšnys tik vizualinis skyriklis; ekrano skaitytuvas girdi dvi nuorodas („Sign in", „Register"), o ne „vertical bar".
+- **Kodėl nuorodos „prilipusios" prie brūkšnio:** abi naudoja tą pačią `.iconLink` klasę (57 px aukštis, hover → accent), bet `.signIn` nuima dešinį, o `.register` – kairį vidinį tarpą; brūkšnys turi po 5 px (`--space-1`) iš abiejų pusių – taip arti, kaip Eneba.
+- **Telefone (≤930 px):** lieka tik paskyros ikona (= Sign in); `|` ir „Register" paslėpti CSS'u, nes „Create account" jau yra ☰ meniu (`MenuDrawer.tsx`) – irgi su `next`.
+- **Testai:** `AccountMenu.test.tsx` – abiejų nuorodų `href` su `next` (ir su query), pagrindiniame puslapyje be `next`, skyriklis `aria-hidden`, prisijungus abi dingsta, atsijungus grįžta.
+- **Gali paklausti:** „Kodėl ne viena nuoroda „Sign in", iš kurios galima pereiti į registraciją?" – taip buvo iki šiol; Eneba rodo abi, o naujam lankytojui vienu paspaudimu mažiau.
+
+## Edge rodė dvi „akis" slaptažodžio lauke (`src/components/TextField.module.css`)
+- **Kas buvo:** Microsoft Edge į kiekvieną `type="password"` lauką pats įdeda savo „rodyti slaptažodį" mygtuką. Mūsų `PasswordField` turi savo mygtuką, todėl Edge'e matėsi dvi akys šalia viena kitos. Rasta Task 19 produkcijos patikroje (headless Edge ekrano nuotrauka).
+- **Pataisa:** `.input::-ms-reveal { display: none; }` – paslepia tik Edge'o mygtuką; kitos naršyklės tokio neturi, todėl joms niekas nesikeičia.
