@@ -207,7 +207,7 @@ Summary: of the audit's findings only F1 was small and clearly right; it is fixe
 
 ### 2.8 GitHub CI
 
-<!-- CI -->
+PR [#22](https://github.com/dovydas472/ENEBA-homework/pull/22), commit `cef3cf2`: **all green**: `go` (52 s), `migrations` (1 m 4 s), `frontend` (35 s); Vercel preview deployed. The commit that adds the session log runs the same checks again.
 
 ## 3. What the owner must do manually
 
