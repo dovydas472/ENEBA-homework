@@ -1,6 +1,6 @@
 # Task 18 – Final README, interview cheat sheet, submission checks: report
 
-Task file: [`docs/tasks/TASK_18_readme_submission.md`](../tasks/TASK_18_readme_submission.md) (+ addendum [`TASK_18_amendment_lighthouse_production.md`](../tasks/TASK_18_amendment_lighthouse_production.md): Lighthouse mobile on production) · Branch: `task/18-readme` · **No migration in this PR.** **One production step before merging:** *Seed production* with `aliases_only` (§3.1).
+Task file: [`docs/tasks/TASK_18_readme_submission.md`](../tasks/TASK_18_readme_submission.md) (+ addendum [`TASK_18_amendment_lighthouse_production.md`](../tasks/TASK_18_amendment_lighthouse_production.md): Lighthouse mobile on production) · Branch: `task/18-readme` · **No migration in this PR.** **One production step before merging:** *Seed production* with `mode` = `aliases-only` (§3.1) – **done** on 2026-11-24, aliases verified on production (§2).
 
 ## 1. Files changed
 
@@ -45,8 +45,8 @@ Fresh browser context per size, so each run is a new demo user. Script in the sc
 |---|---|---|
 | Home: hero + all blocks (INNERT, GTA V, Witcher 3 slides; Popular right now, Biggest discounts, New releases) | pass (run 1; in run 2 the check looked before the blocks rendered – script timing, fixed) | pass |
 | Search suggestions "witchr 3" → The Witcher 3: Wild Hunt | pass | pass |
-| Search suggestions **"gta"** | **FAIL: "No matches for 'gta'"** → the alias problem below | **FAIL** (same) |
-| Enter → `/store?q=gta` | page works, but 0 results (+ "Popular right now") | same |
+| Search suggestions **"gta"** | **FAIL: "No matches for 'gta'"** → the alias problem below. **After the fix (2026-11-24): pass** – GTA V first, "Also known as GTA 5" | **FAIL** (same). **After the fix: pass** |
+| Enter → `/store?q=gta` | page works, but 0 results (+ "Popular right now"). **After the fix:** results found (`/api/products?q=gta` total 8) | same |
 | Store filter Steam → `?platform=steam`, "54 results" | pass (sidebar) | pass ("Sort and filter" drawer → "Show 54 results") |
 | Product → Add to cart → header "Cart, 1 item" | pass (Half-Life) | pass (BioShock Infinite) |
 | Demo sign-in from `/login?next=/cart` → back on `/cart`, "Account: Demo user" | pass | pass |
@@ -58,9 +58,17 @@ Fresh browser context per size, so each run is a new demo user. Script in the sc
 
 The smoke runs bought **3 fake keys on production** (Half-Life ×2, BioShock Infinite ×1) as 3 demo users; that is what the demo is for.
 
-**Found: production has no search aliases.** `GET /api/search/suggest?q=gta` / `rdr2` / `hzd` / `gt` → 0 items, `/api/products?q=gta` total 0, while `witcher` and `grand` (title matches) work. Cause, from the Actions log: the **Seed production** run after Task 13a (2026-11-22 18:32 UTC, run 45055657099) **failed at "Check the confirmation"** – `confirm` was entered as `eset, confirm = seed-production` and `reset` was unticked – and it was never re-run, so production's `game_aliases` stayed empty (the Task 13a report says search then "works on titles only"). A `--reset` re-run is no longer possible: production has orders, and the seed refuses to rewrite a catalog under them. **Fix (owner's choice):** `--aliases-only` (§1); the owner runs it before merging (§3.1), and I re-check `gta` / `rdr2` on production afterwards.
+**Found: production has no search aliases.** `GET /api/search/suggest?q=gta` / `rdr2` / `hzd` / `gt` → 0 items, `/api/products?q=gta` total 0, while `witcher` and `grand` (title matches) work. Cause, from the Actions log: the **Seed production** run after Task 13a (2026-11-22 18:32 UTC, run 45055657099) **failed at "Check the confirmation"** – `confirm` was entered as `eset, confirm = seed-production` and `reset` was unticked – and it was never re-run, so production's `game_aliases` stayed empty (the Task 13a report says search then "works on titles only"). A `--reset` re-run is no longer possible: production has orders, and the seed refuses to rewrite a catalog under them. **Fix (owner's choice):** `--aliases-only` (§1); the owner ran it on 2026-11-24 and the re-check passed (below).
 
-**Production after the owner's *Seed production* run:** *pending – filled in after the run (§3.1).*
+**Production after the owner's *Seed production* run (fixed).** The owner ran *Seed production* from `task/18-readme` (commit `f368428`) with `mode` = `aliases-only`, `confirm` = `seed-production`: run [45354006060](https://github.com/dovydas472/ENEBA-homework/actions/runs/45354006060), 2026-11-24 08:11 UTC, **success**. Log: `snapshot: 50 games` · `game_aliases before: 0` · `inserted: 134` · `game_aliases after: 134` (the same 134 as on dev). Re-check on production right after the run (08:12 UTC, `X-Vercel-Cache: MISS`, so fresh data, not a cached answer):
+
+| Query | `/api/search/suggest` (what the dropdown shows; `matchedAlias` in brackets) | `/api/products?q=` total |
+|---|---|---|
+| `gta` | 4: Grand Theft Auto V (`GTA 5`), San Andreas (`GTA San Andreas`), Vice City (`GTA VC`), IV (`GTA 4`) | 8 |
+| `rdr2` | 2: Red Dead Redemption 2 (`RDR2`), Red Dead Redemption (`RDR`) | 7 |
+| `hzd` | 1: Horizon Zero Dawn (`HZD`) | 3 |
+
+Before the run all three returned 0. **UI check** (same headless Edge script as the smoke test, search steps only, no purchase), desktop 1440 px and phone 390 px: typing `gta`, `rdr2`, `hzd` in the header search shows Grand Theft Auto V / Red Dead Redemption 2 / Horizon Zero Dawn as the first suggestion with "Also known as GTA 5 / RDR2 / HZD", and Enter opens "Results for 'hzd'" with products – 8/8 pass. Alias search now works on production like on dev, so the two smoke-test rows above that failed now pass.
 
 ### Lighthouse mobile on production (addendum)
 Lighthouse **12.8.2** (programmatic), default **mobile** preset: Moto G Power emulation, simulated slow 4G (150 ms RTT, 1.6 Mbps down), 4× CPU slowdown; headless Edge 157 on this Windows PC, home internet connection (Vercel edge: Stockholm `arn1`; function `fra1`). Each page loaded once (not counted) to warm the function and CDN, then **3 runs, median**. 2026-11-24, 05:15–05:17 UTC.
@@ -90,7 +98,7 @@ axe-core **4.14.1**, WCAG 2.0/2.1 A + AA + best practice, reduced motion: `/`, `
 | Demo banner | on every page checked (smoke table) |
 
 ## 3. What the owner must do manually
-1. **Before merging – add the search aliases to production:** *Actions → Seed production → Run workflow*, **"Use workflow from" = `task/18-readme`**, dropdown **`mode` = `aliases-only`**, dropdown **`confirm` = `seed-production`**. The log must show `game_aliases before: 0`, `inserted: 134`, `game_aliases after: 134`. Running it again is harmless (it then shows `inserted: 0`). Tell me when it ran: I re-check `gta`, `rdr2`, `hzd` on production and add the result to §2 (the suggestion cache, `s-maxage=300`, may need up to 5 minutes). **No migration in this PR** (no *Migrate production* run needed).
+1. ~~**Before merging – add the search aliases to production:**~~ **Done 2026-11-24** (run 45354006060: before 0 / inserted 134 / after 134; `gta`, `rdr2`, `hzd` verified in §2). For reference, the step was: *Actions → Seed production → Run workflow*, **"Use workflow from" = `task/18-readme`**, dropdown **`mode` = `aliases-only`**, dropdown **`confirm` = `seed-production`**. The log must show `game_aliases before: 0`, `inserted: 134`, `game_aliases after: 134`. Running it again is harmless (it then shows `inserted: 0`). Tell me when it ran: I re-check `gta`, `rdr2`, `hzd` on production and add the result to §2 (the suggestion cache, `s-maxage=300`, may need up to 5 minutes). **No migration in this PR** (no *Migrate production* run needed).
 2. **Fill in the planning-chat link:** replace `<SHARE_LINK>` in the README ("How this project was built with AI").
 3. **Decide about the old history finding** (§2 "Repository history", §6): leave it, or rewrite history yourself.
 4. Glance at the README on the PR page (Mermaid diagrams, screenshot tables, the collapsible sections) and read the cheat sheet once; correct anything in "Who did what" that does not match how you worked.
@@ -130,6 +138,6 @@ Run after all code and docs except this report were committed (branch at a8d2a58
 | CLAUDE.md seed rules do not mention the new mode | Not edited by me (owner's rule file) – open question 3 |
 | **Windows user name still visible** in 3 logs inside the text of a redaction regex (`\bNAME\b`) | **Fixed:** replaced in `2026-11-20_04`, `2026-11-23_06`, `2026-11-23_07`; the converter now also redacts the name inside such text, so this session's log does not repeat it. Re-scan: 0 hits |
 | No test for the `--reset` + `--aliases-only` flag conflict / workflow branch | Flag conflict checked by running it (§2: exit 2). The workflow branch is now a dropdown + `case`, dry-run for every mode (§2) |
-| Owner step: run *Seed production* (`mode` = `aliases-only`), then verify `gta` | In §3.1 – **before** the merge, from this branch (the inputs exist only here until the merge) |
+| Owner step: run *Seed production* (`mode` = `aliases-only`), then verify `gta` | **Done** before the merge, from this branch: run 45354006060, 0 → 134 aliases; `gta` / `rdr2` / `hzd` verified via API and UI (§2) |
 | `<SHARE_LINK>` must be filled in | §3.2 |
 | `.vscode/` untracked, do not commit | not committed |
