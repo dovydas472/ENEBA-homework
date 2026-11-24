@@ -50,6 +50,9 @@ type Ref struct {
 
 // Item is one product card in the listing.
 type Item struct {
+	// GameID is the game this product is a version of (products.game_id). It is NOT sent to the
+	// frontend (json:"-"): the home product rows use it to show one card per game.
+	GameID          int64   `json:"-"`
 	Slug            string  `json:"slug"`
 	Title           string  `json:"title"`
 	Edition         string  `json:"edition"`

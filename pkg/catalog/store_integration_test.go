@@ -619,3 +619,30 @@ func maxI(a, b int64) int64 {
 	}
 	return b
 }
+
+// GameID is what the home product rows de-duplicate by: it must be filled for every card, products of the
+// same game share it, and different titles never do.
+func TestListProducts_gameIDIdentifiesTheGame(t *testing.T) {
+	items := allItems(t, newStore(t), catalog.Filter{})
+	titleOfGame := map[int64]string{}
+	gamesWithManyVersions := 0
+	versions := map[int64]int{}
+	for _, it := range items {
+		if it.GameID == 0 {
+			t.Fatalf("%s has no game id", it.Slug)
+		}
+		if title, ok := titleOfGame[it.GameID]; ok && title != it.Title {
+			t.Errorf("game %d has two titles: %q and %q", it.GameID, title, it.Title)
+		}
+		titleOfGame[it.GameID] = it.Title
+		versions[it.GameID]++
+	}
+	for _, n := range versions {
+		if n > 1 {
+			gamesWithManyVersions++
+		}
+	}
+	if gamesWithManyVersions == 0 {
+		t.Error("no game has more than one product in the seed: the check above proves nothing")
+	}
+}
