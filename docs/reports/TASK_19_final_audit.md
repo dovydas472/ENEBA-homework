@@ -13,7 +13,7 @@ Branch `task/19-final-audit` · task file [`docs/tasks/TASK_19_final_audit.md`](
 | `src/components/TextField.module.css` | `.input::-ms-reveal { display: none }` – Edge drew a second "show password" eye (found in the production sign-in check, §2.2) |
 | `docs/DESIGN.md` | §3.1 "As built in Task 19" (header account links, Edge reveal button) |
 | `docs/PAAISKINIMAI_LT.md` | new section "Task 19 – galutinis auditas" (both changes) |
-| `README.md` | the earlier stack/hosting conversation (known fix 2); planning-chat link (known fix 3); counts: 25 tasks, 22 PRs, 254 commits, 23 logs, 628 frontend tests |
+| `README.md` | the earlier stack/hosting conversation (known fix 2); the real planning-chat link from the owner (known fix 3: first the placeholder, the owner was asked before the push); counts: 25 tasks, 22 PRs, 254 commits, 23 logs, 628 frontend tests |
 | `docs/reports/TASK_19_final_audit.md` | this report |
 | `ai-logs/2026-11-24_01_final-audit.md` | this session's log (converted from the transcript, redacted) |
 
@@ -181,7 +181,7 @@ I checked every finding against the code and, where it was about looks, against 
 
 | # | Finding (audit row / bug / top-10) | What I checked | Decision |
 |---|---|---|---|
-| F1 | `<SHARE_LINK>` placeholder, "21 files" (row 2, bug 10, top 1) | README.md:222-223; `ai-logs/` has 22 files, 23 with this session's log | **Fixed**: link (known fix 3, the owner provides the real one), counts updated |
+| F1 | `<SHARE_LINK>` placeholder, "21 files" (row 2, bug 10, top 1) | README "How this project was built with AI"; `ai-logs/` has 22 files, 23 with this session's log | **Fixed**: the real planning-chat link from the owner (known fix 3), counts updated |
 | F2 | Logs not "full": thinking omitted, tool I/O shortened (row 1, top 1) | the header of every converted log says so openly; the first log (2026-11-19) is a real `/export` | **No change → §6 Q1** (recommend: document in README) |
 | F3 | Almost all code AI-written; "explain your code" is a risk (rows 3–4, top 2) | README "Who did what" says it openly; `docs/PAAISKINIMAI_LT.md` exists for this | No code change; interview preparation is the owner's |
 | F4 | Product page at x = 40, header at 120, cart at ~215 → "pages jump" (bug 1, rows 13/18/19, top 4) | **measured live (§2.5):** Eneba's product page is the same (title 294, cover 40, buy box to 1400, header 120); cart/payment = Eneba's checkout width 1010 px (measured on `eneba.com/checkout`, Task 16b) | **No change** – it copies Eneba; the audit did not capture Eneba's product page or checkout (it says so) |
@@ -211,7 +211,7 @@ Summary: of the audit's findings only F1 was small and clearly right; it is fixe
 
 ## 3. What the owner must do manually
 
-1. **The planning chat link.** README line "The planning chat" says `https://claude.ai/share/OWNER_FILLS_IN` until you send the real share link in the chat. I replace it, then push that commit (task §3.3: not pushed before asking).
+1. **The planning chat link – done.** Asked in the chat before pushing (task §3.3); the owner sent the share link and it is in the README (`https://claude.ai/share/9db30da6-…`). Please open it once in a private window to confirm it is shared publicly.
 2. **No migration, no seed** – nothing to run in GitHub Actions.
 3. **Preview** (behind your Vercel login), desktop width: signed out, the header shows "👤 Sign in | Register"; *Register* opens `/register?next=…` of the page you were on, *Sign in* opens `/login?next=…`; after signing in both are replaced by the account menu, after signing out they are back. Narrow the window below 930 px: only the account icon; ☰ shows "Sign in" and "Create account". **In Edge**, type into a password field: only one eye icon.
 4. Answer the open questions (§6), then merge.
@@ -230,7 +230,7 @@ Summary: of the audit's findings only F1 was small and clearly right; it is fixe
 
 - **Preview not opened by me.** It is behind Vercel Authentication. The same build ran locally against Neon `dev` (§2.3, 26/26), and production was smoke-tested as it is now. The Preview click-through is in §3.
 - **"Production smoke test again after the Preview"** ran on production **before** the merge, so it tests `main`. The header change reaches production only after the merge; the after-merge check is §3, step 5.
-- **The README commit was held back from the first push** (the branch was first pushed up to the commit before it), so the Preview could build without pushing the link line before the owner answered.
+- **The README commit was held back from the first push** (the branch was first pushed up to the commit before it), so the Preview could build without pushing the link line before the owner answered. The owner then sent the link.
 - **One fix that is not from the audit:** the Edge double eye. I found it in the sign-in check (§2.2). It is small and clearly right, so it is fixed and listed in §2.7.
 - **Two counts in the README depend on this PR:** "23 files" counts this session's log (committed on this branch), and "254 commits on `main` before the last task" is `main` before Task 19.
 - **The audit subagent could read the repository**, including `CLAUDE.md`, `docs/tasks/` (this task's known fixes too) and `docs/reports/`. It was told not to use them as justification (§2.6), but that cannot be enforced technically.
@@ -308,7 +308,7 @@ The `task-reviewer` subagent ran on the branch after the code and doc commits an
 | Reviewer point | Action |
 |---|---|
 | §2 audit table missing; §4 findings; §5 checks; report missing | Expected at that moment (the report is written after the review, CLAUDE.md). This report has the audit verbatim (§2.6), each finding with its decision (§2.7), the checks (§2.1–2.5) and the open questions (§6). |
-| 3.3 planning link only partly done | Correct. The real link must come from the owner; asked in the chat before pushing (§3, step 1). |
+| 3.3 planning link only partly done | Correct at that moment. Asked in the chat before pushing; the owner sent the link and it is in the README (§3, step 1). |
 | 3.4 sign-in check not verifiable from the repo | In §2.2 (API and UI, both sizes, exact results). |
 | Edge `::-ms-reveal` fix must be listed | Listed in §1, §2.2, §2.7 (own finding) and §5. |
 | "23 files" true only with this session's log | The log is committed on this branch (§1). |
