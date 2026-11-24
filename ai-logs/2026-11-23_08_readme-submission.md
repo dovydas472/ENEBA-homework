@@ -1,7 +1,7 @@
 # Claude Code session log – 2026-11-23_08_readme-submission
 
 Converted from the session transcript (JSONL): `/export` is a user command that Claude Code cannot run itself.
-Session time range (UTC): 2026-11-23T20:32:41.297Z → 2026-11-24T08:14:14.517Z.
+Session time range (UTC): 2026-11-23T20:32:41.297Z → 2026-11-24T08:24:17.414Z.
 
 How to read this log:
 - It contains the user messages, Claude's replies and tool calls with **shortened** inputs and outputs.
@@ -5681,4 +5681,337 @@ Task 18: session log updated (aliases-only idempotency, dropdown inputs, product
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
 git push -q && git log --oneline -3 && gh pr edit 21 --body-file "$S/pr_body.md" >/dev/null && echo "PR body updated"
+```
+
+<details><summary>Result</summary>
+
+```
+428 parts, 272151 chars
+# Claude Code session log – 2026-11-23_08_readme-submission
+
+Converted from the session transcript (JSONL): `/export` is a user command that Claude Code cannot run itself.
+dd ai-logs/2026-11-23_08_readme-submission.md && git commit -q -F - <<'EOF'
+Task 18: session log updated (aliases-only idempotency, dropdown inputs, production alias re-check; converted from the transcript, redacted)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+EOF
+git push -q && git log --oneline -3 && gh pr edit 21 --body-file "$S/pr_body.md" >/dev/null && echo "PR body updated"
+ʼʼʼ
+warning: in the working copy of 'ai-logs/2026-11-23_08_readme-submission.md', CRLF will be replaced by LF the next time Git touches it
+2a3dbd0 Task 18: session log updated (aliases-only idempotency, dropdown inputs, production alias re-check; converted from the transcript, redacted)
+22c0731 Task 18: report - production aliases fixed (Seed production run 45354006060: 0 -> 134), gta/rdr2/hzd verified on production via API and UI
+f368428 Task 18: docs and report for the idempotent --aliases-only and the dropdown workflow inputs; Go test count 226
+PR body updated
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ gh pr checks 21 --watch --interval 20 2>&1 | tail -8
+```
+
+<details><summary>Result</summary>
+
+```
+frontend	pass	45s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45354414513/job/138308557142	
+go	pass	51s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45354414513/job/138308557427	
+migrations	pass	51s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45354414513/job/138308557569	
+Vercel	pass	0	https://vercel.com/[REDACTED]/enehomeworkba/Dyb193TCLQKJGeFMCSMk8nR9vRTP	Deployment has completed
+Vercel Preview Comments	pass	0	https://vercel.com/github	
+frontend	pass	45s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45354414513/job/138308557142	
+go	pass	51s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45354414513/job/138308557427	
+migrations	pass	51s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45354414513/job/138308557569
+```
+</details>
+
+## Claude · 2026-11-24T08:15:48.648Z
+
+Alias search works on production now. Your *Seed production* run (45354006060, `mode = aliases-only`) succeeded: 0 aliases before, 134 inserted, 134 after.
+
+- **API check:** right after the run, typing `gta` gives 4 suggestions (8 search results), `rdr2` gives 2 (7 results) and `hzd` gives 1 (3 results). The CDN cache was a miss, so this is fresh data. Before the run all three returned nothing.
+- **Real-UI check:** I typed `gta`, `rdr2` and `hzd` in the header search on desktop and phone. The right game came first each time, labelled "Also known as GTA 5 / RDR2 / HZD", and Enter opened a results page. All 8 checks passed. No purchases were made this time.
+- **Report:** the results are filled into the report, and the two smoke-test steps that failed are marked as passing after the fix. The Lithuanian notes, the PR checklist and the session log are updated too. CI is green on the latest commit `2a3dbd0`.
+
+Before you merge:
+- Replace `<SHARE_LINK>` in the README with the planning-chat link.
+- Answer the three open questions in report §6.
+
+PR: https://github.com/dovydas472/ENEBA-homework/pull/21 · Report: [docs/reports/TASK_18_readme_submission.md](docs/reports/TASK_18_readme_submission.md)
+
+## User · 2026-11-24T08:15:53.774Z
+
+> The aliases-only seed ran. Re-check gta, rdr2, hzd on production, fill in §2, push. History finding: leave it (no rewrite). Then export the session log and commit it.
+> Oh shit. I thinked you done the task. So ignore my message i vil redo seed ran later
+
+## Claude · 2026-11-24T08:16:00.587Z
+
+You don't need to run the seed again. The run you already did (45354006060) worked, and everything in your message is already done:
+
+- **Production check:** `gta`, `rdr2` and `hzd` all find the right games on production, both through the API and when typed into the search box on desktop and phone.
+- **Report:** §2 has the results, and the two smoke-test steps that failed before are now marked as passing.
+- **Session log:** regenerated, checked for secrets and committed. Everything is pushed and CI is green on `2a3dbd0`.
+
+If you run it again anyway, nothing breaks: it will show `inserted: 0` and change nothing.
+
+You wrote "leave it (no rewrite)" for the history finding, then asked me to ignore that message, so I haven't changed anything for it. If "leave it" is your decision, tell me and I'll record it in report §6 and push.
+
+What's left for you before merging:
+- Replace `<SHARE_LINK>` in the README with the planning-chat link.
+- Answer the other two questions in §6 ("Who did what" and the `CLAUDE.md` seed line).
+
+PR: https://github.com/dovydas472/ENEBA-homework/pull/21
+
+## User · 2026-11-24T08:20:20.042Z
+
+> Answers to §6:
+> 1) History finding: leave it, no rewrite. Record this in §6.
+> 2) "Who did what" – two corrections: (a) docs/PAAISKINIMAI_LT.md is not "the owner's own notes": it is Lithuanian explanations written by Claude Code for the owner, which the owner used to learn and check the code. (b) Add that the planning chat reviewed each report AND the code on GitHub against the task file before the owner merged. Everything else is accurate.
+> 3) Yes, add the --aliases-only line to CLAUDE.md "Seed data rules" exactly as you proposed.
+> Push, wait for CI, export the session log and commit it.
+
+**Tool: Bash**
+
+```
+$ git status --short && sed -n '/^## 6/,/^## 7/p' docs/reports/TASK_18_readme_submission.md && grep -n -i "who did what\|own notes\|planning chat\|PAAISKINIMAI" README.md | head -20 && grep -n "Seed data rules" -A 8 CLAUDE.md
+```
+
+<details><summary>Result</summary>
+
+```
+?? .vscode/
+## 6. Open questions
+1. **Old history finding:** the local part of your private e-mail is in two old commits of a session log (`dad8c2f`, removed again in `d101c7e`). Only a history rewrite + force-push can remove it (I must not do that). Leave it as is, or will you rewrite the history yourself?
+2. Is the "Who did what" paragraph in the README accurate for how you worked (e.g. "tested the Preview deployments by hand", "ran the production migrations and seeds")?
+3. **CLAUDE.md "Seed data rules"** describe only the empty / `--reset` modes. Should a line be added for `--aliases-only` ("adds only the missing `game_aliases`, idempotent, allowed on a catalog with orders; production only via the workflow, `mode` = `aliases-only`")? I did not edit `CLAUDE.md` myself – it is your rule file.
+
+## 7. Self-review (task-reviewer)
+206:planning chat (Claude)            Claude Code (in the repo)                      owner
+222:- **The planning chat:** `<SHARE_LINK>`
+224:**Who did what.** The AI (Claude) wrote almost all of the code, tests and documentation: Claude Code in the repository, guided by task files that were drafted in a planning chat with Claude. The owner decided what to build and how far to go (every "Owner's answer" in the reports is such a decision: e.g. Eneba's side drawer instead of a full-screen one, the per-email rate limit, the cap of 3 unpaid orders), reviewed each report against the task and the code, tested the Preview deployments by hand (the manual checklis
+… [truncated; original 3162 chars]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ sed -n 200,222p README.md; grep -rn -i "own notes\|owner's notes\|savininko užraš\|mano užraš" README.md docs/PAAISKINIMAI_LT.md docs/reports/TASK_18_readme_submission.md | head
+```
+
+<details><summary>Result</summary>
+
+```
+`TEST_DATABASE_URL=[REDACTED] go test -p 1 ./...` (`-p 1`: the packages share the database and must run one after another).
+On Windows run `npm test` from PowerShell (Vitest fails from Git Bash because of the lower-case drive letter; see `CLAUDE.md`).
+
+## How this project was built with AI
+
+ʼʼʼtext
+planning chat (Claude)            Claude Code (in the repo)                      owner
+─────────────────────             ─────────────────────────                      ─────
+strategy, architecture  ──task──▶ branch task/NN-name                    
+task file per step       file     task file committed verbatim (docs/tasks/)
+                                  code + tests + docs in small commits
+                                  task-reviewer subagent (checks the branch
+                                    against the task and CLAUDE.md)
+review of the report    ◀──PR──── PR with report (docs/reports/) + CI     ──▶ tests the Vercel Preview,
+against task and code                                                         answers open questions,
+                                                                              migrates production, merges
+ʼʼʼ
+
+- **24 tasks**, from the project skeleton to this README: [`docs/tasks/`](docs/tasks/). Each has a report with files changed, verification output, manual steps, a plain-language explanation, deviations, open questions and the reviewer subagent's findings: [`docs/reports/`](docs/report
+… [truncated; original 2983 chars]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ grep -n -i "planavimo\|kas ką\|PAAISKINIMAI_LT" docs/PAAISKINIMAI_LT.md | head; grep -n -i "who did what" docs/reports/TASK_18_readme_submission.md
+```
+
+<details><summary>Result</summary>
+
+```
+57:25. **Kaip naudojai AI ir kaip tikrinai jo darbą?** Planavimo pokalbyje (Claude) kūriau strategiją ir užduočių failus, Claude Code kiekvieną užduotį darė atskiroje šakoje ir atidarė PR su ataskaita. Tikrinimas: CI kiekvienam PR, atskiras `task-reviewer` subagentas, kuris lygina šaką su užduotimi, išmatuoti skaičiai ataskaitose (Lighthouse, axe, užklausų lentelės), mano rankinis Preview testavimas ir šis failas – kiekvieną svarbų failą turiu mokėti paaiškinti. Sprendimus (ką daryti, kur kompromisai) priėmiau aš – jie pažymėti „Owner's answer“ ataskaitose. [→ plačiau](#subagentas-task-reviewer-ir-kodėl-jis-atskiras-nuo-kodo-autoriaus)
+816:- **Po užrakto Postgres dar kartą patikrina `WHERE`** naujausiai eilutės versijai, todėl raktas, kurį kažkas ką tik rezervavo ir patvirtino, nebus paimtas.
+104:4. Glance at the README on the PR page (Mermaid diagrams, screenshot tables, the collapsible sections) and read the cheat sheet once; correct anything in "Who did what" that does not match how you worked.
+125:2. Is the "Who did what" paragraph in the README accurate for how you worked (e.g. "tested the Preview deployments by hand", "ran the production migrations and seeds")?
+```
+</details>
+
+## Claude · 2026-11-24T08:20:45.125Z
+
+I'll make all the edits in one script: README, cheat-sheet Q25, `CLAUDE.md` and report §6/§3.
+
+**Tool: Bash**
+
+```
+$ python -I - <<'EOF'
+import io
+def edit(p, pairs):
+    s = open(p, encoding="utf-8").read()
+    for o, n in pairs:
+        assert s.count(o) == 1, (p, o[:70])
+        s = s.replace(o, n)
+    open(p, "w", encoding="utf-8", newline="\n").write(s)
+
+# README diagram: the planning chat reviews the report AND the code on GitHub before the merge
+s = open("README.md", encoding="utf-8").read()
+lines = s.split("\n")
+i = next(k for k, l in enumerate(lines) if l.startswith("review of the report    ◀──PR────"))
+col = lines[i + 1].index("answers open questions")
+assert lines[i + 1].startswith("against task and code") and lines[i + 2].strip().startswith("migrates production")
+lines[i] = lines[i].replace("review of the report    ◀──PR────", "review of the report +  ◀──PR────")
+lines[i + 1] = "code on GitHub against".ljust(col) + "answers open questions,"
+lines[i + 2] = "the task file, before".ljust(col) + "migrates production, merges"
+lines.insert(i + 3, "the owner merges")
+open("README.md", "w", encoding="utf-8", newline="\n").write("\n".join(lines))
+
+edit("README.md", [(
+ "and merged. The checks that keep the AI honest are mechanical: CI on every PR, a separate reviewer subagent, measured numbers (Lighthouse, axe, query tables) in every report, and `docs/PAAISKINIMAI_LT.md`, the owner's own notes explaining every important file.",
+ "and merged. Before each merge the planning chat also reviewed the report **and the code on GitHub** against the task file. The checks that keep the AI honest are mechanical: CI on every PR, a separate reviewer subagent and measured numbers (Lighthouse, axe, query tables) in every report. [`docs/PAAISKINIMAI_LT.md`](docs/PAAISKINIMAI_LT.md) is not the owner's own writing: Claude Code wrote these Lithuanian explanations of every important file for the owner, and the owner used them to learn and check the code.")])
+
+edit("docs/PAAISKINIMAI_LT.md", [(
+ "mano rankinis Preview testavimas ir šis failas – kiekvieną svarbų failą turiu mokėti paaiškinti.",
+ "mano rankinis Preview testavimas, o prieš kiekvieną merge planavimo pokalbis peržiūrėjo ataskaitą **ir kodą GitHub'e** pagal užduoties failą. Šį failą rašė Claude Code man lietuviškai – iš jo mokiausi ir tikrinau kodą, nes kiekvieną svarbų failą turiu mokėti paaiškinti.")])
+
+edit("CLAUDE.md", [(
+ "refuses a non-empty catalog without `--reset`, and writes everything in one transaction.\n",
+ "refuses a non-empty catalog without `--reset`, and writes everything in one transaction.\n"
+ "- `cmd/seed -
+… [truncated; original 4458 chars]
+```
+
+<details><summary>Result</summary>
+
+```
+ok
+
+ʼʼʼtext
+planning chat (Claude)            Claude Code (in the repo)                      owner
+─────────────────────             ─────────────────────────                      ─────
+strategy, architecture  ──task──▶ branch task/NN-name                    
+task file per step       file     task file committed verbatim (docs/tasks/)
+                                  code + tests + docs in small commits
+                                  task-reviewer subagent (checks the branch
+                                    against the task and CLAUDE.md)
+review of the report +  ◀──PR──── PR with report (docs/reports/) + CI     ──▶ tests the Vercel Preview,
+code on GitHub against                                                        answers open questions,
+the task file, before                                                         migrates production, merges
+the owner merges
+ CLAUDE.md                                 | 1 +
+ README.md                                 | 9 +++++----
+ docs/PAAISKINIMAI_LT.md                   | 2 +-
+ docs/reports/TASK_18_readme_submission.md | 3 +++
+ 4 files changed, 10 insertions(+), 5 deletions(-)
+```
+</details>
+
+## Claude · 2026-11-24T08:21:02.795Z
+
+The report's §1 (files changed) also needs to list `CLAUDE.md`.
+
+**Tool: Bash**
+
+```
+$ sed -n 5,22p docs/reports/TASK_18_readme_submission.md | cut -c1-140
+```
+
+<details><summary>Result</summary>
+
+```
+## 1. Files changed
+
+**Docs (the task)**
+- `README.md` – rewritten in the task's 11-part structure; the disclaimer block stays verbatim at the top. The earlier reference material 
+- `docs/PAAISKINIMAI_LT.md` – new section **"Svarbiausi klausimai pokalbiui"** at the top: 27 questions, 2–4 sentence answers, each with
+- `docs/tasks/TASK_18_readme_submission.md` (verbatim) and `docs/tasks/TASK_18_amendment_lighthouse_production.md` (the addendum, verbatim, 
+
+**Fix found by the checks (owner approved, see §5)** – production search had no aliases:
+- `pkg/seedgen/db.go` – `InsertAliases` adds only the **missing** aliases, idempotent (`INSERT … SELECT FROM unnest(…) WITH ORDINALITY
+- `cmd/seed/main.go` – flag `--aliases-only` (cannot be combined with `--reset`), same transaction + lock as a full seed; prints `game_ali
+- `.github/workflows/seed-production.yml` – **no free-text input any more** (the 13a run failed on a mistyped `confirm`): dropdown `mode` 
+- `pkg/seedgen/aliases_db_test.go` (new) – 4 integration tests (run in CI's `migrations` job): empty table → same checksum as a full see
+
+**Session logs** (`ai-logs/`)
+- New, converted from the local transcripts and redacted (the check found these sessions without a log): `2026-11-21_04_catalog-api.md` (Tas
+- Redacted: the Windows user name in paths and `ls` output of the four oldest logs (`2026-11-19_01`, `2026-11-20_01/02/03`), as the later lo
+
+## 2. Verification results
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ python -I - <<'EOF'
+p = "docs/reports/TASK_18_readme_submission.md"
+s = open(p, encoding="utf-8").read()
+o = "- `pkg/seedgen/aliases_db_test.go` (new)"
+i = s.index(o); j = s.index("\n", i)
+s = s[:j+1] + "- `CLAUDE.md` – one line in \"Seed data rules\" for `--aliases-only` (owner's answer to §6.3).\n" + s[j+1:]
+open(p, "w", encoding="utf-8", newline="\n").write(s)
+EOF
+git add CLAUDE.md README.md docs/PAAISKINIMAI_LT.md docs/reports/TASK_18_readme_submission.md && git commit -q -F - <<'EOF'
+Task 18: owner's answers to §6 - history finding left as is (no rewrite); README "Who did what" corrected (PAAISKINIMAI_LT written by Claude Code for the owner; planning chat reviewed reports and code on GitHub before each merge); CLAUDE.md seed rule for --aliases-only
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+EOF
+git push -q && git log --oneline -1 && gh pr checks 21 --watch --interval 20 2>&1 | tail -5
+```
+
+<details><summary>Result</summary>
+
+```
+674e7df Task 18: owner's answers to §6 - history finding left as is (no rewrite); README "Who did what" corrected (PAAISKINIMAI_LT written by Claude Code for the owner; planning chat reviewed reports and code on GitHub before each merge); CLAUDE.md seed rule for --aliases-only
+Vercel	pass	0	https://vercel.com/[REDACTED]/enehomeworkba/Dyb193TCLQKJGeFMCSMk8nR9vRTP	Deployment has completed
+Vercel Preview Comments	pass	0	https://vercel.com/github	
+frontend	pass	45s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45354414513/job/138308557142	
+go	pass	51s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45354414513/job/138308557427	
+migrations	pass	51s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45354414513/job/138308557569
+```
+</details>
+
+## Claude · 2026-11-24T08:21:17.413Z
+
+Those results are from the previous commit's run (same run ID). I'll check CI for the new commit itself.
+
+**Tool: Bash**
+
+```
+$ for i in $(seq 1 30); do n=$(gh run list --commit 674e7df --json status --jq 'length'); [ "$n" -gt 0 ] && break; sleep 5; done; gh run list --commit $(git rev-parse HEAD) --json databaseId,name,status && gh run watch $(gh run list --commit $(git rev-parse HEAD) --workflow ci.yml --json databaseId --jq '.[0].databaseId') --exit-status --interval 15 >/dev/null; echo "exit $?"; gh pr checks 21 2>&1 | tail -6
+```
+
+<details><summary>Result</summary>
+
+```
+[{"databaseId":45355384693,"name":"CI","status":"completed"}]
+exit 0
+Vercel	pass	0	https://vercel.com/[REDACTED]/enehomeworkba/7JTVM9sDc68suP47BaNn6tQ5iQwq	Deployment has completed
+Vercel Preview Comments	pass	0	https://vercel.com/github	
+frontend	pass	40s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45355384693/job/138311800434	
+go	pass	44s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45355384693/job/138311800580	
+migrations	pass	1m0s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45355384693/job/138311799857
+```
+</details>
+
+## Claude · 2026-11-24T08:24:17.414Z
+
+CI is green on `674e7df`. Next I'll update the PR checklist and export the session log.
+
+**Tool: Bash**
+
+```
+$ S="C:/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad" && python -I - "$S/pr_body.md" <<'EOF'
+import sys
+p = sys.argv[1]; s = open(p, encoding="utf-8").read()
+o = "- [ ] Answer the open questions in the report §6 (old history finding, \"Who did what\", CLAUDE.md seed line)"
+assert s.count(o) == 1
+s = s.replace(o, "- [x] Open questions in the report §6 answered and applied (history left as is; \"Who did what\" corrected; CLAUDE.md seed line added)")
+open(p, "w", encoding="utf-8", newline="\n").write(s)
+EOF
+gh pr edit 21 --body-file "$S/pr_body.md" >/dev/null && echo "PR body updated"
+python -I "$S/conv/convert_log.py" "C:/Users/[USER]/.claude/projects/c--PROJEKTAI-ENEBA-ENEBA-homework/be0e4615-3973-4f19-a47b-366cd4c8c719.jsonl" ai-logs/2026-11-23_08_readme-submission.md "2026-11-23_08_readme-submission" "" && grep -cE "npg_[A-Za-z0-9]{6,}|[REDACTED]|@gmail|[USER]([^a]|$)|[a-z0-9-]+\.aws\.neon\.tech" ai-logs/2026-11-23_08_readme-submission.md; grep -c "enehomeworkba\|kodmolab" ai-logs/2026-11-23_08_readme-submission.md
 ```
