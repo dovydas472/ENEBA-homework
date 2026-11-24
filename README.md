@@ -217,10 +217,10 @@ the task file, before                                                         mi
 the owner merges
 ```
 
-- **25 tasks**, from the project skeleton to the final audit: [`docs/tasks/`](docs/tasks/). Each has a report with files changed, verification output, manual steps, a plain-language explanation, deviations, open questions and the reviewer subagent's findings: [`docs/reports/`](docs/reports/).
-- **22 pull requests** (Tasks 01–02 were committed before the PR workflow existed; it was introduced in Task 03), **254 commits on `main` before the last task (Task 19)**. Since Task 07 every PR needs green CI before it can be merged.
+- **27 tasks**, from the project skeleton to the final audit: [`docs/tasks/`](docs/tasks/). Each has a report with files changed, verification output, manual steps, a plain-language explanation, deviations, open questions and the reviewer subagent's findings: [`docs/reports/`](docs/reports/).
+- **24 pull requests** (Tasks 01–02 were committed before the PR workflow existed; it was introduced in Task 03), **276 commits on `main` before the last task (Task 21)**. Since Task 07 every PR needs green CI before it can be merged.
 - **Standing rules for the AI:** [`CLAUDE.md`](CLAUDE.md) – structure, database, migration, UI, workflow and reporting rules, grown task by task when something went wrong.
-- **Claude Code sessions:** [`ai-logs/`](ai-logs/) – one log per session (23 files), converted from the session transcripts. Each log keeps every message of the owner and every reply of Claude Code in full; tool calls are shortened and Claude's internal reasoning is not included; secrets, e-mail addresses and user names are redacted.
+- **Claude Code sessions:** [`ai-logs/`](ai-logs/) – one log per session (25 files), converted from the session transcripts. Each log keeps every message of the owner and every reply of Claude Code in full; tool calls are shortened and Claude's internal reasoning is not included; secrets, e-mail addresses and user names are redacted.
 - **The planning chat:** <https://claude.ai/share/9db30da6-b10e-41e1-87e0-97d396513889>
 - **Before the planning chat:** before this repository and the planning chat existed, a short earlier conversation with Claude chose the stack and the hosting. It also covered unrelated personal topics, so it is not shared. Its decisions were written into the first version of the planning context that starts the shared planning chat. Everything after that is in the shared planning chat and in [`ai-logs/`](ai-logs/).
 
