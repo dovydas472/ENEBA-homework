@@ -31,7 +31,7 @@ No migration, no seed, no schema change, no frontend change, no new dependency.
 | TDD | the tests were written first and did not compile (no `GameID`). After the implementation, a mutation check (the "already seen" test switched off) made 3 of the new unit tests fail, so they do catch the bug |
 | Live check, local stack against Neon `dev` (`cmd/local` + Vite, both on 127.0.0.1) | `popular`, `discounts`, `new-releases`: **5 cards each, 5 different games each**; the JSON has no game id. Screenshots: `docs/screenshots/task20-home-rows-desktop.png` (1440 px) and `-mobile.png` (390 px): no repeated cover in any row |
 | axe-core 4.14.1 (wcag2a/2aa/21a/21aa/best-practice, reduced motion) on `/` | **0 violations at 1440 px and 0 at 390 px** |
-| CI | see the PR (result added at the end of this section) |
+| CI (PR #23, commit `216d35a`) | **green**: `go` 56 s, `frontend` 41 s, `migrations` 52 s (every migration Up/Down/Up, then the database integration tests on the real Postgres seed, including the new row and `GameID` tests), Vercel Preview deployed |
 
 **A bug found only by the live check.** My first commit added `game_id` to the SQL but a scripted edit missed the `Scan` call, so the query returned 18 columns and the code read 17: `catalog: scan item: number of field descriptions must equal number of destinations` and all three rows answered `500`. Unit tests use a fake catalog and the DB tests cannot run locally (no Postgres), so only the real stack showed it. Fixed in the next commit (`5a467d3`). CI's `migrations` job runs the real-Postgres tests (every Store test would have failed on this), so it would also have caught it.
 
