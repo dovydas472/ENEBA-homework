@@ -127,7 +127,7 @@ Database: [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) (ER diagram: game → produ
 | `migrations` | every migration Up on a clean Postgres 18, then every Down one by one back to version 0, then Up again; then the **database integration tests** on the deterministic seed (they *fail* instead of skipping when the database is missing) |
 | `frontend` | ESLint, Vitest, TypeScript + production build |
 
-**Tests:** **225 Go test functions** (151 unit tests + 74 database integration tests that run in CI against Postgres) with 445 table-driven subtests, and **625 frontend tests** in 50 files (Vitest + Testing Library). Counted on 2026-11-24.
+**Tests:** **226 Go test functions** (151 unit tests + 75 database integration tests that run in CI against Postgres) with 445 table-driven subtests, and **625 frontend tests** in 50 files (Vitest + Testing Library). Counted on 2026-11-24.
 
 **Lighthouse (mobile)** – default mobile preset: Moto G Power emulation, simulated slow 4G (150 ms RTT, 1.6 Mbps), 4× CPU slowdown; median of 3 runs.
 
@@ -374,13 +374,13 @@ go run ./cmd/igdb-snapshot --aliases-only  # keeps the 50 games, refreshes only 
 
 go run ./cmd/seed                # seeds an EMPTY catalog, refuses if data exists
 go run ./cmd/seed --reset        # deletes the catalog and seeds again (refuses while orders exist)
-go run ./cmd/seed --aliases-only # fills ONLY an empty game_aliases table; orders, offers and keys untouched
+go run ./cmd/seed --aliases-only # adds only the MISSING search aliases (safe to repeat); orders, offers, keys untouched
 ```
 
 - **Deterministic:** a fixed RNG seed – the same snapshot always gives the same rows and ids. The tool prints a `catalog checksum`, identical on `dev` and a freshly seeded `production`: **`4e94565d904cc1698b65cce04cbff8d9`**.
 - **Search aliases:** IGDB `alternative_names` (Latin script, max 10 per game) plus a few hand-written ones in [`seed/search_aliases_extra.json`](seed/search_aliases_extra.json).
 - Everything is written in **one transaction**. Key codes are obviously fake: `DEMO-XXXX-XXXX-XXXX`.
-- **Production** is seeded only by GitHub Actions ([`seed-production.yml`](.github/workflows/seed-production.yml)): `confirm` = `seed-production`, tick `reset` to replace the catalog, or `aliases_only` to add missing search aliases.
+- **Production** is seeded only by GitHub Actions ([`seed-production.yml`](.github/workflows/seed-production.yml)): two dropdowns, nothing to type – `mode` (`aliases-only` / `seed-empty` / `reset`) and the safety switch `confirm` (`not confirmed` → `seed-production`).
 </details>
 
 <details>

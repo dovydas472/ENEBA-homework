@@ -10,10 +10,10 @@ Task file: [`docs/tasks/TASK_18_readme_submission.md`](../tasks/TASK_18_readme_s
 - `docs/tasks/TASK_18_readme_submission.md` (verbatim) and `docs/tasks/TASK_18_amendment_lighthouse_production.md` (the addendum, verbatim, as a separate file like the Task 09 / 11 amendments); this report.
 
 **Fix found by the checks (owner approved, see §5)** – production search had no aliases:
-- `pkg/seedgen/db.go` – `InsertAliases` (fills only an **empty** `game_aliases`; every snapshot game must exist; identity restarted, same row order as a full seed → same ids), `ErrAliasesExist`, shared `copyAliases` (now also used by `Insert`).
-- `cmd/seed/main.go` – flag `--aliases-only` (cannot be combined with `--reset`), same transaction + lock as a full seed.
-- `.github/workflows/seed-production.yml` – boolean input `aliases_only` (error if ticked together with `reset`).
-- `pkg/seedgen/aliases_db_test.go` (new) – 3 integration tests (run in CI's `migrations` job).
+- `pkg/seedgen/db.go` – `InsertAliases` adds only the **missing** aliases, idempotent (`INSERT … SELECT FROM unnest(…) WITH ORDINALITY ORDER BY ord ON CONFLICT (game_id, lower(alias)) DO NOTHING`, on the existing unique index from `00003`); every snapshot game must exist; on an **empty** table the identity restarts at 1 first, so the ids equal a full seed; returns `AliasCounts{Before, Inserted, After}`. `aliasRows` (the row order) is shared with the full seed's `copyAliases` (COPY).
+- `cmd/seed/main.go` – flag `--aliases-only` (cannot be combined with `--reset`), same transaction + lock as a full seed; prints `game_aliases before`, `inserted`, `after`.
+- `.github/workflows/seed-production.yml` – **no free-text input any more** (the 13a run failed on a mistyped `confirm`): dropdown `mode` (`aliases-only` default / `seed-empty` / `reset`, replaces the `reset` checkbox) and dropdown `confirm` (`not confirmed` default / `seed-production`); a `case` maps the mode to the command, an unknown mode fails.
+- `pkg/seedgen/aliases_db_test.go` (new) – 4 integration tests (run in CI's `migrations` job): empty table → same checksum as a full seed (rows + ids); run twice on a full table → 0 inserted, checksum unchanged; only missing rows added (deleted aliases of one game come back, an alias in another letter case is skipped, a non-snapshot row stays); a game missing from the DB → nothing written.
 
 **Session logs** (`ai-logs/`)
 - New, converted from the local transcripts and redacted (the check found these sessions without a log): `2026-11-21_04_catalog-api.md` (Task 09), `2026-11-21_05_app-shell.md` (Task 10), `2026-11-21_06_backend-hardening.md` (Task 10b), `2026-11-22_06_search-ui.md` (Task 13b), `2026-11-22_07_search-followup.md` (Task 13c).
@@ -24,11 +24,12 @@ Task file: [`docs/tasks/TASK_18_readme_submission.md`](../tasks/TASK_18_readme_s
 | Check | Result |
 |---|---|
 | `gofmt -l .` | prints nothing |
-| `go build ./...`, `go vet ./...`, `go test ./...` | pass. `go test -json`: **225 top-level Go tests** – 151 pass, 74 skip locally (database integration tests, `TEST_DATABASE_URL` empty; CI runs them), 445 subtests pass, 0 failures |
+| `go build ./...`, `go vet ./...`, `go test ./...` | pass. `go test -json`: **226 top-level Go tests** – 151 pass, 75 skip locally (database integration tests, `TEST_DATABASE_URL` empty; CI runs them), 445 subtests pass, 0 failures |
 | `npm run lint` | clean |
 | `npm test` (PowerShell) | **50 files, 625 tests pass** |
 | `npm run build` | passes (main JS 450.72 kB / gzip 144.03 kB, unchanged) |
-| `cmd/seed --aliases-only` on Neon **dev** (has aliases) | `error: seedgen: search aliases already exist (134 rows); nothing was changed`, exit 1 – the refuse path; `--aliases-only --reset` → "cannot be used together", exit 2 |
+| `cmd/seed --aliases-only` on Neon **dev** (all aliases present) – runs the real SQL incl. `ON CONFLICT` on the expression index | `game_aliases before: 134` · `inserted: 0 (already present: skipped)` · `game_aliases after: 134`, committed, nothing changed (idempotent). `--aliases-only --reset` → "cannot be used together", exit 2 |
+| `seed-production.yml` | parsed (PyYAML): `mode` and `confirm` are `choice` inputs whose defaults are among their options; `bash -n` on every `run` script; dry run of the mode `case` with a stub `go`: `aliases-only` → `--aliases-only`, `seed-empty` → no flag, `reset` → `--reset`, unknown → error; confirmation step: `not confirmed` → exit 1, `seed-production` → exit 0. (`actionlint` was not run: the session's permission check refused fetching it.) |
 | GitHub CI on PR #21 | **all green**: `go` (51 s), `migrations` (1 m 0 s – incl. the new `pkg/seedgen` integration tests; the job's "ran, not skipped" check passed), `frontend` (44 s); Vercel preview deployed |
 
 ### README links and diagrams
@@ -59,6 +60,8 @@ The smoke runs bought **3 fake keys on production** (Half-Life ×2, BioShock Inf
 
 **Found: production has no search aliases.** `GET /api/search/suggest?q=gta` / `rdr2` / `hzd` / `gt` → 0 items, `/api/products?q=gta` total 0, while `witcher` and `grand` (title matches) work. Cause, from the Actions log: the **Seed production** run after Task 13a (2026-11-22 18:32 UTC, run 45055657099) **failed at "Check the confirmation"** – `confirm` was entered as `eset, confirm = seed-production` and `reset` was unticked – and it was never re-run, so production's `game_aliases` stayed empty (the Task 13a report says search then "works on titles only"). A `--reset` re-run is no longer possible: production has orders, and the seed refuses to rewrite a catalog under them. **Fix (owner's choice):** `--aliases-only` (§1); the owner runs it before merging (§3.1), and I re-check `gta` / `rdr2` on production afterwards.
 
+**Production after the owner's *Seed production* run:** *pending – filled in after the run (§3.1).*
+
 ### Lighthouse mobile on production (addendum)
 Lighthouse **12.8.2** (programmatic), default **mobile** preset: Moto G Power emulation, simulated slow 4G (150 ms RTT, 1.6 Mbps down), 4× CPU slowdown; headless Edge 157 on this Windows PC, home internet connection (Vercel edge: Stockholm `arn1`; function `fra1`). Each page loaded once (not counted) to warm the function and CDN, then **3 runs, median**. 2026-11-24, 05:15–05:17 UTC.
 
@@ -87,7 +90,7 @@ axe-core **4.14.1**, WCAG 2.0/2.1 A + AA + best practice, reduced motion: `/`, `
 | Demo banner | on every page checked (smoke table) |
 
 ## 3. What the owner must do manually
-1. **Before merging – add the search aliases to production:** *Actions → Seed production → Run workflow*, **"Use workflow from" = `task/18-readme`**, tick **`aliases_only`** (leave `reset` unticked), `confirm` = `seed-production` (exactly). The log must end with **`--aliases-only: search aliases inserted (committed): 134`**. Then check <https://enehomeworkba.vercel.app/store?q=gta> (4 games / 8 products) – the suggestion cache (`s-maxage=300`) may need up to 5 minutes; tell me and I re-run the smoke test. If it prints "already exist", someone filled the table already – nothing changed. **No migration in this PR** (no *Migrate production* run needed).
+1. **Before merging – add the search aliases to production:** *Actions → Seed production → Run workflow*, **"Use workflow from" = `task/18-readme`**, dropdown **`mode` = `aliases-only`**, dropdown **`confirm` = `seed-production`**. The log must show `game_aliases before: 0`, `inserted: 134`, `game_aliases after: 134`. Running it again is harmless (it then shows `inserted: 0`). Tell me when it ran: I re-check `gta`, `rdr2`, `hzd` on production and add the result to §2 (the suggestion cache, `s-maxage=300`, may need up to 5 minutes). **No migration in this PR** (no *Migrate production* run needed).
 2. **Fill in the planning-chat link:** replace `<SHARE_LINK>` in the README ("How this project was built with AI").
 3. **Decide about the old history finding** (§2 "Repository history", §6): leave it, or rewrite history yourself.
 4. Glance at the README on the PR page (Mermaid diagrams, screenshot tables, the collapsible sections) and read the cheat sheet once; correct anything in "Who did what" that does not match how you worked.
@@ -101,18 +104,18 @@ axe-core **4.14.1**, WCAG 2.0/2.1 A + AA + best practice, reduced motion: `/`, `
 - **Five work sessions had no log**, so they were converted from the saved transcripts, with secrets and personal data removed.
 
 ## 5. Deviations from the task and why
-- **A code change larger than a "tiny fix"** (`--aliases-only`, ~70 lines + 3 tests + a workflow input). The task allows only tiny fixes; I asked first, and the **owner chose this option** (over a data migration or only documenting the gap). Without it the live search would not find "gta", which the task's own smoke test asks for.
+- **A code change larger than a "tiny fix"** (`--aliases-only`, ~90 lines + 4 tests + the workflow inputs as dropdowns). The task allows only tiny fixes; I asked first, and the **owner chose this option** (over a data migration or only documenting the gap), and then asked for it to be idempotent and for the workflow inputs to be impossible to mistype. Without it the live search would not find "gta", which the task's own smoke test asks for.
 - **Missing session logs were converted, not only listed.** The task asks to list missing sessions; the transcripts were on this PC and CLAUDE.md's remote-work rule describes exactly this conversion, so the logs are now complete. The original sessions are named in §1.
 - **Old logs edited for redaction** (Windows user name only, 4 files) – same rule as all later logs.
 - **The addendum is saved as its own file** (`TASK_18_amendment_lighthouse_production.md`), like earlier amendments, so the task file stays verbatim.
 - **README reference sections kept (collapsed)** instead of deleted: the task lists 11 parts, but the API / migration / seed procedures are documentation other files link to; collapsing keeps the page scannable without losing them.
-- **"Number of Go tests"** is given as test functions (225, of which 74 need Postgres) + subtests (445, counted locally), because the integration tests' subtests run only in CI.
+- **"Number of Go tests"** is given as test functions (226, of which 75 need Postgres) + subtests (445, counted locally), because the integration tests' subtests run only in CI.
 - **Lighthouse on production created no data**; the **smoke test did** (3 demo users, 3 paid orders, 3 fake keys sold) – needed to test checkout end to end.
 
 ## 6. Open questions
 1. **Old history finding:** the local part of your private e-mail is in two old commits of a session log (`dad8c2f`, removed again in `d101c7e`). Only a history rewrite + force-push can remove it (I must not do that). Leave it as is, or will you rewrite the history yourself?
 2. Is the "Who did what" paragraph in the README accurate for how you worked (e.g. "tested the Preview deployments by hand", "ran the production migrations and seeds")?
-3. **CLAUDE.md "Seed data rules"** describe only the empty / `--reset` modes. Should a line be added for `--aliases-only` ("fills only an empty `game_aliases`, allowed on a catalog with orders; production only via the workflow input `aliases_only`")? I did not edit `CLAUDE.md` myself – it is your rule file.
+3. **CLAUDE.md "Seed data rules"** describe only the empty / `--reset` modes. Should a line be added for `--aliases-only` ("adds only the missing `game_aliases`, idempotent, allowed on a catalog with orders; production only via the workflow, `mode` = `aliases-only`")? I did not edit `CLAUDE.md` myself – it is your rule file.
 
 ## 7. Self-review (task-reviewer)
 Run after all code and docs except this report were committed (branch at a8d2a58), given only the task number. **Verdict: CHANGES NEEDED.**
@@ -126,7 +129,7 @@ Run after all code and docs except this report were committed (branch at a8d2a58
 | `copyAliases` refactor touches the working `Insert` path | Same rows in the same order; the golden test (`pkg/seedgen`) passes locally and the integration test compares the checksum of a full seed with aliases-only – CI runs it |
 | CLAUDE.md seed rules do not mention the new mode | Not edited by me (owner's rule file) – open question 3 |
 | **Windows user name still visible** in 3 logs inside the text of a redaction regex (`\bNAME\b`) | **Fixed:** replaced in `2026-11-20_04`, `2026-11-23_06`, `2026-11-23_07`; the converter now also redacts the name inside such text, so this session's log does not repeat it. Re-scan: 0 hits |
-| No test for the `--reset` + `--aliases-only` flag conflict / workflow branch | Checked by running it (§2: exit 2 with the message); a CLI flag check, not covered by a unit test |
-| Owner step: run *Seed production* with `aliases_only`, then verify `gta` | In §3.1 – **before** the merge, from this branch (the input exists only here until the merge) |
+| No test for the `--reset` + `--aliases-only` flag conflict / workflow branch | Flag conflict checked by running it (§2: exit 2). The workflow branch is now a dropdown + `case`, dry-run for every mode (§2) |
+| Owner step: run *Seed production* (`mode` = `aliases-only`), then verify `gta` | In §3.1 – **before** the merge, from this branch (the inputs exist only here until the merge) |
 | `<SHARE_LINK>` must be filled in | §3.2 |
 | `.vscode/` untracked, do not commit | not committed |
