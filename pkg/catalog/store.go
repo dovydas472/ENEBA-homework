@@ -277,7 +277,7 @@ func (s *Store) ListProducts(ctx context.Context, f Filter) (Page, error) {
 		// The cheapest offer's columns are all NULL for an out-of-stock product (LEFT JOIN).
 		var offerID, stock *int64
 		var sellerName *string
-		if err := rows.Scan(&it.Slug, &it.Title, &it.Edition,
+		if err := rows.Scan(&it.GameID, &it.Slug, &it.Title, &it.Edition,
 			&it.Platform.Slug, &it.Platform.Name, &it.Region.Slug, &it.Region.Name,
 			&it.CoverURL, &it.PriceCents, &it.MSRPCents, &it.DiscountPercent, &it.OfferCount,
 			&it.InStock, &page.Total, &offerID, &stock, &sellerName); err != nil {
