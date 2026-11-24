@@ -56,6 +56,8 @@ async function mount(url = "/cart") {
 const $ = <T extends Element = HTMLElement>(selector: string) => document.querySelector<T>(selector);
 const urlOf = (router: Awaited<ReturnType<typeof mount>>["router"]) => router.state.location.pathname + router.state.location.search;
 const accountButton = () => $<HTMLButtonElement>("header button[aria-label^='Account:']")!;
+/** The header's "Register" link (Task 19), or undefined. */
+const registerLink = () => [...document.querySelectorAll("header a")].find((a) => a.textContent === "Register");
 const popup = () => document.getElementById(accountButton().getAttribute("aria-controls")!)!;
 async function click(element: HTMLElement) {
   await act(async () => {
@@ -65,10 +67,31 @@ async function click(element: HTMLElement) {
 }
 
 describe("header: signed out", () => {
-  it("shows 'Sign in' and no account menu", async () => {
+  it("shows 'Sign in | Register' (like Eneba), both returning to this page, and no account menu", async () => {
     await mount("/cart");
     expect($("header a[aria-label='Sign in']")?.getAttribute("href")).toBe("/login?next=%2Fcart");
+    expect(registerLink()?.getAttribute("href")).toBe("/register?next=%2Fcart");
     expect($("header button[aria-label^='Account:']")).toBeNull();
+  });
+
+  it("keeps the whole return path (query string included) for both links", async () => {
+    await mount("/store?q=witcher&platform=steam");
+    const next = encodeURIComponent("/store?q=witcher&platform=steam");
+    expect($("header a[aria-label='Sign in']")?.getAttribute("href")).toBe(`/login?next=${next}`);
+    expect(registerLink()?.getAttribute("href")).toBe(`/register?next=${next}`);
+  });
+
+  it("on the home page both links have no next (home is the default target)", async () => {
+    await mount("/");
+    expect($("header a[aria-label='Sign in']")?.getAttribute("href")).toBe("/login");
+    expect(registerLink()?.getAttribute("href")).toBe("/register");
+  });
+
+  it("the '|' between the links is decoration only (hidden from screen readers)", async () => {
+    await mount("/cart");
+    const divider = registerLink()?.previousElementSibling;
+    expect(divider?.textContent).toBe("|");
+    expect(divider?.getAttribute("aria-hidden")).toBe("true");
   });
 });
 
@@ -77,9 +100,10 @@ describe("header: signed in (account menu)", () => {
     server.user = me;
   });
 
-  it("replaces 'Sign in' with a closed menu button showing the email", async () => {
+  it("replaces 'Sign in | Register' with a closed menu button showing the email", async () => {
     await mount();
     expect($("header a[aria-label='Sign in']")).toBeNull();
+    expect(registerLink()).toBeUndefined();
     expect(accountButton().textContent).toBe("me@example.com");
     expect(accountButton().getAttribute("aria-expanded")).toBe("false");
     expect(popup().hidden).toBe(true);
@@ -133,7 +157,7 @@ describe("header: signed in (account menu)", () => {
     expect($("main h1")?.textContent).toBe("No orders yet");
   });
 
-  it("'Sign out' calls the API, goes home and shows 'Sign in' again", async () => {
+  it("'Sign out' calls the API, goes home and shows 'Sign in | Register' again", async () => {
     server.handlers["POST /api/auth/logout"] = () => {
       server.user = null;
       return undefined;
@@ -144,6 +168,7 @@ describe("header: signed in (account menu)", () => {
     expect(server.requests.map((r) => r.key)).toContain("POST /api/auth/logout");
     expect(urlOf(router)).toBe("/"); // home - not bounced to /login by the protected /orders page
     expect($("header a[aria-label='Sign in']")).not.toBeNull();
+    expect(registerLink()?.getAttribute("href")).toBe("/register");
     expect($("header button[aria-label^='Account:']")).toBeNull();
     expect([...document.querySelectorAll("[role=status]")].map((e) => e.textContent).join(" | ")).toContain("You are signed out");
   });
