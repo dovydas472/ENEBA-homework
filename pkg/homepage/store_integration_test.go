@@ -160,8 +160,8 @@ func TestHomepageIntegration_productRowsReturnFiveSortedAsConfigured(t *testing.
 			if len(row.Items) != 5 {
 				t.Fatalf("got %d items, want 5", len(row.Items))
 			}
-			// The row is the Store listing with the same sort, one card per game: the first version of each
-			// game, in listing order. Rebuilt here from the whole listing, with the game id the JSON does not carry.
+			// The row is the Store listing with the same sort, IN-STOCK products only, one card per game: the first
+			// in-stock version of each game, in listing order. Rebuilt here from the whole listing, with the game id the JSON does not carry.
 			page, err := e.catalog.ListProducts(context.Background(), catalog.Filter{Sort: c.sort, Page: 1, PageSize: catalog.MaxPageSize})
 			if err != nil {
 				t.Fatal(err)
@@ -169,7 +169,7 @@ func TestHomepageIntegration_productRowsReturnFiveSortedAsConfigured(t *testing.
 			seen := map[int64]bool{}
 			want := []string{}
 			for _, it := range page.Items {
-				if !seen[it.GameID] && len(want) < 5 {
+				if it.InStock && !seen[it.GameID] && len(want) < 5 {
 					seen[it.GameID] = true
 					want = append(want, it.Slug)
 				}
@@ -182,6 +182,9 @@ func TestHomepageIntegration_productRowsReturnFiveSortedAsConfigured(t *testing.
 					t.Errorf("title %q appears twice in the %s row", it.Title, key)
 				}
 				titles[it.Title] = true
+				if !it.InStock || it.PriceCents == nil {
+					t.Errorf("%s in the %s row is out of stock", it.Slug, key)
+				}
 			}
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("row = %v, want %v", got, want)

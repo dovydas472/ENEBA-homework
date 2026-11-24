@@ -217,14 +217,18 @@ func (s *Service) Platforms(ctx context.Context) (Platforms, error) {
 	return out, nil
 }
 
-// ProductRow is GET /api/blocks/products/{key}: the Store listing in the block's sort order, ONE CARD PER
-// GAME, cut to `limit` cards, and the block's "View all" link. Only an enabled block of type product_row has one.
+// ProductRow is GET /api/blocks/products/{key}: the Store listing in the block's sort order, IN-STOCK products
+// only, ONE CARD PER GAME, cut to `limit` cards, and the block's "View all" link. Only an enabled block of type
+// product_row has one.
 //
 // The same game is sold in several versions (GTA V on Steam, on PSN, "Premium"), and the sort puts versions of
 // one popular game next to each other, so the plain first `limit` products could show one game three times.
-// So a bigger page is asked for (the biggest the catalog allows), the FIRST version of each game is kept - the
-// one the row's own sort ranks highest: most popular, biggest discount or newest - and the rest are dropped.
-// If the catalog has fewer games than `limit`, the row is shorter; a game is never repeated to fill it.
+// So a bigger page is asked for (the biggest the catalog allows), products that cannot be bought now are
+// skipped FIRST, then the first remaining version of each game is kept - the one the row's own sort ranks
+// highest: most popular, biggest discount or newest. So a game whose top version is out of stock is shown by
+// its first in-stock version, and a game with no version in stock is not shown. If the catalog has fewer such
+// games than `limit`, the row is shorter; a game is never repeated to fill it. (The Store page is not
+// filtered: it still lists everything, out-of-stock products included.)
 func (s *Service) ProductRow(ctx context.Context, key string) (ProductRow, error) {
 	block, err := s.content.BlockByKey(ctx, key)
 	if err != nil {
@@ -244,7 +248,8 @@ func (s *Service) ProductRow(ctx context.Context, key string) (ProductRow, error
 	return ProductRow{Items: onePerGame(page.Items, cfg.Limit), ViewAllHref: cfg.ViewAllHref}, nil
 }
 
-// onePerGame keeps the first item of each game, in the given order, and stops after n. It compares the
+// onePerGame keeps the first IN-STOCK item of each game, in the given order, and stops after n. Out-of-stock
+// items are skipped before the game is "seen", so they never hide a game's in-stock version. It compares the
 // game id, never the title text: two different games can share a title, and one game can be spelled
 // differently on two products. The result is never nil (JSON [] not null).
 func onePerGame(items []catalog.Item, n int) []catalog.Item {
@@ -254,7 +259,7 @@ func onePerGame(items []catalog.Item, n int) []catalog.Item {
 		if len(out) == n {
 			break
 		}
-		if seen[it.GameID] {
+		if !it.InStock || seen[it.GameID] {
 			continue
 		}
 		seen[it.GameID] = true
