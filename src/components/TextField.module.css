@@ -56,6 +56,12 @@
   color: var(--color-text-subtle);
 }
 
+/* Microsoft Edge draws its own "reveal password" eye inside every password field. PasswordField already has a
+   show/hide button, so Edge showed two eyes side by side (found in Task 19). Hide Edge's one; other browsers have none. */
+.input::-ms-reveal {
+  display: none;
+}
+
 .hint {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);

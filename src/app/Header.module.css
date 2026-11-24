@@ -81,6 +81,25 @@
   right: 0;
 }
 
+/* Signed out: "Sign in | Register", like Eneba's "Log in | Register" (DESIGN.md 3.1, Task 19). The two links sit
+   close around the "|": their inner padding is dropped and the divider has 5px on each side. After .iconLink, so
+   these paddings win. */
+.signIn {
+  padding-right: 0;
+}
+
+.authDivider {
+  padding: 0 var(--space-1);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-none);
+}
+
+.register {
+  padding-left: 0;
+}
+
 /* Phone-only controls are hidden on desktop (after .iconLink, which would otherwise show the search icon). */
 .menuButton,
 .searchToggle,
@@ -199,6 +218,12 @@
 
   /* Icons only; the links keep their names through aria-label. */
   .signInText {
+    display: none;
+  }
+
+  /* Only the account icon (= Sign in) stays; "Create account" is in the ☰ menu (MenuDrawer). */
+  .authDivider,
+  .register {
     display: none;
   }
 }

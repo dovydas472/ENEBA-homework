@@ -18,7 +18,8 @@ import { NAV_LINKS } from "./navLinks.ts";
 
 /**
  * Top of every page (DESIGN.md 3.1), laid out like eneba.com:
- *  - desktop (> 930 px): wordmark, search field, cart, Sign in (or the account menu when signed in, Task 14);
+ *  - desktop (> 930 px): wordmark, search field, cart, "Sign in | Register" (Task 19; the account menu when signed
+ *    in, Task 14);
  *    under it a full-width nav strip (Store + platforms);
  *  - phone / tablet (≤ 930 px): one 56 px row ☰ · wordmark · search icon · cart · account. The ☰ opens the menu
  *    with the nav links, the search icon opens the search field over the row.
@@ -33,8 +34,9 @@ export function Header() {
   const { params } = useStoreParams();
   const { pathname, search } = useLocation();
   const urlQuery = pathname === "/store" ? params.q : undefined;
-  // Signed in -> the account menu; signed out (or not known yet) -> "Sign in", which returns to this page afterwards.
+  // Signed in -> the account menu; signed out (or not known yet) -> "Sign in | Register", both returning to this page.
   const { user } = useCurrentUser();
+  const here = pathname + search;
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -114,11 +116,21 @@ export function Header() {
           {user ? (
             <AccountMenu user={user} buttonClassName={styles.iconLink} />
           ) : (
-            // aria-label keeps the name on phones, where the text is hidden and only the icon shows.
-            <PrefetchLink to={authPageLink("/login", pathname + search)} className={styles.iconLink} aria-label="Sign in">
-              <User className={styles.icon} aria-hidden="true" />
-              <span className={styles.signInText}>Sign in</span>
-            </PrefetchLink>
+            <>
+              {/* aria-label keeps the name on phones, where the text is hidden and only the icon shows. */}
+              <PrefetchLink to={authPageLink("/login", here)} className={cx(styles.iconLink, styles.signIn)} aria-label="Sign in">
+                <User className={styles.icon} aria-hidden="true" />
+                <span className={styles.signInText}>Sign in</span>
+              </PrefetchLink>
+              {/* Desktop only, like Eneba's "Log in | Register" (Task 19). On phones "Create account" is in the ☰ menu.
+                  The "|" is decoration: screen readers just hear two links. */}
+              <span className={styles.authDivider} aria-hidden="true">
+                |
+              </span>
+              <PrefetchLink to={authPageLink("/register", here)} className={cx(styles.iconLink, styles.register)}>
+                Register
+              </PrefetchLink>
+            </>
           )}
         </nav>
       </div>
