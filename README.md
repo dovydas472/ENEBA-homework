@@ -1,74 +1,255 @@
 > **Disclaimer & Attribution:** This repository is a non-commercial portfolio and internship assignment project demonstrating marketplace UI and architecture. It is not affiliated with, endorsed by, or connected to Eneba (JSC "Helis play"). Authentication and checkout are strictly simulated – no real payments, user credentials, or digital keys are processed or issued. Game metadata and cover images are provided by IGDB under the Twitch Developer Service Agreement for non-commercial use. All product names, logos, brands and artwork remain the property of their respective owners.
 
-# EneHomeworkBa (ENEBA homework)
+# EneHomeworkBa – an Eneba-style game-key marketplace
 
-## Stack
-- Frontend: React + TypeScript (Vite), repo root
-- Backend: Go (`net/http` ServeMux) as a single Vercel serverless function
-- Database: Neon Postgres via `pgx` v5 / `pgxpool`, **pooled** connection (`-pooler` host)
-- Hosting: Vercel, region `fra1` (Frankfurt)
+A digital game-key shop in the style of eneba.com: home page built from backend blocks, store with filters, typo-tolerant search,
+product pages, cart, sign-in and a simulated checkout that hands out (fake) keys. React + TypeScript, a Go API on Vercel, Postgres on Neon.
 
-## Run locally
-Requirements: Go 1.25+ (see `go.mod`), Node 20+.
+**Live demo: <https://enehomeworkba.vercel.app>**
+
+- No account needed: open *Sign in* → **"Sign in as demo user"** (every click creates a fresh demo account, so you only see your own orders).
+- Checkout: on the payment page choose **Decline** (the order stays payable) or **Success** (the order is paid and shows its `DEMO-…` keys).
+- The first request after a quiet period can take a few seconds (serverless cold start + the database waking up). The page then shows *"Waking up the server, this can take a few seconds…"*.
+
+**Contents:** [Screenshots](#screenshots) · [The assignment, part by part](#the-assignment-part-by-part) ·
+[Purchase flow](#purchase-flow-in-depth) · [Search](#search-in-depth) · [Architecture](#architecture) · [Quality](#quality) ·
+[Scope and shortcuts](#scope-and-shortcuts-honest-list) · [Run it locally](#run-it-locally) · [Built with AI](#how-this-project-was-built-with-ai) ·
+[Reference](#reference) · [About the author](#about-the-author) · [Credits](#credits)
+
+## Screenshots
+
+Desktop (1440 px):
+
+| Home | Store | Product |
+|---|---|---|
+| <img src="docs/screenshots/home-desktop.png" alt="Home page: hero carousel, side tiles, platform row" width="300"> | <img src="docs/screenshots/store-desktop.png" alt="Store: filter sidebar and product grid" width="300"> | <img src="docs/screenshots/product-desktop.png" alt="Product page: buy box and offers" width="300"> |
+| **Cart** | **Payment (simulated)** | **Order with keys** |
+| <img src="docs/screenshots/cart-desktop.png" alt="Cart page" width="300"> | <img src="docs/screenshots/payment-desktop.png" alt="Payment page with Success / Decline" width="300"> | <img src="docs/screenshots/order-desktop.png" alt="Paid order with masked keys" width="300"> |
+
+Phone (390 px):
+
+| Home | Store | Product | Order |
+|---|---|---|---|
+| <img src="docs/screenshots/home-mobile.png" alt="Home on a phone" width="160"> | <img src="docs/screenshots/store-mobile.png" alt="Store on a phone" width="160"> | <img src="docs/screenshots/product-mobile.png" alt="Product on a phone" width="160"> | <img src="docs/screenshots/order-mobile.png" alt="Order on a phone" width="160"> |
+
+All pages at both sizes: [`docs/screenshots/`](docs/screenshots/).
+
+## The assignment, part by part
+
+| Requirement | How it is met | Where to look |
+|---|---|---|
+| **Store** | Catalog of 108 products (50 real games from IGDB × platforms × regions, 8 fictional sellers). Filters (platform, region, price slider), 7 sorts, pagination. The URL holds every filter, so a filtered page can be shared and Back works. Facet counts follow the other active filters. | `/store` · [`StorePage.tsx`](src/pages/StorePage.tsx), [`src/features/store/`](src/features/store/), [`pkg/catalog/store.go`](pkg/catalog/store.go) |
+| **Homepage** – *"assembled from several different blocks… each block gets its content from its own backend service or database, so the frontend only displays what it receives"* | A **block registry** table (`homepage_blocks`: type, order, on/off, config) → `GET /api/homepage`. Each block has **its own endpoint** (`/api/blocks/hero`, `/tiles`, `/platforms`, `/products/{key}`) and its own query in the browser. The content (slides, tiles, rows) **lives in the database**: switching a block off is an `UPDATE`, no deploy. The frontend has one renderer per block type and no content. The blocks share one Go function today, but they only meet in the registry, so each **could be split into its own service** by changing its endpoint URL. | `/` · [`HomePage.tsx`](src/pages/HomePage.tsx), [`src/features/home/`](src/features/home/), [`pkg/homepage/`](pkg/homepage/), [`migrations/00006_homepage.sql`](migrations/00006_homepage.sql) |
+| **Search** | Header search with live suggestions (one row per game, keyboard + screen reader friendly), and full results in the Store (`/store?q=…`, "Best match" sort). Finds titles **and nicknames** (`gta`, `rdr2`) and tolerates typos (`witchr 3`). [More below.](#search-in-depth) | header · [`SearchBox.tsx`](src/features/search/SearchBox.tsx), [`pkg/catalog/search.go`](pkg/catalog/search.go) |
+| **Product page** | Game info, buy box with the cheapest offer, all sellers' offers (cheapest first, seller rating), other versions of the game, out-of-stock state, add to cart with a toast. | `/product/…` · [`ProductPage.tsx`](src/pages/ProductPage.tsx), [`src/features/product/`](src/features/product/) |
+| **Checkout** | Cart in the browser → server re-prices it → order with keys **reserved for 15 minutes** → simulated payment → keys shown (masked until "Reveal"). Order history. [More below.](#purchase-flow-in-depth) | `/cart`, `/checkout/…`, `/orders` · [`src/features/checkout/`](src/features/checkout/), [`pkg/orders/`](pkg/orders/) |
+| **Authentication** | Email + password accounts (argon2id), HttpOnly session cookie (only its SHA-256 is stored), CSRF `Origin` check, DB-backed sign-in rate limit, one-click demo user, protected pages with `?next=` return. | `/login`, `/register` · [`pkg/auth/`](pkg/auth/), [`pkg/server/auth_handlers.go`](pkg/server/auth_handlers.go), [`src/features/auth/`](src/features/auth/) |
+| **Eneba styling** | Eneba's colors, font (Metropolis, free) and spacing were measured into design tokens ([`tokens.css`](src/styles/tokens.css), documented in [`docs/DESIGN.md`](docs/DESIGN.md)). Since Task 11b every UI task ended with a side-by-side comparison against eneba.com at 1440 and 390 px; each report lists what still differs and why. **Not copied on purpose:** Eneba's logo, icons, images, illustrations and texts (the wordmark is our own), and features we do not have (see [scope](#scope-and-shortcuts-honest-list)). | [`docs/DESIGN.md`](docs/DESIGN.md), e.g. [Task 11b report](docs/reports/TASK_11b_visual_parity.md) |
+
+## Purchase flow (in depth)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as Buyer (browser)
+    participant API as Go API (Vercel function)
+    participant DB as Postgres (Neon)
+    B->>API: POST /api/checkout/quote (cart lines with the prices the buyer saw)
+    API->>DB: current price, stock and state of every offer
+    API-->>B: lines + changes (price_changed, quantity_reduced, unavailable)
+    B->>API: POST /api/orders (idempotencyKey + items)
+    Note over API,DB: ONE transaction
+    API->>DB: lock the user row, at most 3 unpaid orders, re-check every price
+    API->>DB: SELECT keys FOR UPDATE SKIP LOCKED, reserved for 15 min
+    API-->>B: 201 pending order (same idempotencyKey again: 200, the same order)
+    B->>API: POST /api/orders/{id}/pay outcome=decline
+    API-->>B: 402 declined, the order stays pending
+    B->>API: POST /api/orders/{id}/pay outcome=success
+    API->>DB: lock the order, still pending and not expired, keys become sold, payment row
+    API-->>B: 200 paid order with its key codes
+```
+
+- **The server is the truth.** The browser's prices are only *compared*. If anything changed, no order is created and the `409` lists every line with its change, so the cart can show it.
+- **No double selling.** Keys are taken with `SELECT … FOR UPDATE SKIP LOCKED` inside the order transaction: two buyers never get the same key and never wait for each other. Either the order, its items and *all* its keys exist, or nothing does.
+- **Proven by a race test:** `TestK6_twoBuyersOneLastKey` fires two buyers at the last key at the same moment on a real Postgres, many times: exactly one order, the other buyer is told the cart changed. `TestK6_manyBuyersFewKeys`: 10 buyers, 4 keys → exactly 4 orders. ([`store_integration_test.go`](pkg/orders/store_integration_test.go))
+- **Idempotency.** Each checkout attempt carries a UUID; `UNIQUE (user_id, idempotency_key)` makes a retried or doubled request return the same order instead of reserving twice. Paying a paid order returns it unchanged; a partial unique index allows only one successful payment per order.
+- **Lazy expiry.** No background job: a pending order past `reservedUntil` is *shown* as expired, its keys count as available again, and paying too late answers `409` and frees them.
+- **Unpaid-order cap.** At most 3 pending, unexpired orders per user, checked inside the create transaction after locking the user row (8 parallel creates → exactly 3 orders). Stops one account from hoarding keys.
+- **Another user's order is `404`**, exactly like an unknown id: the API does not even confirm that the order exists. Key codes appear only in a paid order and only for its owner.
+- **Time is injectable** (`Store.WithClock`), so the 15 minutes are tested without sleeping.
+
+All business rules are pure functions in [`pkg/orders/rules.go`](pkg/orders/rules.go) (R1–R10, unit-tested); the SQL is in [`pkg/orders/store.go`](pkg/orders/store.go). Data model and state machines: [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md).
+
+## Search (in depth)
+
+- **Nicknames from IGDB.** Players type "gta 5", "rdr2", "hzd". No fuzzy match can connect "gta" to "Grand Theft Auto V", so the seed stores IGDB's alternative names (plus 3 hand-written ones) in `game_aliases` – 134 aliases for the 50 games.
+- **Contains or similar.** A title or alias matches when it *contains* the query (`ILIKE '%q%'`) **or** is similar enough by trigrams: `word_similarity(q, term) ≥ 0.55`, which compares the query with the best-matching *part* of a long title (`witchr 3` vs "The Witcher 3: Wild Hunt" = 0.58). Both conditions use GIN trigram indexes.
+- **Threshold 0.55, tuned with a query table.** Postgres' default 0.6 missed `witchr 3` and `halflife` (0.58); 0.5 let `the witcher` find *Zelda: Breath of the Wild* (0.50). The table of real queries is in the [Task 13a report](docs/reports/TASK_13a_search_backend.md#threshold-tuning-query--top-3-real-storesuggest-on-the-seeded-data); its top results are assertions in a CI test. The threshold is set per transaction (`set_config(…, true)`), so it cannot leak through PgBouncer.
+- **Two-letter queries match word starts only:** `re` finds *Red Dead Redemption*, not *Dishonored*.
+- **Relevance ranking:** exact title > prefix > contains > typo-only, then similarity, then popularity.
+- **Suggestions: one row per game** (its cheapest in-stock version), with "Also known as GTA 5" when a nickname matched, and the typed part highlighted.
+- **Accessible combobox** (ARIA 1.2): arrows move the active row (`aria-activedescendant`), Enter opens it, Esc closes then clears, the number of results is announced. Requests are debounced (200 ms) and an old, slow answer can never replace a newer list.
+
+SQL and index details: [`docs/DATA_MODEL.md`, sketch 4](docs/DATA_MODEL.md#4-search-title--aliases-typos-allowed-task-13a-pkgcatalogsearchgo).
+
+## Architecture
+
+```mermaid
+flowchart LR
+    U["Browser<br/>React SPA"] -->|HTTPS| CDN["Vercel CDN<br/>static files + cached GET answers"]
+    CDN -->|"/api/* not cached"| F["Go function api/index.go<br/>region fra1"]
+    F -->|"pgx pool, DATABASE_URL<br/>pooled (PgBouncer)"| DB[("Neon Postgres<br/>production branch")]
+    GH["GitHub Actions"] -->|"migrate / seed production<br/>DATABASE_URL_DIRECT"| DB
+    GH -->|"CI on every PR:<br/>go, migrations, frontend"| PR["Pull request"]
+    PR -->|"Preview deploy<br/>(Neon dev branch)"| CDN
+```
+
+| Decision | Why |
+|---|---|
+| **Go API as one Vercel serverless function** | One deploy for frontend and API, free hosting, no server to run. `api/index.go` only forwards to a standard `net/http` router, so the same router runs locally (`cmd/local`). Function region `fra1` sits next to the Neon database (Frankfurt). |
+| **Go code in `pkg/`, not `internal/`** | Vercel builds `api/index.go` as a separate package, and Go's `internal` rule then breaks the build. |
+| **pgx + hand-written SQL (no ORM)** | The interesting queries (facets, trigram search, `SKIP LOCKED` reservation) are plain SQL that can be read, `EXPLAIN`ed and tested. Pooled connection (PgBouncer, transaction mode) for the app; direct connection only for migrations and seeding. |
+| **goose migrations, embedded in the binary** | Numbered SQL files with Up and Down. CI runs every Up *and* Down on a clean Postgres. Production is migrated only by GitHub Actions, *before* the code that needs it is merged (expand/contract). |
+| **TanStack Query** | Caching, deduplication, retries and prefetching of server data without hand-written effects. Links prefetch on hover/focus/touch, so most clicks open an already-loaded page. |
+| **CSS Modules + design tokens** | Plain CSS scoped per component; every color/size comes from `tokens.css`, so the Eneba look is defined in one place. No UI library, no Tailwind. |
+| **Cookie sessions + argon2id** | An HttpOnly cookie cannot be read by injected scripts (unlike a token in `localStorage`); argon2id is the OWASP-recommended password hash. |
+| **Money in integer cents** | No floating-point rounding errors; formatting is the frontend's job. |
+
+Database: [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) (ER diagram: game → product → offer → key, orders, auth, home page tables; state machines; query sketches). Look and components: [`docs/DESIGN.md`](docs/DESIGN.md).
+
+## Quality
+
+**CI on every pull request** ([`ci.yml`](.github/workflows/ci.yml)), three required jobs:
+
+| Job | What it proves |
+|---|---|
+| `go` | `gofmt`, `go vet`, `go build`, `go test -race` |
+| `migrations` | every migration Up on a clean Postgres 18, then every Down one by one back to version 0, then Up again; then the **database integration tests** on the deterministic seed (they *fail* instead of skipping when the database is missing) |
+| `frontend` | ESLint, Vitest, TypeScript + production build |
+
+**Tests:** **225 Go test functions** (151 unit tests + 74 database integration tests that run in CI against Postgres) with 445 table-driven subtests, and **625 frontend tests** in 50 files (Vitest + Testing Library). Counted on 2026-11-24.
+
+**Lighthouse (mobile)** – default mobile preset: Moto G Power emulation, simulated slow 4G (150 ms RTT, 1.6 Mbps), 4× CPU slowdown; median of 3 runs.
+
+| Page | Local build (Task 17): score / LCP / CLS | **Production** (2026-11-24): score / LCP / CLS / TBT |
+|---|---|---|
+| Home `/` | 95 / 2.68 s / 0 | **97 / 2.29 s / 0 / 89 ms** (runs: 4.64, 2.28, 2.29 s) |
+| Store `/store` | 95 / 2.58 s / 0.002 | **98 / 2.07 s / 0.002 / 91 ms** (2.07, 2.07, 1.98 s) |
+| Product | 97 / 2.47 s / 0 | **98 / 2.07 s / 0 / 41 ms** (1.92, 2.07, 2.08 s) |
+
+*Local:* `vite preview` (gzip, HTTP/1.1) on 127.0.0.1 + the Go API on 127.0.0.1 talking to Neon over the internet, no CDN (details in the [Task 17 report](docs/reports/TASK_17_polish.md)).
+*Production:* <https://enehomeworkba.vercel.app> (Brotli, HTTP/2, Vercel CDN, function in `fra1`), Lighthouse 12.8.2 in headless Edge on a Windows PC over a home internet connection (nearest Vercel edge: Stockholm); each page loaded once before the 3 counted runs so the function and the CDN were warm. Home's first run (4.64 s) was slower, so the median of 3 is used. The product page is `/product/grand-theft-auto-v-steam-global`.
+
+**Accessibility:** axe-core (WCAG 2.0/2.1 A + AA and best practices) – **0 violations** in 22 local runs (11 pages × 1440/390 px, Task 17) and in 16 runs on production (8 public pages × 2 sizes, 2026-11-24). Keyboard: skip link, visible focus ring, focus trap in drawers, focus + title announcement on every page change, carousel pause/arrow keys, `prefers-reduced-motion` respected. Text/background contrast pairs are computed in [`DESIGN.md` §5](docs/DESIGN.md#5-accessibility).
+
+**Security notes:**
+- **CSRF:** `SameSite=Lax` cookie plus an `Origin` check on every state-changing request (foreign or missing `Origin` → `403`).
+- **Sign-in rate limit** stored in the database (works across serverless instances); the same error text for a wrong email and a wrong password, and a dummy hash so the response time does not reveal which emails exist.
+- **No card fields anywhere** – the payment is a Success/Decline choice; nothing that looks like a real checkout can collect card data.
+- **`noindex`** meta + `robots.txt` `Disallow: /` + a demo banner on every page, so the shop cannot be mistaken for a real one.
+- **Secrets never in the repo:** `.env` is git-ignored; connection strings live in Vercel / GitHub secrets; migration and seed tools never print the host, user or password (Actions logs are public). The git history was scanned for connection strings, Neon passwords, IGDB credentials and e-mail addresses before submission (report of Task 18).
+- Raw database errors never reach the client (generic message; `503` when the database is unreachable).
+
+## Scope and shortcuts (honest list)
+
+What is simplified, and what a real shop would do:
+
+- **Payment is simulated** (Success / Decline). Real: a payment provider with webhooks, idempotent payment intents, refunds.
+- **No email verification, password reset or "sign out everywhere".** Real: signed, single-use, expiring email links.
+- **The sign-in rate limit counts per email**, so a stranger can pause password sign-in for an email for 15 minutes (nothing leaks; signed-in sessions and the demo button keep working). Real: count per **email + IP** and add a slow-down or CAPTCHA.
+- **Demo accounts and their orders are never cleaned up.** Real: a scheduled job.
+- **The home page "services" are logical, not separate deployments:** separate endpoints and tables in one Go function and one database.
+- **EUR only.** Real: a currency next to every amount and the FX rate on the order.
+- **Key codes are not encrypted at rest** (they are fake `DEMO-…` codes). Real: envelope encryption with a KMS key, decrypted only for the buyer.
+- **Going Back from the payment page and pressing Checkout again creates a second pending order**; the first one keeps its keys until it is paid, cancelled or expires (15 min). The cap of 3 unpaid orders limits this. Real: reopen the existing pending order.
+- **No rate limit on the checkout endpoints** (only the 3-unpaid-orders cap).
+- **Expiry is lazy** – nothing runs in the background; an expired order stays `pending` in the table until it is read or touched.
+- **The cart is a page only** (no header popup), and "Cancel order" has no confirmation step (nothing is lost: the cart stays).
+- **Cheapest price and stock are computed per request**, and pagination uses `OFFSET` – correct and fast at 108 products; at scale: a precomputed table or a search engine, and keyset pagination.
+- **Re-seeding the catalog refuses while orders exist** (order history is never deleted by a seed). `cmd/seed --aliases-only` exists for the one case that happened: production missed the search aliases (Task 18).
+- **Home LCP on a throttled phone is 2.29 s on production but 2.68 s in the local measurement** (target 2.5 s); the next step would be a prerendered shell, which was not worth the complexity here.
+
+**Intentionally not built** (Eneba has them; they would be fake without real data): wishlist, cashback, reviews and ratings by buyers, "people watching" counters, query-text suggestions, categories / genre pages and their filters, language and currency switcher, social sign-in, avatars and profile pages, gift cards, promo pop-ups and countdowns, Trustpilot and payment-method strips, seller accounts and key upload.
+
+## Run it locally
+
+Prerequisites: **Go 1.25+** (see `go.mod`), **Node 24** (`.nvmrc`), and a Postgres database – the project uses a [Neon](https://neon.tech) branch (`dev`), with a *pooled* and a *direct* connection string.
 
 ```bash
 npm install
-cp .env.example .env   # then fill in DATABASE_URL (Neon `dev` branch, pooled string)
+cp .env.example .env            # fill in DATABASE_URL (pooled) and DATABASE_URL_DIRECT (direct)
 
-# terminal 1 – Go API on 127.0.0.1:8080 (run from the repo root so .env is found)
-go run ./cmd/local             # another port: go run ./cmd/local -port 8092
+go run ./cmd/migrate up         # create the schema
+go run ./cmd/seed               # fill the catalog from the committed IGDB snapshot (deterministic)
 
-# terminal 2 – Vite dev server on 127.0.0.1:5173 (proxies /api -> 127.0.0.1:8080)
-npm run dev
+go run ./cmd/local              # terminal 1: Go API on 127.0.0.1:8080 (-port to change)
+npm run dev                     # terminal 2: Vite on 127.0.0.1:5173, proxies /api to 127.0.0.1:8080
 ```
 
-Both listen on **127.0.0.1 only** (this computer; no firewall prompt).
-Open http://127.0.0.1:5173 – the page should show `API: ok · DB: ok (NN ms)`.
-Quick API check: `curl 127.0.0.1:8080/api/health` →
-`{"status":"ok","db":"ok","dbLatencyMs":37}` (or `503` + `{"status":"error","db":"error"}`
-if the database is unreachable / `DATABASE_URL` is missing).
+Open <http://127.0.0.1:5173>. Both servers listen on **127.0.0.1 only**. Quick check: `curl 127.0.0.1:8080/api/health` → `{"status":"ok","db":"ok","dbLatencyMs":…}`.
 
-Tests: `go test ./...`
+**Checks** (the same as CI):
 
-## Environment variables
-| Variable | Used by | Notes |
-|---|---|---|
-| `DATABASE_URL` | API (local `.env`, Vercel project settings) | Neon **pooled** string. Local + Vercel Preview: `dev` branch. Vercel Production: `production` branch. |
-| `DATABASE_URL_DIRECT` | `cmd/migrate` and `cmd/seed` (local `.env` = `dev` branch, GitHub secret `PROD_DATABASE_URL_DIRECT` = `production`) | Neon **direct** string (no `-pooler`). **Never set on Vercel.** |
-| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | `cmd/igdb-snapshot` only, local `.env` only | Twitch app credentials. **Never on Vercel or GitHub.** |
+```bash
+gofmt -l .                      # must print nothing
+go vet ./... && go build ./... && go test ./...
+npm run lint && npm test && npm run build
+```
 
-`.env` is git-ignored; only `.env.example` is committed.
+`go test ./...` **skips** the database integration tests unless `TEST_DATABASE_URL` points to a **throw-away** Postgres (never a Neon branch – the tests reset the catalog), e.g. `docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:18`, then
+`TEST_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable go test -p 1 ./...` (`-p 1`: the packages share the database and must run one after another).
+On Windows run `npm test` from PowerShell (Vitest fails from Git Bash because of the lower-case drive letter; see `CLAUDE.md`).
 
-## API
-JSON, `camelCase` field names. Money is **integer cents** (formatting is the frontend's job). Errors are always
-`{"error":"..."}`; an unreachable database gives `503` and any other unexpected error `500`, both with a generic message (never SQL or driver text).
+## How this project was built with AI
+
+```text
+planning chat (Claude)            Claude Code (in the repo)                      owner
+─────────────────────             ─────────────────────────                      ─────
+strategy, architecture  ──task──▶ branch task/NN-name                    
+task file per step       file     task file committed verbatim (docs/tasks/)
+                                  code + tests + docs in small commits
+                                  task-reviewer subagent (checks the branch
+                                    against the task and CLAUDE.md)
+review of the report    ◀──PR──── PR with report (docs/reports/) + CI     ──▶ tests the Vercel Preview,
+against task and code                                                         answers open questions,
+                                                                              migrates production, merges
+```
+
+- **24 tasks**, from the project skeleton to this README: [`docs/tasks/`](docs/tasks/). Each has a report with files changed, verification output, manual steps, a plain-language explanation, deviations, open questions and the reviewer subagent's findings: [`docs/reports/`](docs/reports/).
+- **21 pull requests** (Tasks 01–02 were committed before the PR workflow existed; it was introduced in Task 03), **241 commits on `main` before this last task**. Since Task 07 every PR needs green CI before it can be merged.
+- **Standing rules for the AI:** [`CLAUDE.md`](CLAUDE.md) – structure, database, migration, UI, workflow and reporting rules, grown task by task when something went wrong.
+- **Claude Code sessions:** [`ai-logs/`](ai-logs/) – one log per session (21 files), converted from the session transcripts and redacted (no connection strings, e-mails or user names).
+- **The planning chat:** `<SHARE_LINK>`
+
+**Who did what.** The AI (Claude) wrote almost all of the code, tests and documentation: Claude Code in the repository, guided by task files that were drafted in a planning chat with Claude. The owner decided what to build and how far to go (every "Owner's answer" in the reports is such a decision: e.g. Eneba's side drawer instead of a full-screen one, the per-email rate limit, the cap of 3 unpaid orders), reviewed each report against the task and the code, tested the Preview deployments by hand (the manual checklist in each report), ran the production migrations and seeds, and merged. The checks that keep the AI honest are mechanical: CI on every PR, a separate reviewer subagent, measured numbers (Lighthouse, axe, query tables) in every report, and `docs/PAAISKINIMAI_LT.md`, the owner's own notes explaining every important file.
+
+## Reference
+
+<details>
+<summary><b>Catalog and search API</b> (<code>/api/products</code>, <code>/api/products/{slug}</code>, <code>/api/search/suggest</code>)</summary>
+
+JSON, `camelCase` field names. Money is **integer cents**. Errors are always `{"error":"..."}`; an unreachable database gives `503` and any other unexpected error `500`, both with a generic message (never SQL or driver text).
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/health` | API + DB status (see above) |
+| `GET /api/health` | API + DB status: `{"status":"ok","db":"ok","dbLatencyMs":37}` or `503` |
 | `GET /api/products` | Store listing: `items`, `total`, `page`, `pageSize` and `facets` (filter options with counts) |
 | `GET /api/products/{slug}` | Product page: `product`, `game`, `offers` (buyable, cheapest first), `variants` (other versions of the game). Unknown slug → `404` |
+| `GET /api/search/suggest?q=…` | Up to 6 games for the search dropdown, best match first, **one item per game** |
 
-**`GET /api/products` query parameters** (all optional; an empty value = not given; unknown names are ignored):
+**`GET /api/products` query parameters** (all optional; unknown names are ignored):
 
 | Parameter | Meaning |
 |---|---|
-| `q` | Search text (Task 13a): game **title or alias** ("gta 5", "rdr2"), contains or typo match (`witchr 3`). Trimmed, 2–100 characters. A **2-character** query matches only at the **start of a word** of the title or an alias (`re` → Red Dead Redemption, not Dishonored; `gt` → GTA via the alias "GTA 5"); 3+ characters match anywhere and tolerate typos. Filters the items **and** the facets |
-| `platform`, `region` | Comma-separated slugs, several allowed: `platform=steam,psn`. Unknown slugs match nothing |
-| `minPrice`, `maxPrice` | Integer cents ≥ 0, `minPrice ≤ maxPrice`. Uses the cheapest *in-stock* price, so out-of-stock products are excluded when a price filter is set |
-| `sort` | `popularity` (default without `q`) · `relevance` ("Best match", default with `q`; without `q` = popularity) · `price_asc` · `price_desc` · `discount` · `newest` · `title`. Out-of-stock products come last on the price and discount sorts |
-| `page`, `pageSize` | `page` ≥ 1 (default 1); `pageSize` 1–48 (default 24) |
+| `q` | Search text: game **title or alias** ("gta 5", "rdr2"), contains or typo match (`witchr 3`). Trimmed, 2–100 characters. A 2-character query matches only at the start of a word. Filters the items **and** the facets |
+| `platform`, `region` | Comma-separated slugs: `platform=steam,psn`. Unknown slugs match nothing |
+| `minPrice`, `maxPrice` | Integer cents ≥ 0, `minPrice ≤ maxPrice`. Uses the cheapest *in-stock* price |
+| `sort` | `popularity` (default without `q`) · `relevance` (default with `q`) · `price_asc` · `price_desc` · `discount` · `newest` · `title` |
+| `page`, `pageSize` | `page` ≥ 1; `pageSize` 1–48 (default 24) |
 
-An invalid value (`sort=cheapest`, `pageSize=100`, `minPrice=-1` …) is answered with `400` and a clear message, never
-silently ignored. A `price` of `null` means *out of stock*.
+An invalid value (`sort=cheapest`, `pageSize=100`, `minPrice=-1` …) is answered with `400` and a clear message, never silently ignored. A `price` of `null` means *out of stock*. `cheapestOffer` (`offerId`, `stock`, `sellerName`, or `null`) is the offer a card's "Add to cart" adds – always the first offer on the product page.
 
-`cheapestOffer` (`offerId`, `stock`, `sellerName`, or `null` when out of stock) is the offer a card's "Add to cart" button
-adds: always the same offer as the first one on the product page (cheapest, ties broken by offer id).
-
-**Facets** come in the same response and follow the current filters: each group (`platforms`, `regions`) is counted
-with all *other* active filters applied but not its own, so the other options of a group keep their counts. Entries with
-count 0 are left out unless they are currently selected. `priceRange` (`minCents`/`maxCents`, or `null`) covers the
-in-stock products that match the platform/region filters (the price filter itself is ignored).
+**Facets** follow the current filters: each group (`platforms`, `regions`) is counted with all *other* active filters applied but not its own, so the other options of a group keep their counts. `priceRange` covers the in-stock products that match the platform/region filters.
 
 ```bash
 curl "127.0.0.1:8080/api/products?platform=steam&region=global&sort=price_asc&pageSize=2"
@@ -82,246 +263,149 @@ curl "127.0.0.1:8080/api/products?platform=steam&region=global&sort=price_asc&pa
              "cheapestOffer": {"offerId": 412, "stock": 5, "sellerName": "Pixel Vault"}}, "…"],
   "total": 43, "page": 1, "pageSize": 2,
   "facets": {
-    "platforms": [{"slug": "steam", "name": "Steam", "count": 43}, {"slug": "xbox-live", "name": "Xbox Live", "count": 1},
-                  {"slug": "psn", "name": "PSN", "count": 8}, "…"],
+    "platforms": [{"slug": "steam", "name": "Steam", "count": 43}, {"slug": "psn", "name": "PSN", "count": 8}, "…"],
     "regions":   [{"slug": "global", "name": "GLOBAL", "count": 43}, {"slug": "europe", "name": "EUROPE", "count": 6}, "…"],
     "priceRange": {"minCents": 549, "maxCents": 5099}
   }
 }
 ```
-*(shortened; real output from the seeded `dev` database.)* Note how the `platforms` counts describe the *region* filter
-(`global`) but not the platform filter: Steam is selected, yet PSN still shows its 8 products. The `regions` counts
-describe the platform filter (all Steam products: 43 + 6 + 1 + 4 = 54).
+*(shortened; real output from the seeded `dev` database.)* The `platforms` counts describe the *region* filter but not the platform filter: Steam is selected, yet PSN still shows its 8 products.
 
-`GET /api/search/suggest?q=…` – up to 6 games for the search-box dropdown, best match first, **one item per game**:
-`{"items": [{"gameTitle", "productSlug", "edition", "platform": {slug, name}, "region": {slug, name}, "coverUrl", "priceCents" | null,
-"inStock", "matchedAlias" | null}]}`. `productSlug` is the game's cheapest in-stock product (none in stock: its first
-product, `priceCents: null`, `inStock: false`); `edition` is that product's edition (`"Standard"` or e.g. `"Game of the Year Edition"`);
-`matchedAlias` is the alias that matched when the title did not. The same 2-character word-start rule as for `q` above applies.
+Suggestion item: `{"gameTitle", "productSlug", "edition", "platform", "region", "coverUrl", "priceCents" | null, "inStock", "matchedAlias" | null}`; `productSlug` is the game's cheapest in-stock product; `matchedAlias` is set when an alias matched and the title did not.
 
-```bash
-curl "127.0.0.1:8080/api/search/suggest?q=gta%205"
-```
-```json
-{"items": [{"gameTitle": "Grand Theft Auto V", "productSlug": "grand-theft-auto-v-steam-global", "edition": "Standard",
-            "platform": {"slug": "steam", "name": "Steam"}, "region": {"slug": "global", "name": "GLOBAL"},
-            "coverUrl": "https://images.igdb.com/…", "priceCents": 1199, "inStock": true, "matchedAlias": "GTA 5"}, "…"]}
-```
-How matching and ranking work (trigrams, aliases, the 0.55 threshold): [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md), sketch 4.
+**Caching.** Successful catalog responses carry `Cache-Control` so the Vercel CDN can answer without calling the function: listing `public, s-maxage=60, stale-while-revalidate=300`, product page `s-maxage=15, stale-while-revalidate=60`, suggestions `s-maxage=300, stale-while-revalidate=600`; errors `no-store`. Short staleness is safe because browsing never decides money: checkout re-checks stock and price in the database.
 
-**Caching.** Successful responses carry `Cache-Control` so the Vercel CDN can answer without calling the function:
-listing `public, s-maxage=60, stale-while-revalidate=300`, product page `public, s-maxage=15, stale-while-revalidate=60`,
-suggestions `public, s-maxage=300, stale-while-revalidate=600`; errors are `no-store`. Short staleness is safe because browsing never decides money: checkout re-checks stock and price
-in the database before it charges anything.
+Typed frontend functions: [`src/api/catalog.ts`](src/api/catalog.ts), types in [`src/api/types.ts`](src/api/types.ts).
+</details>
 
-Typed frontend functions: `src/api/catalog.ts` (`getProducts`, `getProduct`, `getSuggestions`), types in `src/api/types.ts`.
-
-## Home page (Task 15)
-The assignment: *the landing page is assembled from several different blocks; each block gets its content from its own
-backend service or database, so the frontend only displays what it receives and nothing is hardcoded there.*
-
-- **Block registry:** the table `homepage_blocks` lists the blocks (`key`, `type`, `title`, `position`, `enabled`, `config`).
-  `GET /api/homepage` returns the enabled ones in order: `{"blocks":[{"key","type","title","endpoint"}],"preload":{"heroImage":{...}|null}}`
-  (`preload.heroImage`, Task 17: the picture of the first slide the hero will show, so the browser can download it early). The frontend
-  (`src/features/home/`) has **one renderer per type** (`hero`, `tiles`, `platforms`, `product_row`) and fetches every block from its
-  own `endpoint` with its own TanStack Query; it contains no block content, order or titles. An unknown type is skipped.
-- **Each block is its own service** (`pkg/homepage`; handlers in `pkg/server/homepage_handlers.go`):
+<details>
+<summary><b>Home page blocks</b> (<code>/api/homepage</code>, <code>/api/blocks/…</code>)</summary>
 
 | Endpoint | Data source | Answers |
 |---|---|---|
-| `GET /api/homepage` | `homepage_blocks` (+ `homepage_slides` and the catalog for the preload hint) | the registry (above) |
-| `GET /api/blocks/hero` | `homepage_slides` + the catalog (live cheapest price of a product slide) | `{"slides":[{id,title,subtitle,badge,image:{url,srcset,mobileUrl,mobileSrcset},cta:{label,href}\|null,priceCents\|null}]}` |
-| `GET /api/blocks/tiles` | `homepage_tiles` + the catalog (up to 3 cover images per tile) | `{"tiles":[{id,title,subtitle,href,accent,coverUrls}]}` |
-| `GET /api/blocks/platforms` | the catalog (the Store's platform facet) + the block's icon config | `{"items":[{key,label,count,href,icon}]}` ("All games" first) |
-| `GET /api/blocks/products/{key}` | the Store listing query, configured by the block row (`sort`, `limit`, `viewAllHref`) | `{"items":[Item],"viewAllHref"}` |
+| `GET /api/homepage` | `homepage_blocks` (+ slides and catalog for the preload hint) | `{"blocks":[{"key","type","title","endpoint"}],"preload":{"heroImage":{…}\|null}}` |
+| `GET /api/blocks/hero` | `homepage_slides` + the catalog (live price of a product slide) | `{"slides":[{id,title,subtitle,badge,image,cta\|null,priceCents\|null}]}` |
+| `GET /api/blocks/tiles` | `homepage_tiles` + the catalog (up to 3 covers per tile) | `{"tiles":[{id,title,subtitle,href,accent,coverUrls}]}` |
+| `GET /api/blocks/platforms` | the catalog (platform facet) + the block's icon config | `{"items":[{key,label,count,href,icon}]}` |
+| `GET /api/blocks/products/{key}` | the Store query, configured by the block row (`sort`, `limit`, `viewAllHref`) | `{"items":[Item],"viewAllHref"}` |
 
-  Today they share one Go function and one database, but they only meet in the registry: each could move to its own
-  service (a CMS for the hero and tiles, the catalog service for the rest) and only the endpoint URLs in Go would change.
-- **Content lives in the database, inserted by migration `00006`** (not by the seed, so the catalog checksum is unchanged and
-  production needs no reseed). Switching a block off: `UPDATE homepage_blocks SET enabled = false WHERE key = 'discounts';`
-  – the block disappears without a deploy (locally at once; in production after the 5-minute CDN cache).
-- **Caching:** every home page response `public, s-maxage=300, stale-while-revalidate=600`; errors `no-store` (503 database
-  unreachable, 500 anything else, 404 unknown or disabled block).
-- **Resilience:** one failing block shows "could not be loaded" + Retry in its own place; a block that crashes while drawing
-  hides itself (an error boundary per block); the rest of the page keeps working.
-- **Hero carousel:** arrows, dots, a Play/Pause button, Left/Right keys; autoplay every 6 s that pauses on hover and focus and is
-  off with `prefers-reduced-motion`. The first slide's picture is the LCP element: loaded eagerly with `fetchpriority="high"`
-  and a responsive `srcset`; the carousel has its size before anything loads (no layout shift).
-- **Slides:** 1. **Innert** – a friend's game in development; its art is used with the author's permission (WebP files in
-  `public/banners/`, no button because its repository is private). 2.–3. Grand Theft Auto V and The Witcher 3 with IGDB artworks
-  and the live price + "Buy now".
+- The frontend ([`src/features/home/`](src/features/home/)) has one renderer per type (`hero`, `tiles`, `platforms`, `product_row`) and fetches each block from its own `endpoint`; an unknown type is skipped.
+- Content is inserted by migration `00006` (not by the seed). Switching a block off: `UPDATE homepage_blocks SET enabled = false WHERE key = 'discounts';` – it disappears without a deploy (in production after the 5-minute CDN cache).
+- Caching: `public, s-maxage=300, stale-while-revalidate=600`; errors `no-store`.
+- Resilience: a failing block shows "could not be loaded" + Retry in its own place; a block that crashes while drawing hides itself (error boundary per block).
+- Hero carousel: arrows, dots, Play/Pause, Left/Right keys, swipe; autoplay every 6 s, paused on hover/focus, off with `prefers-reduced-motion`. The first slide's picture is preloaded from the registry's hint (LCP).
+- Slides: 1. **Innert** – a friend's game in development, art used with the author's permission ([`public/banners/`](public/banners/)); 2.–3. Grand Theft Auto V and The Witcher 3 with IGDB artworks and the live price.
+</details>
 
-## Accounts and sign-in (Task 14)
-Email + password accounts, a one-click **demo user**, and pages that need a signed-in user (`/orders` now, `/checkout` later).
+<details>
+<summary><b>Accounts and sign-in</b> (<code>/api/auth/…</code>)</summary>
 
 | Endpoint | Body | Answers |
 |---|---|---|
-| `POST /api/auth/register` | `{"email","password"}` | `201 {"user"}` + session cookie · `400` invalid input (password 8–128 characters) · `409` "An account with this email already exists" |
-| `POST /api/auth/login` | `{"email","password"}` | `200 {"user"}` + cookie · `401` "Invalid email or password" (the same text for every reason) · `429` + `Retry-After` after 10 failures for that email in 15 minutes |
-| `POST /api/auth/logout` | – | `204`, cookie cleared (also when already signed out) |
-| `POST /api/auth/demo` | – | `201 {"user"}` + cookie: a **new** temporary demo account on every call |
+| `POST /api/auth/register` | `{"email","password"}` | `201 {"user"}` + session cookie · `400` (password 8–128 characters) · `409` email taken |
+| `POST /api/auth/login` | `{"email","password"}` | `200 {"user"}` + cookie · `401` "Invalid email or password" (same text for every reason) · `429` + `Retry-After` after 10 failures for that email in 15 minutes |
+| `POST /api/auth/logout` | – | `204`, cookie cleared |
+| `POST /api/auth/demo` | – | `201 {"user"}` + cookie: a **new** demo account `demo-<random>@demo.invalid` without a password |
 | `GET /api/auth/me` | – | `200 {"user"}` or `401` |
 
-`user` = `{"id", "email", "isDemo"}` – never a password hash. Every `/api/auth/*` answer is `Cache-Control: no-store`;
-the catalog endpoints never read the cookie and stay publicly cacheable.
-
-How it works, in short:
-- **Passwords:** argon2id (OWASP parameters: 19 MiB, 2 passes, 1 thread, 16-byte salt), stored as a PHC string. A sign-in
-  with an unknown email still runs one hash, so the response time does not reveal which emails exist.
-- **Session:** 32 random bytes in the cookie `session` (`HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`);
-  the database stores only its **SHA-256**. Expired sessions are rejected and deleted lazily. Browsers treat
-  `http://127.0.0.1` as secure, so the `Secure` cookie also works in local development.
-- **CSRF:** `SameSite=Lax` plus an `Origin` check on every `POST`/`PUT`/`PATCH`/`DELETE` of the whole API: the `Origin`
-  host must equal the request host (`X-Forwarded-Host` behind Vercel's proxy, and behind the Vite dev proxy). Missing or foreign → `403`.
-- **Rate limit:** counted in the database (`login_failures`), so it holds across serverless instances; each attempt is
-  counted before the password check, atomically, and a successful sign-in clears the count.
-- **Demo user:** "Sign in as demo user" creates `demo-<random>@demo.invalid` with no password (it cannot be signed in to
-  with a password), so every reviewer sees only their own orders. The UI shows it as "Demo user".
-- **`?next=`:** `/login?next=/orders` returns there after signing in. Only same-site paths are accepted (`/…`, not `//…`,
-  no scheme, no `\`); anything else goes to `/` (open-redirect protection).
+- **Passwords:** argon2id (OWASP parameters: 19 MiB, 2 passes, 1 thread, 16-byte salt), stored as a PHC string.
+- **Session:** 32 random bytes in the cookie `session` (`HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`); the database stores only its SHA-256. Expired sessions are rejected and deleted lazily.
+- **CSRF:** the `Origin` host must equal the request host (`X-Forwarded-Host` behind Vercel and the Vite proxy) on every `POST`/`PUT`/`PATCH`/`DELETE`.
+- **`?next=`** accepts only same-site paths (open-redirect protection).
+- Every `/api/auth/*` answer is `no-store`; the catalog never reads the cookie and stays publicly cacheable.
 
 ```bash
-# A POST from another site is refused (CSRF check):
 curl -i -X POST -H "Origin: https://evil.example" 127.0.0.1:8080/api/auth/demo   # -> 403 {"error":"cross-origin request blocked"}
-# The same request "from our own page" works:
-curl -i -X POST -H "Origin: http://127.0.0.1:8080" 127.0.0.1:8080/api/auth/demo  # -> 201 {"user":{...,"isDemo":true}} + Set-Cookie
 ```
+</details>
 
-**Rate limit trade-off (decided: keep per email).** The limit counts failures per *email*, so anyone who knows an email
-can send 10 wrong passwords and pause password sign-in for that email for 15 minutes. Nothing leaks and no account is taken
-over: sessions that are already signed in keep working, and the demo button always works. It is kept because it is simple,
-it cannot be bypassed by switching IP addresses, and this is a demo shop. **Production option:** key the counter on
-**email + client IP** (Vercel sends the client address in `X-Forwarded-For` / `X-Real-IP`). Then an attacker only locks
-out their own IP, while the owner can still sign in from theirs. The cost is that an attacker with many IPs gets 10 guesses
-per IP, so a production shop would add a per-account slow-down or a CAPTCHA after the limit.
-
-**Shortcuts (simulated parts of a real sign-up):**
-- no email verification: any well-formed address can register and is signed in at once;
-- no password reset ("forgot password") and no "sign out everywhere";
-- **demo accounts are never cleaned up (decided):** every "Sign in as demo user" click adds a row to `users`. That is
-  fine at demo scale. A real shop would delete old demo accounts (and decide what happens to their orders) with a
-  scheduled job.
-
-A real shop would add signed, single-use email links for verification and reset.
-
-Frontend: `src/api/auth.ts` (typed calls), `src/features/auth/` (`useCurrentUser`, the sign-in / sign-up page, `RequireAuth`),
-the header account menu in `src/app/AccountMenu.tsx`.
-
-## Checkout (Task 16a)
-The cart lives in the browser. At checkout the server **re-prices it**, creates a **pending order** and **reserves the keys
-for 15 minutes**; the buyer then "pays" (simulated) and the order becomes **paid** and shows its keys.
-All code is in `pkg/orders` (`rules.go` = every business rule, pure and unit-tested; `store.go` = the SQL transactions);
-the handlers are `pkg/server/orders_handlers.go`. Every endpoint is `Cache-Control: no-store`.
+<details>
+<summary><b>Checkout and orders API</b> (<code>/api/checkout/quote</code>, <code>/api/orders…</code>)</summary>
 
 | Endpoint | Body | Answers |
 |---|---|---|
 | `POST /api/checkout/quote` (no sign-in) | `{"items":[{"offerId","quantity","expectedPriceCents"}]}` | `200 {"lines":[Line],"totalCents"}` · `400` |
-| `POST /api/orders` | `{"idempotencyKey" (UUID),"items":[…]}` | `201 {"order"}` new · `200 {"order"}` same key again · `409 {"error":"cart_changed","lines":[Line]}` · `409 {"error":"Too many unpaid orders – pay or cancel one first"}` · `400` · `401` |
-| `GET /api/orders` | – | `200 {"orders":[{id,status,totalCents,itemCount,createdAt,reservedUntil}]}`, newest first (max 100) |
+| `POST /api/orders` | `{"idempotencyKey" (UUID),"items":[…]}` | `201` new · `200` same key again · `409 cart_changed` with lines · `409` too many unpaid orders · `400` · `401` |
+| `GET /api/orders` | – | `200 {"orders":[…]}`, newest first (max 100) |
 | `GET /api/orders/{id}` | – | `200 {"order","serverTime"}` · `404` (unknown **or not yours**) |
-| `POST /api/orders/{id}/pay` | `{"outcome":"success"\|"decline"}` | `200 {"order"}` (also when already paid) · `402` "Payment declined (simulated)" · `409` "Reservation expired" / "Order is not payable" · `404` |
-| `POST /api/orders/{id}/cancel` | – | `200 {"order"}` · `409` "Order is not pending" · `404` |
+| `POST /api/orders/{id}/pay` | `{"outcome":"success"\|"decline"}` | `200` (also when already paid) · `402` declined · `409` expired / not payable · `404` |
+| `POST /api/orders/{id}/cancel` | – | `200` · `409` not pending · `404` |
 
-`Line` = `{offerId, quantity, unitPriceCents, stock, maxQuantity, available, productSlug, title, edition, platformName, regionName, sellerName, coverUrl, changes[]}`;
-`quantity` is what can really be bought now, `changes` ⊆ `price_changed` · `quantity_reduced` · `unavailable` (offer paused, out of stock, or no such offer).
-`Order` = `{id, status, totalCents, createdAt, reservedUntil, paidAt, items:[{offerId, productSlug, title, edition, platformName, regionName, sellerName, unitPriceCents, quantity, keys[]}]}`;
-`itemCount` is the number of keys (sum of the quantities). Types: `src/api/types.ts`, calls: `src/api/orders.ts`.
+Limits: 1–20 lines per order, quantity 1–5 per line, an offer only once, quantity ≤ stock. Every endpoint is `Cache-Control: no-store`. Types: [`src/api/types.ts`](src/api/types.ts), calls: [`src/api/orders.ts`](src/api/orders.ts).
+</details>
 
-The rules (numbered R1–R9 in `pkg/orders/rules.go`):
-- **Limits:** 1–20 lines per order, quantity 1–5 per line, an offer only once, quantity ≤ stock.
-- **The server is the truth:** the client's `expectedPriceCents` is only *compared*. If a price, the stock or an offer's state
-  differs, **no order is created** and the `409` lists every line with its `changes`. The order total and item snapshots
-  (title, edition, platform, region, seller, unit price) come from the database.
-- **Reservation without a race:** the keys are taken with `SELECT … FOR UPDATE SKIP LOCKED` inside one transaction, so two
-  buyers can never get the same key and never wait for each other (see `docs/PAAISKINIMAI_LT.md`). One order = one
-  transaction: either the order, its items and *all* its keys exist, or nothing.
-- **Idempotency:** `POST /api/orders` carries an `idempotencyKey` (one per checkout attempt). The same user sending the same
-  key again gets the **same order** (`200`), nothing is reserved twice - decided by `UNIQUE (user_id, idempotency_key)`, so it
-  also holds for two identical requests arriving at the same moment. Paying a paid order returns it unchanged; a partial unique index allows at most one
-  succeeded payment per order.
-- **At most 3 unpaid orders per user (R10):** a user who already holds 3 *pending, not yet expired* orders gets `409 "Too many unpaid orders – pay or cancel one first"` on the next `POST /api/orders`. Paying, cancelling or letting one expire frees a place. It stops a script from reserving every key of an offer, 15 minutes at a time. The check runs **inside the create transaction** after locking the user's row (`SELECT … FOR NO KEY UPDATE`), so eight parallel creates of one user produce exactly three orders. A *retry* of an order that already exists (same idempotency key) is still answered with that order, also at the cap. There is no per-IP rate limit (see the shortcuts).
-- **Lazy expiry:** nothing runs in the background. A pending order whose `reservedUntil` has passed is *shown* as `expired`, and a
-  key whose reservation has ended counts as available (the next buyer simply takes it over). Paying too late marks the order
-  `expired`, frees its keys and answers `409`. A declined payment (`402`) leaves the order pending: try again while it is valid.
-- **Keys are secret:** key codes appear only in a **paid** order and only for its owner. Another user's order is `404`, exactly
-  like an unknown id.
-- **Time is injectable** (`Store.WithClock`), so tests simulate the 15 minutes without sleeping.
+<details>
+<summary><b>Environment variables</b></summary>
+
+| Variable | Used by | Notes |
+|---|---|---|
+| `DATABASE_URL` | API (local `.env`, Vercel project settings) | Neon **pooled** string. Local + Vercel Preview: `dev` branch. Vercel Production: `production` branch. |
+| `DATABASE_URL_DIRECT` | `cmd/migrate`, `cmd/seed` (local `.env` = `dev`; GitHub secret `PROD_DATABASE_URL_DIRECT` = `production`) | Neon **direct** string (no `-pooler`). **Never set on Vercel.** |
+| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | `cmd/igdb-snapshot` only, local `.env` only | Twitch app credentials. **Never on Vercel or GitHub.** |
+| `TEST_DATABASE_URL` | Go integration tests | A throw-away Postgres; empty = the tests skip |
+
+`.env` is git-ignored; only `.env.example` is committed.
+</details>
+
+<details>
+<summary><b>Database migrations</b> (<code>cmd/migrate</code>)</summary>
+
+SQL files in [`migrations/`](migrations/) (numbered, [goose](https://github.com/pressly/goose) format), embedded into the `cmd/migrate` binary.
 
 ```bash
-# (after signing in as the demo user in a browser - the session cookie is HttpOnly - or with a cookie jar)
-curl -s -X POST 127.0.0.1:8080/api/checkout/quote -H "Origin: http://127.0.0.1:8080" -H "Content-Type: application/json" \
-  -d '{"items":[{"offerId":412,"quantity":2,"expectedPriceCents":549}]}'
-```
-
-**Shortcuts (decided):**
-- **the payment is simulated:** the buyer picks `success` or `decline`; there is no card form, no card data and no payment provider;
-- **no clean-up job:** demo users and their orders (paid, expired, cancelled) stay in the database forever, just like demo users in Task 14;
-- **no rate limit** on the checkout endpoints (only the cap of 3 unpaid orders per user): a script can still create and cancel orders quickly, and a demo account is free to make. A real shop would add a per-user and per-IP rate limit and tighter quotas for anonymous accounts;
-- re-seeding the catalog (`cmd/seed --reset`) **refuses** while orders exist (they reference offers and keys), so order history is never deleted by accident;
-- expiry is lazy: an expired pending order stays `pending` in the table until someone pays, cancels or reads it (reading shows `expired` but does not write);
-- **a second Checkout of the same cart creates a second pending order** (Task 16b, known simplification): the browser forgets the idempotency key once an
-  order exists, so going Back from the payment page and pressing Checkout again reserves keys again, while the first order keeps its keys until it is paid,
-  cancelled or expires (15 minutes). The cap of 3 unpaid orders per user limits this. A real shop would reopen the existing pending order when the cart is unchanged;
-- the cart is a page only (`/cart`; no header popup as on Eneba), and "Cancel order" has no confirmation step (nothing is lost: the cart stays).
-
-**Running the database tests locally.** They need a throw-away Postgres in `TEST_DATABASE_URL` (never a Neon branch) and must run
-one package at a time because `pkg/catalog` re-seeds the tables `pkg/orders` uses: `go test -p 1 ./...` (CI does this).
-
-## Database migrations
-Migrations are SQL files in `migrations/` (numbered, [goose](https://github.com/pressly/goose) format) embedded into the `cmd/migrate` binary.
-
-```bash
-# local: runs against the Neon `dev` branch (DATABASE_URL_DIRECT from .env), from the repo root
-go run ./cmd/migrate status            # which migrations are applied / pending
+go run ./cmd/migrate status            # applied / pending
 go run ./cmd/migrate up                # apply all pending
 go run ./cmd/migrate down              # roll back ONE step
-go run ./cmd/migrate version           # current version
-go run ./cmd/migrate create add_games  # new numbered file in migrations/ (no DB needed)
+go run ./cmd/migrate create add_games  # new numbered file (no DB needed)
 ```
 
-**Production** is migrated only by GitHub Actions (`.github/workflows/migrate-production.yml`):
-manually via *Actions → Migrate production → Run workflow*, or automatically after a merge to `main` that touches
-`migrations/` or `cmd/migrate/`. It needs the repository secret `PROD_DATABASE_URL_DIRECT`
-(Neon `production` branch, **direct** connection string). Never run migrations against production from a laptop.
+**Production** is migrated only by GitHub Actions ([`migrate-production.yml`](.github/workflows/migrate-production.yml)): manually, or automatically after a merge that touches `migrations/`. **For every PR with a migration** the owner runs *Actions → Migrate production → Run workflow* with "Use workflow from" = **the PR branch** *before* merging, so the schema is ready before the new code deploys. Migrations are always backward compatible (expand/contract), so the old code keeps working in between. After that run the migration file never changes; a fix is a new migration.
+</details>
 
-**Procedure for every PR that adds a migration** (schema first, code second):
-1. Review the PR and wait for green CI.
-2. *Actions → Migrate production → Run workflow*, **"Use workflow from" = the PR branch**. The workflow checks out that
-   branch, so it applies the new migration to production. Check the log: the new file is listed as applied.
-3. Merge. The Vercel deploy now finds the schema already in place; the automatic migrate run after the merge has
-   nothing left to apply.
+<details>
+<summary><b>Seed data</b> (<code>cmd/seed</code>, <code>cmd/igdb-snapshot</code>)</summary>
 
-Why: the new code may read a table or column the migration adds. If the code deployed first, it would fail until the
-migration ran. The migration itself is always backward compatible (expand/contract), so the *old* code keeps working
-against the new schema between steps 2 and 3. After step 2 the migration file must not change; a fix is a new migration.
-
-## Seed data
-The catalog (50 real games, 9 platforms, 4 regions, 8 fictional sellers, offers and fake keys) comes from a
-committed **IGDB snapshot** – *Data provided by [IGDB](https://www.igdb.com/)*. Covers are loaded straight from
-IGDB's image CDN; nothing is downloaded into the repo.
+The catalog (50 real games, 9 platforms, 4 regions, 8 fictional sellers, offers and fake keys) comes from a committed **IGDB snapshot** – *Data provided by [IGDB](https://www.igdb.com/)*. Covers load from IGDB's image CDN; nothing is downloaded into the repo.
 
 ```bash
-# owner only (needs IGDB_CLIENT_ID / IGDB_CLIENT_SECRET in the local .env):
-go run ./cmd/igdb-snapshot                 # full refresh: writes seed/igdb_snapshot.json (games + aliases)
-go run ./cmd/igdb-snapshot --aliases-only  # keeps the 50 games, only refreshes their search aliases
+# owner only (IGDB credentials in the local .env):
+go run ./cmd/igdb-snapshot                 # writes seed/igdb_snapshot.json (games + aliases)
+go run ./cmd/igdb-snapshot --aliases-only  # keeps the 50 games, refreshes only their search aliases
 
-# local: Neon `dev` branch (DATABASE_URL_DIRECT from .env), from the repo root
-go run ./cmd/seed              # seeds an EMPTY catalog, refuses if data exists
-go run ./cmd/seed --reset      # deletes the catalog and seeds it again
+go run ./cmd/seed                # seeds an EMPTY catalog, refuses if data exists
+go run ./cmd/seed --reset        # deletes the catalog and seeds again (refuses while orders exist)
+go run ./cmd/seed --aliases-only # fills ONLY an empty game_aliases table; orders, offers and keys untouched
 ```
 
-- **Deterministic:** a fixed RNG seed – the same snapshot always gives exactly the same rows (and ids). The tool prints a `catalog checksum`; it is identical on `dev` and `production`. Current value (since Task 13a, with the search aliases): **`4e94565d904cc1698b65cce04cbff8d9`**.
-- **Search aliases** (`game_aliases`): IGDB `alternative_names` of the 50 games (Latin script, no `.exe` names, max 10 per game) plus a few hand-written ones in `seed/search_aliases_extra.json`, each with a reason.
-- Everything is written in **one transaction** (all or nothing). Key codes are obviously fake: `DEMO-XXXX-XXXX-XXXX`.
-- **Production** is seeded only by GitHub Actions: *Actions → Seed production → Run workflow* (`confirm` = `seed-production`, tick `reset` to replace existing data).
+- **Deterministic:** a fixed RNG seed – the same snapshot always gives the same rows and ids. The tool prints a `catalog checksum`, identical on `dev` and a freshly seeded `production`: **`4e94565d904cc1698b65cce04cbff8d9`**.
+- **Search aliases:** IGDB `alternative_names` (Latin script, max 10 per game) plus a few hand-written ones in [`seed/search_aliases_extra.json`](seed/search_aliases_extra.json).
+- Everything is written in **one transaction**. Key codes are obviously fake: `DEMO-XXXX-XXXX-XXXX`.
+- **Production** is seeded only by GitHub Actions ([`seed-production.yml`](.github/workflows/seed-production.yml)): `confirm` = `seed-production`, tick `reset` to replace the catalog, or `aliases_only` to add missing search aliases.
+</details>
 
-## How this project was built
-Planning chat → task file → Claude Code works on a `task/NN-name` branch → PR with a report → review → merge.
+<details>
+<summary><b>Repository layout</b></summary>
 
-- [`CLAUDE.md`](CLAUDE.md) – standing rules Claude Code follows in every session
-- [`docs/tasks/`](docs/tasks/) – the task files, saved verbatim
-- [`docs/reports/`](docs/reports/) – one report per task (what changed, how it was verified, open questions)
-- [`ai-logs/`](ai-logs/) – exported Claude Code sessions
+- `api/index.go` – the only Vercel function; forwards to the router
+- `pkg/server/` – router and handlers (they depend on small interfaces: `DBPinger`, `CatalogReader`, …); query validation, CSRF, sessions
+- `pkg/db/` – lazy, shared pgx pool (+ one retry on a cold-start connection error)
+- `pkg/catalog/` – listing + facets, product page, search + suggestions
+- `pkg/homepage/` – home page blocks: registry, hero, tiles, platforms, product rows
+- `pkg/orders/` – checkout rules (`rules.go`) and transactions (`store.go`)
+- `pkg/auth/` – passwords, session tokens, users, rate limit
+- `pkg/seedgen/`, `pkg/igdb/`, `pkg/dbsafe/` – seed generation, IGDB snapshot, secret-free DB errors for the tools
+- `pkg/testdb/` – test helper: migrated + seeded Postgres from `TEST_DATABASE_URL`
+- `cmd/local/`, `cmd/migrate/`, `cmd/seed/`, `cmd/igdb-snapshot/` – local server and tools
+- `migrations/`, `seed/` – SQL migrations and the IGDB snapshot, embedded with `go:embed`
+- `src/api/` – `apiFetch` client (timeout, typed errors) and typed endpoint functions
+- `src/app/` – routes (lazy pages), layout, header, demo banner, footer, query client, error pages, prefetch on intent
+- `src/components/` – base UI components (Button, Price, Skeleton, EmptyState, `PrefetchLink`, …)
+- `src/features/` – home, store, search, product, cart, checkout, orders, auth
+- `src/pages/` – one file per route; `src/lib/` – helpers and hooks; `src/styles/` – tokens and global CSS
+- `public/` – `robots.txt`, favicon, the Innert hero pictures
+- `docs/` – [`DATA_MODEL.md`](docs/DATA_MODEL.md), [`DESIGN.md`](docs/DESIGN.md), [`PAAISKINIMAI_LT.md`](docs/PAAISKINIMAI_LT.md) (explanations in Lithuanian), [`tasks/`](docs/tasks/), [`reports/`](docs/reports/), [`screenshots/`](docs/screenshots/)
+- `ai-logs/` – Claude Code session logs
+</details>
 
 ## About the author
 **[Kodmo Lab](https://kodmolab.lt)** is a small software studio building practical, offline-first tools for small businesses.
@@ -329,34 +413,8 @@ Its main product, **[Kodmo Auto](https://kodmolab.lt/auto/)**, is an offline Win
 (customers, jobs, parts inventory, staff; low-stock alerts), built with Python, PySide6, FastAPI and SQLite and developed end to end
 with AI coding tools (Claude Code) using the same small-task / spec / testing workflow as this project.
 
-## Layout
-- `api/index.go` – the only Vercel function; forwards to the router
-- `pkg/server/` – router and handlers (they depend on small interfaces: `DBPinger`, `CatalogReader`, `HomepageReader`, ...); query-string validation
-- `pkg/db/` – lazy, shared pgx connection pool
-- `pkg/catalog/` – catalog queries (listing + facets, product page, search + suggestions), seller rating label; pure Go + pgx, no HTTP
-- `pkg/homepage/` – the home page blocks: registry, hero, tiles, platforms and product rows (store + service; strict config parsing)
-- `pkg/testdb/` – test helper: migrated + seeded Postgres from `TEST_DATABASE_URL` (tests skip when it is empty; with `REQUIRE_TEST_DB=1`, as in the CI `migrations` job, they fail instead)
-- `cmd/local/` – local dev server using the same router (loads `.env`)
-- `cmd/migrate/` – goose migration runner (`up`/`down`/`status`/`version`/`create`)
-- `cmd/igdb-snapshot/` – one-time, local IGDB download → `seed/igdb_snapshot.json`
-- `cmd/seed/` – deterministic catalog seed from the snapshot (`--reset`)
-- `seed/` – the committed IGDB snapshot and the hand-written extra search aliases, embedded with `go:embed`
-- `pkg/igdb/` – snapshot format, Twitch OAuth + IGDB client, selection filters
-- `pkg/seedgen/` – generation rules (platforms, products, prices, offers, keys), validation, bulk insert
-- `pkg/dbsafe/` – `-pooler` guard and secret-free error messages shared by `cmd/migrate` and `cmd/seed`
-- `public/robots.txt` – the demo asks search engines not to index it (plus `noindex` in `index.html`)
-- `migrations/` – numbered SQL migrations, embedded with `go:embed`
-- `docs/DATA_MODEL.md` – the data model (ER diagram, tables, state machines, query sketches)
-- `src/api/` – `apiFetch` client (timeout, typed errors), catalog, auth and checkout / order functions + JSON types
-- `src/app/` – app frame: routes (lazily loaded pages in `lazyPages.ts`), layout, header, demo banner, footer, TanStack Query client, "waking up" notice,
-  error pages (`RouteError`, `AppError`), focus + title announcement on page change (`RouteAnnouncer`), prefetch on intent (`prefetch.ts`)
-- `src/components/` – base UI components (Button, Badge, Price, Skeleton, PageSkeleton, EmptyState, ErrorState, SearchField, `PrefetchLink` – every internal link)
-- `docs/screenshots/` – our screenshots of every page at 1440 px (`*-desktop.png`) and 390 px (`*-mobile.png`)
-- `src/pages/` – one file per route
-- `src/features/home/` – the home page block renderers (hero carousel, side tiles, platform row, product row) and the type → renderer map
-- `public/banners/` – the Innert hero pictures (WebP, several widths)
-- `src/features/store/` – the parts of the Store page (product card and grid, filters, price slider, pagination, mobile drawer)
-- `src/features/cart/`, `src/features/checkout/`, `src/features/orders/` – the cart store, the cart and payment pages (quote notices, idempotency key, countdown, simulated payment) and the order pages (masked keys)
-- `src/lib/` – helpers and hooks (`formatPrice`, Store filters in the URL, ...)
-- `docs/PAAISKINIMAI_LT.md` – explanations in Lithuanian
-- `ai-logs/` – exported Claude Code sessions
+## Credits
+- Game data and covers: *Data provided by [IGDB](https://www.igdb.com/)* (Twitch Developer Service Agreement, non-commercial use).
+- Font: [Metropolis](https://github.com/dw5/Metropolis) by Chris Simpson – Unlicense (public domain), self-hosted.
+- Icons: [Lucide](https://lucide.dev) – ISC license.
+- Hero art of **Innert** – used with the permission of its author.
