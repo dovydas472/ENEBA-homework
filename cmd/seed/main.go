@@ -2,7 +2,7 @@
 //
 //	go run ./cmd/seed            # only into an EMPTY catalog (refuses otherwise)
 //	go run ./cmd/seed --reset    # delete the catalog first, then seed
-//	go run ./cmd/seed --aliases-only  # fill ONLY an empty game_aliases table (catalog with orders, Task 18)
+//	go run ./cmd/seed --aliases-only  # add only the MISSING search aliases (works with orders; safe to repeat, Task 18)
 //
 // Run it from the repo root. Like cmd/migrate it reads DATABASE_URL_DIRECT (Neon
 // DIRECT connection, no "-pooler"): locally from .env (Neon `dev` branch), in
@@ -44,7 +44,7 @@ func main() {
 	_ = godotenv.Load(".env")
 
 	reset := flag.Bool("reset", false, "delete the existing catalog data before seeding")
-	aliasesOnly := flag.Bool("aliases-only", false, "fill only the empty search-alias table; the rest of the catalog is not touched")
+	aliasesOnly := flag.Bool("aliases-only", false, "add only the missing search aliases (safe to run twice); the rest of the catalog is not touched")
 	flag.Parse()
 
 	if *reset && *aliasesOnly {
@@ -154,8 +154,9 @@ func run(reset, aliasesOnly bool) error {
 	return nil
 }
 
-// seedAliasesOnly adds the search aliases to a catalog that has everything else (Task 18: production
-// missed them, and --reset refuses while orders exist). Same transaction and lock as a full seed.
+// seedAliasesOnly adds the snapshot's MISSING search aliases to a catalog that has everything else
+// (Task 18: production missed them, and --reset refuses while orders exist). Same transaction and
+// lock as a full seed. Safe to run twice: the second run inserts 0 and changes nothing.
 // No catalog checksum is printed: on a database with sales the key rows differ from a fresh seed.
 func seedAliasesOnly(ctx context.Context, tx pgx.Tx, catalog seedgen.Catalog) error {
 	n, err := seedgen.InsertAliases(ctx, tx, catalog)
@@ -165,7 +166,10 @@ func seedAliasesOnly(ctx context.Context, tx pgx.Tx, catalog seedgen.Catalog) er
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
-	fmt.Printf("--aliases-only: search aliases inserted (committed): %d\n", n)
+	fmt.Println("--aliases-only (committed):")
+	fmt.Printf("  game_aliases before: %d\n", n.Before)
+	fmt.Printf("  inserted:            %d (already present: skipped)\n", n.Inserted)
+	fmt.Printf("  game_aliases after:  %d\n", n.After)
 	return nil
 }
 

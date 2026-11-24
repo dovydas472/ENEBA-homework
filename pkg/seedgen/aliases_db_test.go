@@ -5,7 +5,6 @@ package seedgen_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -59,12 +58,22 @@ func checksum(ctx context.Context, t *testing.T, tx pgx.Tx) string {
 	return sum
 }
 
+// snapshotAliasCount is the number of aliases the snapshot (+ hand-written extras) defines.
+func snapshotAliasCount(c seedgen.Catalog) int64 {
+	var n int64
+	for _, g := range c.Games {
+		n += int64(len(g.Aliases))
+	}
+	return n
+}
+
 // The production case: everything is seeded except the aliases. Afterwards the catalog must be
 // exactly what a one-go seed produces (same alias rows AND ids), proven by the checksum.
 func TestInsertAliases_fillsAnEmptyTableLikeAFullSeed(t *testing.T) {
 	ctx, tx := beginLocked(t)
 	cat := testCatalog(t)
 	want := checksum(ctx, t, tx) // the seeded database, aliases included
+	total := snapshotAliasCount(cat)
 
 	if _, err := tx.Exec(ctx, "DELETE FROM game_aliases"); err != nil {
 		t.Fatal(err)
@@ -73,29 +82,77 @@ func TestInsertAliases_fillsAnEmptyTableLikeAFullSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantN := 0
-	for _, g := range cat.Games {
-		wantN += len(g.Aliases)
-	}
-	if n != wantN || n == 0 {
-		t.Fatalf("inserted %d aliases, want %d (> 0)", n, wantN)
+	if total == 0 || n != (seedgen.AliasCounts{Before: 0, Inserted: total, After: total}) {
+		t.Fatalf("counts = %+v, want before 0, inserted %d, after %d", n, total, total)
 	}
 	if got := checksum(ctx, t, tx); got != want {
 		t.Fatalf("checksum after InsertAliases = %s, want the full-seed checksum %s (rows or ids differ)", got, want)
 	}
 }
 
-// A second run (or a database that already has aliases) changes nothing.
-func TestInsertAliases_refusesWhenAliasesExist(t *testing.T) {
+// Idempotent: on a database that already has every alias, a run inserts nothing and changes nothing.
+func TestInsertAliases_secondRunInsertsNothing(t *testing.T) {
 	ctx, tx := beginLocked(t)
+	cat := testCatalog(t)
 	before := checksum(ctx, t, tx)
+	total := snapshotAliasCount(cat)
 
-	_, err := seedgen.InsertAliases(ctx, tx, testCatalog(t))
-	if !errors.Is(err, seedgen.ErrAliasesExist) {
-		t.Fatalf("err = %v, want ErrAliasesExist", err)
+	for run := 1; run <= 2; run++ {
+		n, err := seedgen.InsertAliases(ctx, tx, cat)
+		if err != nil {
+			t.Fatalf("run %d: %v", run, err)
+		}
+		if n != (seedgen.AliasCounts{Before: total, Inserted: 0, After: total}) {
+			t.Fatalf("run %d: counts = %+v, want before = after = %d, inserted 0", run, n, total)
+		}
 	}
 	if got := checksum(ctx, t, tx); got != before {
-		t.Fatal("the catalog changed although InsertAliases refused")
+		t.Fatal("the catalog changed although every alias already existed")
+	}
+}
+
+// Only the missing rows are added: aliases that exist (even in another letter case) are skipped,
+// and a row that is not in the snapshot is left alone (the tool never deletes).
+func TestInsertAliases_addsOnlyMissingRows(t *testing.T) {
+	ctx, tx := beginLocked(t)
+	cat := testCatalog(t)
+	total := snapshotAliasCount(cat)
+
+	// Remove the aliases of the first game that has some, and upper-case one of another game.
+	var first, other seedgen.Game
+	for _, g := range cat.Games {
+		if len(g.Aliases) == 0 {
+			continue
+		}
+		if first.Slug == "" {
+			first = g
+		} else if other.Slug == "" {
+			other = g
+		}
+	}
+	if first.Slug == "" || other.Slug == "" {
+		t.Fatal("the snapshot needs two games with aliases for this test")
+	}
+	tag, err := tx.Exec(ctx, "DELETE FROM game_aliases WHERE game_id = (SELECT id FROM games WHERE slug = $1)", first.Slug)
+	if err != nil {
+		t.Fatal(err)
+	}
+	removed := tag.RowsAffected()
+	if _, err := tx.Exec(ctx, "UPDATE game_aliases SET alias = upper(alias) WHERE alias = $1 AND game_id = (SELECT id FROM games WHERE slug = $2)",
+		other.Aliases[0], other.Slug); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, "INSERT INTO game_aliases (game_id, alias) SELECT id, 'not in the snapshot' FROM games WHERE slug = $1", other.Slug); err != nil {
+		t.Fatal(err)
+	}
+
+	n, err := seedgen.InsertAliases(ctx, tx, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := seedgen.AliasCounts{Before: total - removed + 1, Inserted: removed, After: total + 1}
+	if removed == 0 || n != want {
+		t.Fatalf("counts = %+v, want %+v", n, want)
 	}
 }
 

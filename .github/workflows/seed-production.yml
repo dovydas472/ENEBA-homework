@@ -1,22 +1,31 @@
 # Seeds the catalog of the Neon `production` branch from the committed IGDB snapshot.
 # This is the ONLY way production is seeded (never from a laptop). Manual only.
+#
+# Both inputs are dropdowns (Task 18): nothing has to be typed, so nothing can be mistyped.
+# A run after Task 13a failed because the old free-text confirmation was entered wrongly.
 name: Seed production
 
 on:
   workflow_dispatch:
     inputs:
-      reset:
-        description: "Delete the existing catalog first (go run ./cmd/seed --reset)"
-        type: boolean
-        default: false
-      aliases_only:
-        description: "Only fill the EMPTY search-alias table (go run ./cmd/seed --aliases-only); orders, offers and keys are not touched"
-        type: boolean
-        default: false
+      mode:
+        description: >-
+          What to do. "aliases-only" = add only the MISSING search aliases (safe to repeat; orders, offers and keys untouched).
+          "seed-empty" = seed an EMPTY catalog (refuses if data exists).
+          "reset" = delete the catalog and seed again (refuses while orders exist).
+        type: choice
+        options:
+          - aliases-only
+          - seed-empty
+          - reset
+        default: aliases-only
       confirm:
-        description: 'Type "seed-production" to confirm'
-        type: string
-        required: true
+        description: 'Safety switch: choose "seed-production" to really write to the production database'
+        type: choice
+        options:
+          - not confirmed
+          - seed-production
+        default: not confirmed
 
 # Shares the group with migrate-production.yml on purpose: seeding and migrating the
 # production database never run at the same time (the later run waits).
@@ -35,15 +44,14 @@ jobs:
       # Neon DIRECT connection string (no "-pooler") of the production branch.
       DATABASE_URL_DIRECT: ${{ secrets.PROD_DATABASE_URL_DIRECT }}
       # Inputs go through env variables, never straight into the script text
-      # (prevents script injection through the free-text input).
+      # (no script injection, even if the inputs change type later).
       CONFIRM: ${{ inputs.confirm }}
-      RESET: ${{ inputs.reset }}
-      ALIASES_ONLY: ${{ inputs.aliases_only }}
+      MODE: ${{ inputs.mode }}
     steps:
       - name: Check the confirmation
         run: |
           if [ "$CONFIRM" != "seed-production" ]; then
-            echo "::error::Input 'confirm' must be exactly: seed-production"
+            echo "::error::Not confirmed: set the 'confirm' dropdown to 'seed-production' (it was '$CONFIRM'). Nothing was changed."
             exit 1
           fi
 
@@ -62,13 +70,13 @@ jobs:
 
       - name: Seed the catalog
         run: |
-          if [ "$ALIASES_ONLY" = "true" ] && [ "$RESET" = "true" ]; then
-            echo "::error::Tick either 'reset' or 'aliases_only', not both"
-            exit 1
-          elif [ "$ALIASES_ONLY" = "true" ]; then
-            go run ./cmd/seed --aliases-only
-          elif [ "$RESET" = "true" ]; then
-            go run ./cmd/seed --reset
-          else
-            go run ./cmd/seed
-          fi
+          echo "mode: $MODE"
+          case "$MODE" in
+            aliases-only) go run ./cmd/seed --aliases-only ;;
+            seed-empty)   go run ./cmd/seed ;;
+            reset)        go run ./cmd/seed --reset ;;
+            *)
+              echo "::error::Unknown mode '$MODE' (expected aliases-only, seed-empty or reset)"
+              exit 1
+              ;;
+          esac
