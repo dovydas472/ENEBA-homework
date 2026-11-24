@@ -127,7 +127,7 @@ Database: [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) (ER diagram: game → produ
 | `migrations` | every migration Up on a clean Postgres 18, then every Down one by one back to version 0, then Up again; then the **database integration tests** on the deterministic seed (they *fail* instead of skipping when the database is missing) |
 | `frontend` | ESLint, Vitest, TypeScript + production build |
 
-**Tests:** **233 Go test functions** (157 unit tests + 76 database integration tests that run in CI against Postgres) with 447 table-driven subtests, and **628 frontend tests** in 50 files (Vitest + Testing Library). Counted on 2026-11-24.
+**Tests:** **235 Go test functions** (159 unit tests + 76 database integration tests that run in CI against Postgres) with 447 table-driven subtests, and **628 frontend tests** in 50 files (Vitest + Testing Library). Counted on 2026-11-24.
 
 **Lighthouse (mobile)** – default mobile preset: Moto G Power emulation, simulated slow 4G (150 ms RTT, 1.6 Mbps), 4× CPU slowdown; median of 3 runs.
 

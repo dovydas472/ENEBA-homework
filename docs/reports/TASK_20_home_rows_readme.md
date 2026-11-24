@@ -1,4 +1,4 @@
-# Task 20 – One card per game in the home rows + README notes from the audit
+# Task 20 – One card per game (in stock only) in the home rows + README notes from the audit
 
 Branch `task/20-home-rows-readme` (from `main` after PR #22). Task file: [`docs/tasks/TASK_20_home_rows_readme.md`](../tasks/TASK_20_home_rows_readme.md).
 
@@ -8,13 +8,13 @@ Branch `task/20-home-rows-readme` (from `main` after PR #22). Task file: [`docs/
 |---|---|
 | `pkg/catalog/types.go` | `Item` gets `GameID int64` with `json:"-"` (internal, not in the API response) |
 | `pkg/catalog/store.go` | the listing query selects `products.game_id` (CTE `base` → `page` → final SELECT) and `ListProducts` scans it into `Item.GameID` |
-| `pkg/homepage/service.go` | `ProductRow` asks the catalog for `catalog.MaxPageSize` items and calls the new `onePerGame(items, limit)`: first item per game, in the given order, cut to `limit`, never `nil` |
-| `pkg/homepage/service_test.go` | `TestProductRow_usesTheBlockConfig` adjusted (bigger page asked for) + 5 new tests (see §2) |
-| `pkg/homepage/store_integration_test.go` | the product-rows integration test now rebuilds the expected row from the whole listing by game id, and fails when a title appears twice in a row |
+| `pkg/homepage/service.go` | `ProductRow` asks the catalog for `catalog.MaxPageSize` items and calls the new `onePerGame(items, limit)`: skips out-of-stock items, then keeps the first remaining item per game, in the given order, cut to `limit`, never `nil` (owner's answer to open question 2, see §6) |
+| `pkg/homepage/service_test.go` | `TestProductRow_usesTheBlockConfig` adjusted (bigger page asked for) + 7 new tests (5 for one-per-game, 2 for in-stock only); the old items are marked `InStock: true` |
+| `pkg/homepage/store_integration_test.go` | the product-rows integration test now rebuilds the expected row from the whole listing (in-stock products only, first per game, by game id), and fails when a title appears twice or a card is out of stock |
 | `pkg/catalog/store_integration_test.go` | new `TestListProducts_gameIDIdentifiesTheGame` |
 | `pkg/catalog/types_test.go` (new) | `TestItem_gameIDIsNotSentToTheFrontend` |
 | `README.md` | the four places of the task (logs, sellers, homepage clause, "Before the planning chat" wording) + test counts |
-| `docs/DATA_MODEL.md`, `docs/DESIGN.md`, `docs/PAAISKINIMAI_LT.md` | the home rows are described as "one card per game"; new Lithuanian section for the interview |
+| `docs/DATA_MODEL.md`, `docs/DESIGN.md`, `docs/PAAISKINIMAI_LT.md` | the home rows are described as "in stock only, one card per game"; new Lithuanian section for the interview |
 | `docs/screenshots/task20-home-rows-{desktop,mobile}.png` | full-page home at 1440 and 390 px |
 | `docs/tasks/TASK_20_home_rows_readme.md` | the task file, verbatim (first commit) |
 
@@ -26,28 +26,28 @@ No migration, no seed, no schema change, no frontend change, no new dependency.
 |---|---|
 | `gofmt -l .` | prints nothing |
 | `go build ./...`, `go vet ./...` | pass |
-| `go test ./...` | pass. `go test -json`: **233 top-level tests** (157 pass, 76 skip locally = database integration tests, `TEST_DATABASE_URL` is empty; CI runs them), **447 subtests**, 0 failures |
+| `go test ./...` | pass. `go test -json`: **235 top-level tests** (159 pass, 76 skip locally = database integration tests, `TEST_DATABASE_URL` is empty; CI runs them), **447 subtests**, 0 failures |
 | `npm run lint`, `npm test` (PowerShell), `npm run build` | pass; 628 frontend tests in 50 files (unchanged) |
-| TDD | the tests were written first and did not compile (no `GameID`). After the implementation, a mutation check (the "already seen" test switched off) made 3 of the new unit tests fail, so they do catch the bug |
-| Live check, local stack against Neon `dev` (`cmd/local` + Vite, both on 127.0.0.1) | `popular`, `discounts`, `new-releases`: **5 cards each, 5 different games each**; the JSON has no game id. Screenshots: `docs/screenshots/task20-home-rows-desktop.png` (1440 px) and `-mobile.png` (390 px): no repeated cover in any row |
+| TDD | the one-per-game tests were written first and did not compile (no `GameID`); after the implementation, a mutation check (the "already seen" test switched off) made 3 of them fail. The in-stock tests were also written first: with the old code both failed (an out-of-stock version was shown, an all-out-of-stock catalog gave a row), after the change they pass |
+| Live check, local stack against Neon `dev` (`cmd/local` + Vite, both on 127.0.0.1) | `popular`, `discounts`, `new-releases`: **5 cards each, 5 different games each, every card `inStock: true`**; the JSON has no game id. After the in-stock change GTA V is shown by its PSN version (the Steam one is out of stock) and "Grand Theft Auto: San Andreas" by its in-stock version. Screenshots (retaken after the change): `docs/screenshots/task20-home-rows-desktop.png` (1440 px) and `-mobile.png` (390 px): no repeated cover, no "Out of stock" card, every card has a price and an Add to cart button |
 | axe-core 4.14.1 (wcag2a/2aa/21a/21aa/best-practice, reduced motion) on `/` | **0 violations at 1440 px and 0 at 390 px** |
 | CI (PR #23, commit `216d35a`) | **green**: `go` 56 s, `frontend` 41 s, `migrations` 52 s (every migration Up/Down/Up, then the database integration tests on the real Postgres seed, including the new row and `GameID` tests), Vercel Preview deployed |
 
 **A bug found only by the live check.** My first commit added `game_id` to the SQL but a scripted edit missed the `Scan` call, so the query returned 18 columns and the code read 17: `catalog: scan item: number of field descriptions must equal number of destinations` and all three rows answered `500`. Unit tests use a fake catalog and the DB tests cannot run locally (no Postgres), so only the real stack showed it. Fixed in the next commit (`5a467d3`). CI's `migrations` job runs the real-Postgres tests (every Store test would have failed on this), so it would also have caught it.
 
-**Test counts.** README says 233 Go test functions (157 + 76) and 447 subtests. The subtest number is 447 on `main` too: the 445 in the Task 18 report was already out of date before this task, so only the function counts (226 → 233: +5 unit tests in `service_test.go`, +1 unit test in `types_test.go`, +1 integration test) are new in this task. Frontend 628 is unchanged.
+**Test counts.** README says 235 Go test functions (159 + 76) and 447 subtests. The subtest number is 447 on `main` too: the 445 in the Task 18 report was already out of date before this task, so only the function counts (226 → 235: +7 unit tests in `service_test.go`, +1 unit test in `types_test.go`, +1 integration test) are new in this task. Frontend 628 is unchanged.
 
 ## 3. What the owner must do manually
 
 1. Review the PR and merge when CI is green (no migration, so no pre-merge production step).
 2. After the deploy, open the production home page: no game repeated in any row (Popular right now, Biggest discounts, New releases); each row has 5 cards.
-3. Run `/export` for this session and put the log in `ai-logs/` (I cannot run `/export`; the log is not committed yet). The README still says 23 log files / 25 tasks / 22 PRs, as the task said to change only the test counts (see §6).
+3. The README still says 23 log files / 25 tasks / 22 PRs / 254 commits. By the owner's decision they are updated in the very last task, together with the final planning-chat link (§6).
 
 ## 4. Plain-language explanation (for the interview)
 
 **What was wrong.** One game is sold as several products: GTA V on Steam, on PSN, "Premium". The home rows took the first 5 products of a sort. The sort puts versions of one popular game side by side, so "Popular right now" showed GTA V three times. That is the first thing a reviewer sees.
 
-**What changed.** Only the three home rows. The API asks the catalog for a big page (48, the most it allows), walks through it, keeps the first product of every game it has not shown yet, and stops at 5. The Store, search, tiles, platforms and hero are untouched.
+**What changed.** Only the three home rows. The API asks the catalog for a big page (48, the most it allows), walks through it, skips products that are out of stock, keeps the first remaining product of every game it has not shown yet, and stops at 5. The Store, search, tiles, platforms and hero are untouched.
 
 **Why on the backend, not in the frontend.**
 - The frontend only gets 5 cards. If it hid one repeat it would have 4 and nothing to fill the gap with; the full list is only on the server, which can drop repeats first and cut to 5 afterwards.
@@ -58,7 +58,9 @@ No migration, no seed, no schema change, no frontend change, no new dependency.
 
 **Why the first version in the row's sort order.** No new rule was needed: each row already has an order (most popular, biggest discount, newest). The first product of a game in that order is exactly the one that would have been on top anyway, so "Biggest discounts" shows the version with the biggest discount, and so on. The row is also honest: if the catalog had only 3 games, it shows 3 cards and never repeats a game to fill the gap.
 
-**One thing to know if asked.** The version that stays is chosen by the row's sort only. On `dev`, the first GTA V version in "Popular right now" is out of stock, so its card says "Out of stock" (the popularity sort does not look at stock). That is the same card the Store shows first for that sort, and the owner's decision was not to add sort rules.
+**Why out-of-stock products are skipped BEFORE the one-per-game step (owner's decision).** A home card that says "Out of stock" is a dead end for a shopper, so the home rows show only what can be bought. The order matters: if the game were marked "seen" by its out-of-stock first version, its in-stock versions would be thrown away as repeats and the game would vanish. Skipping first means a game is shown by its first IN-STOCK version (GTA V → the PSN one), and a game with nothing in stock is not shown at all. Only the home rows are filtered; the Store, search and the product page still show everything, with the "Out of stock" state.
+
+**If the window is not enough.** The 48-item window is the most the catalog returns in one query. In the seed 11 of 108 products are out of stock, so every row still finds 5 different in-stock games (checked live and by the integration test). If a catalog ever had fewer than 5 such games in the first 48, the row would be shorter, never filled with repeats.
 
 **Performance question.** Asking for 48 instead of 5 uses the same query (same sort, same `LIMIT`), with up to 48 rows and their cheapest offers instead of 5; with 108 products it is one round trip, and the home endpoints are cached.
 
@@ -66,13 +68,13 @@ No migration, no seed, no schema change, no frontend change, no new dependency.
 
 ## 5. Deviations from the task and why
 
-- None in behaviour. Additions inside "tests first": `TestProductRow_sameTitleDifferentGameIsNotARepeat`, `..._emptyCatalogGivesAnEmptyRowNotNull`, `..._cutsToTheLimitAfterRemovingRepeats`, `TestItem_gameIDIsNotSentToTheFrontend`, `TestListProducts_gameIDIdentifiesTheGame`.
+- Behaviour follows the task and then the owner's answer to open question 2 (in-stock only), which was a change after the first PR. Additions inside "tests first": `TestProductRow_sameTitleDifferentGameIsNotARepeat`, `..._emptyCatalogGivesAnEmptyRowNotNull`, `..._cutsToTheLimitAfterRemovingRepeats`, `TestItem_gameIDIsNotSentToTheFrontend`, `TestListProducts_gameIDIdentifiesTheGame`.
 - Screenshots are full-page (1440 × 2880 and 390 × 3623), so all three rows are visible in one image; the 2.2 MB desktop PNG is the biggest file in `docs/screenshots/`.
 
 ## 6. Open questions
 
-1. The README still says **25 tasks, 22 pull requests, 254 commits on `main` before Task 19, 23 log files**. The task asked to update only the test counts, so I left them. After this PR they will be one behind (23 PRs, 24 logs once this session is exported). Should the next README touch update them?
-2. The seed has **GTA V Steam out of stock**, so the first card of "Popular right now" says "Out of stock". It is the owner's rule ("first in the row's sort order") and I did not change it. If it should show an in-stock version, that needs a new sort rule (a different task).
+1. **README counts (tasks, PRs, commits, logs):** owner's answer – leave them for now; they are updated in the very last task together with the final planning-chat link. (Test counts are still kept current: 235 / 447 / 628.)
+2. **GTA V "Out of stock" in Popular right now:** owner's answer – the home product rows show only products that are in stock. Implemented as asked: out-of-stock items are skipped before the one-per-game step; the Store is unchanged. (A row can only be shorter than 5 if fewer than 5 games have an in-stock version among the first 48 listed; not the case on the seed.)
 
 ## 7. Self-review (output of the `task-reviewer` subagent, run before this report; 6 commits at that time)
 
