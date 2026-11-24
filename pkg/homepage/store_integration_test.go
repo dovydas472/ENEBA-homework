@@ -160,15 +160,31 @@ func TestHomepageIntegration_productRowsReturnFiveSortedAsConfigured(t *testing.
 			if len(row.Items) != 5 {
 				t.Fatalf("got %d items, want 5", len(row.Items))
 			}
-			// Exactly the first 5 of the Store listing with the same sort.
-			page, err := e.catalog.ListProducts(context.Background(), catalog.Filter{Sort: c.sort, Page: 1, PageSize: 5})
+			// The row is the Store listing with the same sort, one card per game: the first version of each
+			// game, in listing order. Rebuilt here from the whole listing, with the game id the JSON does not carry.
+			page, err := e.catalog.ListProducts(context.Background(), catalog.Filter{Sort: c.sort, Page: 1, PageSize: catalog.MaxPageSize})
 			if err != nil {
 				t.Fatal(err)
 			}
-			for i := range row.Items {
-				if row.Items[i].Slug != page.Items[i].Slug {
-					t.Errorf("item %d = %s, Store listing (%s) has %s", i, row.Items[i].Slug, c.sort, page.Items[i].Slug)
+			seen := map[int64]bool{}
+			want := []string{}
+			for _, it := range page.Items {
+				if !seen[it.GameID] && len(want) < 5 {
+					seen[it.GameID] = true
+					want = append(want, it.Slug)
 				}
+			}
+			got := []string{}
+			titles := map[string]bool{}
+			for _, it := range row.Items {
+				got = append(got, it.Slug)
+				if titles[it.Title] {
+					t.Errorf("title %q appears twice in the %s row", it.Title, key)
+				}
+				titles[it.Title] = true
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("row = %v, want %v", got, want)
 			}
 			if row.ViewAllHref != c.viewAll {
 				t.Errorf("viewAllHref = %q, want %q", row.ViewAllHref, c.viewAll)

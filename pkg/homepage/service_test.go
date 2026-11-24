@@ -3,6 +3,7 @@ package homepage
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -386,14 +387,15 @@ func TestPlatforms_allGamesFirstThenCatalogFacet(t *testing.T) {
 }
 
 func TestProductRow_usesTheBlockConfig(t *testing.T) {
-	items := []catalog.Item{{Slug: "a"}, {Slug: "b"}}
+	items := []catalog.Item{{Slug: "a", GameID: 1}, {Slug: "b", GameID: 2}}
 	cat := &fakeCatalog{page: catalog.Page{Items: items}}
 	got, err := NewService(&fakeContent{blocks: defaultBlocks()}, cat).ProductRow(context.Background(), "discounts")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if f := cat.filters[0]; f.Sort != catalog.SortDiscount || f.PageSize != 5 || f.Page != 1 || f.Query != "" || len(f.Platforms) != 0 {
-		t.Errorf("filter = %+v, want sort=discount, 5 items, page 1, no other filter", f)
+	// A bigger page is asked for (to have spare versions to drop); the row is cut to `limit` afterwards.
+	if f := cat.filters[0]; f.Sort != catalog.SortDiscount || f.PageSize != catalog.MaxPageSize || f.Page != 1 || f.Query != "" || len(f.Platforms) != 0 {
+		t.Errorf("filter = %+v, want sort=discount, the biggest page, page 1, no other filter", f)
 	}
 	if got.ViewAllHref != "/store?sort=discount" || !reflect.DeepEqual(got.Items, items) {
 		t.Errorf("got %+v", got)
@@ -414,5 +416,80 @@ func TestProductRow_badConfigIsAnError(t *testing.T) {
 	_, err := NewService(&fakeContent{blocks: blocks}, &fakeCatalog{}).ProductRow(context.Background(), "broken")
 	if err == nil || errors.Is(err, ErrNotFound) {
 		t.Errorf("got %v, want a config error (500), not a 404", err)
+	}
+}
+
+// slugs lists the slugs of a row, to compare rows in one line.
+func slugs(items []catalog.Item) []string {
+	out := []string{}
+	for _, it := range items {
+		out = append(out, it.Slug)
+	}
+	return out
+}
+
+func TestProductRow_oneCardPerGameKeepsTheFirstVersionAndTheOrder(t *testing.T) {
+	// GTA V (game 1) has three versions, the Witcher (game 2) two; a version is any later item of a game already shown.
+	cat := &fakeCatalog{page: catalog.Page{Items: []catalog.Item{
+		{Slug: "gta-v-steam", Title: "GTA V", GameID: 1},
+		{Slug: "gta-v-psn", Title: "GTA V", GameID: 1},
+		{Slug: "witcher-pc", Title: "The Witcher 3", GameID: 2},
+		{Slug: "gta-v-goty", Title: "GTA V", GameID: 1},
+		{Slug: "witcher-psn", Title: "The Witcher 3", GameID: 2},
+		{Slug: "hades", Title: "Hades", GameID: 3},
+	}}}
+	got, err := NewService(&fakeContent{blocks: defaultBlocks()}, cat).ProductRow(context.Background(), "discounts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"gta-v-steam", "witcher-pc", "hades"}; !reflect.DeepEqual(slugs(got.Items), want) {
+		t.Errorf("row = %v, want %v (first version of each game, listing order)", slugs(got.Items), want)
+	}
+}
+
+func TestProductRow_cutsToTheLimitAfterRemovingRepeats(t *testing.T) {
+	items := []catalog.Item{}
+	for i := int64(1); i <= 8; i++ { // 8 games, each twice: 16 items, limit is 5
+		items = append(items, catalog.Item{Slug: fmt.Sprintf("g%d-a", i), GameID: i}, catalog.Item{Slug: fmt.Sprintf("g%d-b", i), GameID: i})
+	}
+	got, err := NewService(&fakeContent{blocks: defaultBlocks()}, &fakeCatalog{page: catalog.Page{Items: items}}).ProductRow(context.Background(), "discounts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"g1-a", "g2-a", "g3-a", "g4-a", "g5-a"}; !reflect.DeepEqual(slugs(got.Items), want) {
+		t.Errorf("row = %v, want %v", slugs(got.Items), want)
+	}
+}
+
+func TestProductRow_fewerGamesThanTheLimitIsNotFilledWithRepeats(t *testing.T) {
+	items := []catalog.Item{{Slug: "a1", GameID: 1}, {Slug: "a2", GameID: 1}, {Slug: "b1", GameID: 2}, {Slug: "b2", GameID: 2}}
+	got, err := NewService(&fakeContent{blocks: defaultBlocks()}, &fakeCatalog{page: catalog.Page{Items: items}}).ProductRow(context.Background(), "discounts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a1", "b1"}; !reflect.DeepEqual(slugs(got.Items), want) {
+		t.Errorf("row = %v, want %v (2 games, so 2 cards, not 5)", slugs(got.Items), want)
+	}
+}
+
+func TestProductRow_sameTitleDifferentGameIsNotARepeat(t *testing.T) {
+	// De-duplication is by game id, not by title text: two different games may share a title.
+	items := []catalog.Item{{Slug: "x1", Title: "Doom", GameID: 1}, {Slug: "x2", Title: "Doom", GameID: 2}}
+	got, err := NewService(&fakeContent{blocks: defaultBlocks()}, &fakeCatalog{page: catalog.Page{Items: items}}).ProductRow(context.Background(), "discounts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"x1", "x2"}; !reflect.DeepEqual(slugs(got.Items), want) {
+		t.Errorf("row = %v, want %v", slugs(got.Items), want)
+	}
+}
+
+func TestProductRow_emptyCatalogGivesAnEmptyRowNotNull(t *testing.T) {
+	got, err := NewService(&fakeContent{blocks: defaultBlocks()}, &fakeCatalog{}).ProductRow(context.Background(), "discounts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Items == nil || len(got.Items) != 0 {
+		t.Errorf("items = %#v, want an empty, non-nil slice (JSON [] not null)", got.Items)
 	}
 }

@@ -80,7 +80,7 @@ const baseCTE = `
 WITH ` + statsCTEs + `,
 ` + searchCTEs + `,
 base AS (
-    SELECT p.id, p.slug, p.edition, p.msrp_cents,
+    SELECT p.id, p.game_id, p.slug, p.edition, p.msrp_cents,
            g.title, g.cover_url, g.release_date, g.popularity,
            pl.id AS platform_id, pl.slug AS platform_slug, pl.name AS platform_name,
            r.id  AS region_id,   r.slug  AS region_slug,   r.name  AS region_name,
@@ -149,7 +149,7 @@ const orderPlaceholder = "{{ORDER_BY}}"
 // order of the page through the join.
 const itemsSQL = baseCTE + `,
 page AS (
-    SELECT b.id, b.slug, b.title, b.edition,
+    SELECT b.id, b.game_id, b.slug, b.title, b.edition,
            b.platform_slug, b.platform_name, b.region_slug, b.region_name,
            b.cover_url, b.min_price_cents, b.msrp_cents, b.discount_pct, b.offer_count,
            b.min_price_cents IS NOT NULL AS in_stock,
@@ -160,7 +160,7 @@ page AS (
     ORDER BY pos
     LIMIT @limit OFFSET @offset
 )
-SELECT pg.slug, pg.title, pg.edition,
+SELECT pg.game_id, pg.slug, pg.title, pg.edition,
        pg.platform_slug, pg.platform_name, pg.region_slug, pg.region_name,
        pg.cover_url, pg.min_price_cents, pg.msrp_cents, pg.discount_pct, pg.offer_count,
        pg.in_stock, pg.total,
