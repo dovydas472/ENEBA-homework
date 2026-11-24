@@ -210,9 +210,10 @@ task file per step       file     task file committed verbatim (docs/tasks/)
                                   code + tests + docs in small commits
                                   task-reviewer subagent (checks the branch
                                     against the task and CLAUDE.md)
-review of the report    ◀──PR──── PR with report (docs/reports/) + CI     ──▶ tests the Vercel Preview,
-against task and code                                                         answers open questions,
-                                                                              migrates production, merges
+review of the report +  ◀──PR──── PR with report (docs/reports/) + CI     ──▶ tests the Vercel Preview,
+code on GitHub against                                                        answers open questions,
+the task file, before                                                         migrates production, merges
+the owner merges
 ```
 
 - **24 tasks**, from the project skeleton to this README: [`docs/tasks/`](docs/tasks/). Each has a report with files changed, verification output, manual steps, a plain-language explanation, deviations, open questions and the reviewer subagent's findings: [`docs/reports/`](docs/reports/).
@@ -221,7 +222,7 @@ against task and code                                                         an
 - **Claude Code sessions:** [`ai-logs/`](ai-logs/) – one log per session (21 files), converted from the session transcripts and redacted (no connection strings, e-mails or user names).
 - **The planning chat:** `<SHARE_LINK>`
 
-**Who did what.** The AI (Claude) wrote almost all of the code, tests and documentation: Claude Code in the repository, guided by task files that were drafted in a planning chat with Claude. The owner decided what to build and how far to go (every "Owner's answer" in the reports is such a decision: e.g. Eneba's side drawer instead of a full-screen one, the per-email rate limit, the cap of 3 unpaid orders), reviewed each report against the task and the code, tested the Preview deployments by hand (the manual checklist in each report), ran the production migrations and seeds, and merged. The checks that keep the AI honest are mechanical: CI on every PR, a separate reviewer subagent, measured numbers (Lighthouse, axe, query tables) in every report, and `docs/PAAISKINIMAI_LT.md`, the owner's own notes explaining every important file.
+**Who did what.** The AI (Claude) wrote almost all of the code, tests and documentation: Claude Code in the repository, guided by task files that were drafted in a planning chat with Claude. The owner decided what to build and how far to go (every "Owner's answer" in the reports is such a decision: e.g. Eneba's side drawer instead of a full-screen one, the per-email rate limit, the cap of 3 unpaid orders), reviewed each report against the task and the code, tested the Preview deployments by hand (the manual checklist in each report), ran the production migrations and seeds, and merged. Before each merge the planning chat also reviewed the report **and the code on GitHub** against the task file. The checks that keep the AI honest are mechanical: CI on every PR, a separate reviewer subagent and measured numbers (Lighthouse, axe, query tables) in every report. [`docs/PAAISKINIMAI_LT.md`](docs/PAAISKINIMAI_LT.md) is not the owner's own writing: Claude Code wrote these Lithuanian explanations of every important file for the owner, and the owner used them to learn and check the code.
 
 ## Reference
 

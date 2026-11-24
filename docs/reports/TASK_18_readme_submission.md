@@ -14,6 +14,7 @@ Task file: [`docs/tasks/TASK_18_readme_submission.md`](../tasks/TASK_18_readme_s
 - `cmd/seed/main.go` – flag `--aliases-only` (cannot be combined with `--reset`), same transaction + lock as a full seed; prints `game_aliases before`, `inserted`, `after`.
 - `.github/workflows/seed-production.yml` – **no free-text input any more** (the 13a run failed on a mistyped `confirm`): dropdown `mode` (`aliases-only` default / `seed-empty` / `reset`, replaces the `reset` checkbox) and dropdown `confirm` (`not confirmed` default / `seed-production`); a `case` maps the mode to the command, an unknown mode fails.
 - `pkg/seedgen/aliases_db_test.go` (new) – 4 integration tests (run in CI's `migrations` job): empty table → same checksum as a full seed (rows + ids); run twice on a full table → 0 inserted, checksum unchanged; only missing rows added (deleted aliases of one game come back, an alias in another letter case is skipped, a non-snapshot row stays); a game missing from the DB → nothing written.
+- `CLAUDE.md` – one line in "Seed data rules" for `--aliases-only` (owner's answer to §6.3).
 
 **Session logs** (`ai-logs/`)
 - New, converted from the local transcripts and redacted (the check found these sessions without a log): `2026-11-21_04_catalog-api.md` (Task 09), `2026-11-21_05_app-shell.md` (Task 10), `2026-11-21_06_backend-hardening.md` (Task 10b), `2026-11-22_06_search-ui.md` (Task 13b), `2026-11-22_07_search-followup.md` (Task 13c).
@@ -122,8 +123,11 @@ axe-core **4.14.1**, WCAG 2.0/2.1 A + AA + best practice, reduced motion: `/`, `
 
 ## 6. Open questions
 1. **Old history finding:** the local part of your private e-mail is in two old commits of a session log (`dad8c2f`, removed again in `d101c7e`). Only a history rewrite + force-push can remove it (I must not do that). Leave it as is, or will you rewrite the history yourself?
+   **Owner's answer:** leave it, no history rewrite. The current files contain no such data (§2).
 2. Is the "Who did what" paragraph in the README accurate for how you worked (e.g. "tested the Preview deployments by hand", "ran the production migrations and seeds")?
+   **Owner's answer:** accurate except two points, both fixed in the README (paragraph and diagram) and in cheat-sheet question 25: (a) `docs/PAAISKINIMAI_LT.md` is not the owner's own notes – Claude Code wrote these Lithuanian explanations for the owner, who used them to learn and check the code; (b) before each merge the planning chat reviewed the report **and the code on GitHub** against the task file.
 3. **CLAUDE.md "Seed data rules"** describe only the empty / `--reset` modes. Should a line be added for `--aliases-only` ("adds only the missing `game_aliases`, idempotent, allowed on a catalog with orders; production only via the workflow, `mode` = `aliases-only`")? I did not edit `CLAUDE.md` myself – it is your rule file.
+   **Owner's answer:** yes, exactly as proposed. Added to `CLAUDE.md` "Seed data rules" (after the `cmd/seed` line).
 
 ## 7. Self-review (task-reviewer)
 Run after all code and docs except this report were committed (branch at a8d2a58), given only the task number. **Verdict: CHANGES NEEDED.**
