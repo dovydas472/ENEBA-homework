@@ -127,7 +127,7 @@ Database: [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) (ER diagram: game → produ
 | `migrations` | every migration Up on a clean Postgres 18, then every Down one by one back to version 0, then Up again; then the **database integration tests** on the deterministic seed (they *fail* instead of skipping when the database is missing) |
 | `frontend` | ESLint, Vitest, TypeScript + production build |
 
-**Tests:** **226 Go test functions** (151 unit tests + 75 database integration tests that run in CI against Postgres) with 445 table-driven subtests, and **625 frontend tests** in 50 files (Vitest + Testing Library). Counted on 2026-11-24.
+**Tests:** **226 Go test functions** (151 unit tests + 75 database integration tests that run in CI against Postgres) with 445 table-driven subtests, and **628 frontend tests** in 50 files (Vitest + Testing Library). Counted on 2026-11-24.
 
 **Lighthouse (mobile)** – default mobile preset: Moto G Power emulation, simulated slow 4G (150 ms RTT, 1.6 Mbps), 4× CPU slowdown; median of 3 runs.
 
@@ -216,11 +216,12 @@ the task file, before                                                         mi
 the owner merges
 ```
 
-- **24 tasks**, from the project skeleton to this README: [`docs/tasks/`](docs/tasks/). Each has a report with files changed, verification output, manual steps, a plain-language explanation, deviations, open questions and the reviewer subagent's findings: [`docs/reports/`](docs/reports/).
-- **21 pull requests** (Tasks 01–02 were committed before the PR workflow existed; it was introduced in Task 03), **241 commits on `main` before this last task**. Since Task 07 every PR needs green CI before it can be merged.
+- **25 tasks**, from the project skeleton to the final audit: [`docs/tasks/`](docs/tasks/). Each has a report with files changed, verification output, manual steps, a plain-language explanation, deviations, open questions and the reviewer subagent's findings: [`docs/reports/`](docs/reports/).
+- **22 pull requests** (Tasks 01–02 were committed before the PR workflow existed; it was introduced in Task 03), **254 commits on `main` before the last task (Task 19)**. Since Task 07 every PR needs green CI before it can be merged.
 - **Standing rules for the AI:** [`CLAUDE.md`](CLAUDE.md) – structure, database, migration, UI, workflow and reporting rules, grown task by task when something went wrong.
-- **Claude Code sessions:** [`ai-logs/`](ai-logs/) – one log per session (21 files), converted from the session transcripts and redacted (no connection strings, e-mails or user names).
-- **The planning chat:** `<SHARE_LINK>`
+- **Claude Code sessions:** [`ai-logs/`](ai-logs/) – one log per session (23 files), converted from the session transcripts and redacted (no connection strings, e-mails or user names).
+- **The planning chat:** https://claude.ai/share/OWNER_FILLS_IN
+- **Before the planning chat:** before this repository and the planning chat existed, a short earlier conversation with Claude chose the stack and the hosting. It also covered the owner's personal job search, so it is not shared. Its decisions were written into the first version of the planning context that starts the shared planning chat. Everything after that is in the shared planning chat and in [`ai-logs/`](ai-logs/).
 
 **Who did what.** The AI (Claude) wrote almost all of the code, tests and documentation: Claude Code in the repository, guided by task files that were drafted in a planning chat with Claude. The owner decided what to build and how far to go (every "Owner's answer" in the reports is such a decision: e.g. Eneba's side drawer instead of a full-screen one, the per-email rate limit, the cap of 3 unpaid orders), reviewed each report against the task and the code, tested the Preview deployments by hand (the manual checklist in each report), ran the production migrations and seeds, and merged. Before each merge the planning chat also reviewed the report **and the code on GitHub** against the task file. The checks that keep the AI honest are mechanical: CI on every PR, a separate reviewer subagent and measured numbers (Lighthouse, axe, query tables) in every report. [`docs/PAAISKINIMAI_LT.md`](docs/PAAISKINIMAI_LT.md) is not the owner's own writing: Claude Code wrote these Lithuanian explanations of every important file for the owner, and the owner used them to learn and check the code.
 
