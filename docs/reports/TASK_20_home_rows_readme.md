@@ -68,7 +68,8 @@ No migration, no seed, no schema change, no frontend change, no new dependency.
 
 ## 5. Deviations from the task and why
 
-- Behaviour follows the task and then the owner's answer to open question 2 (in-stock only), which was a change after the first PR. Additions inside "tests first": `TestProductRow_sameTitleDifferentGameIsNotARepeat`, `..._emptyCatalogGivesAnEmptyRowNotNull`, `..._cutsToTheLimitAfterRemovingRepeats`, `TestItem_gameIDIsNotSentToTheFrontend`, `TestListProducts_gameIDIdentifiesTheGame`.
+- **In-stock only is NOT in the task file; it is a later owner decision.** The task file (kept verbatim) says one card per game, first in the row's sort order. After the first version of this report, the owner answered open question 2 (2026-11-24, in the session chat): *"the home product rows show only products that are in stock. Skip out-of-stock items before the one-per-game step, so a game whose top version is out of stock is shown by its first in-stock version, and a game with no in-stock version is not shown. Only the home product rows change; the Store stays as it is. Tests first (…). Update DATA_MODEL/DESIGN/PAAISKINIMAI_LT and the report."* So the rule "the first one in the row's own sort order" now reads "the first IN-STOCK one in the row's own sort order". It is recorded here, not in the task file, because the task file must stay verbatim. Open question 1 (README counts) was answered at the same time: leave them for the last task.
+- Additions inside "tests first": `TestProductRow_sameTitleDifferentGameIsNotARepeat`, `..._emptyCatalogGivesAnEmptyRowNotNull`, `..._cutsToTheLimitAfterRemovingRepeats`, `TestItem_gameIDIsNotSentToTheFrontend`, `TestListProducts_gameIDIdentifiesTheGame`.
 - Screenshots are full-page (1440 × 2880 and 390 × 3623), so all three rows are visible in one image; the 2.2 MB desktop PNG is the biggest file in `docs/screenshots/`.
 
 ## 6. Open questions
@@ -126,3 +127,16 @@ What was done about each finding:
 | New DB tests skip on an empty `TEST_DATABASE_URL`? | Yes: they use `newStore(t)` / `newEnv(t)`, which call `testdb.Pool(t)`; it skips when the variable is empty (locally 76 skipped, none failed). |
 | README "25 tasks / 254 commits" | Left as the task says; raised as open question 1. |
 | `.vscode/` untracked | Not committed. |
+
+### 7b. Second review, after the in-stock change (owner's answer to open question 2)
+
+`task-reviewer` was run again on the branch (9 commits). Verdict **CHANGES NEEDED**, with every requirement row `done` except these notes:
+
+| Finding | What was done |
+|---|---|
+| In-stock filtering is not in the task file; the repo does not record the owner's decision; the report should call it a deviation | Recorded as the first bullet of §5 with the owner's answer quoted and the date. The task file stays verbatim (CLAUDE.md), so the decision lives in the report. |
+| The "no repeated cover" claim is not verifiable from the repo (the reviewer did not open the images) | The screenshots are `docs/screenshots/task20-home-rows-{desktop,mobile}.png` (retaken after the in-stock change); I looked at the mobile one: 3 rows × 5 different covers, every card has a price and a cart button, no "Out of stock". The live API check printed `inStock: true` for all 15 cards. |
+| "11 of 108 out of stock" in PAAISKINIMAI_LT is untested | It is the seed's number from the header of `pkg/catalog/store_integration_test.go` (`outOfStockProducts = 11`, `totalProducts = 108`), which that file asserts in CI. |
+| 159 / 76 split and 447 subtests unverified; a file-name count gives 73 integration tests | The README's method (since Task 18) is `go test -json` run locally: top-level tests that *skip* because `TEST_DATABASE_URL` is empty are the database tests. Run now: 235 top-level, 76 skipped, 159 pass, 447 subtests. A file-name count differs because some integration tests live in files without that suffix. |
+| `ai-logs/` has 24 files in `git ls-files` | All 24 files in `ai-logs/` are session logs (no index file): the README's "23" was written before Task 19's own log was added, and this task's log makes 25. Correct, but not part of this task: by the owner's decision the counts are updated in the last task (§6 Q1). |
+| 3 further "unsure" notes (CI/axe cannot be run by the reviewer) | The numbers and the CI links are in §2 (CI result added there after the push). |
