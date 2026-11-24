@@ -25,7 +25,7 @@ The planning-chat line is **unchanged**: the link the owner gave in the chat (§
 | `npm test` (PowerShell) | **628 tests in 50 files**, all pass – the same as the README |
 | `npm run build` | pass |
 | Relative links in the README | **52 of 52 exist** (files, folders, the 10 screenshots, and the 3 anchors `DATA_MODEL.md#4-…`, `DESIGN.md#5-accessibility`, `TASK_13a…#threshold-tuning-…`, each checked against its heading) |
-| CI (PR #24) | CI_PLACEHOLDER |
+| CI (PR #24) | **green** on the report commit `c986abf`: `go` 52 s, `migrations` 53 s, `frontend` 38 s, Vercel Preview deployed. The last commit (CI line + session log) is docs only; its CI run is stated in the chat summary |
 
 ### How each number was counted
 
