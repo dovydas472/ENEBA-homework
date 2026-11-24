@@ -9,6 +9,10 @@ on:
         description: "Delete the existing catalog first (go run ./cmd/seed --reset)"
         type: boolean
         default: false
+      aliases_only:
+        description: "Only fill the EMPTY search-alias table (go run ./cmd/seed --aliases-only); orders, offers and keys are not touched"
+        type: boolean
+        default: false
       confirm:
         description: 'Type "seed-production" to confirm'
         type: string
@@ -34,6 +38,7 @@ jobs:
       # (prevents script injection through the free-text input).
       CONFIRM: ${{ inputs.confirm }}
       RESET: ${{ inputs.reset }}
+      ALIASES_ONLY: ${{ inputs.aliases_only }}
     steps:
       - name: Check the confirmation
         run: |
@@ -57,7 +62,12 @@ jobs:
 
       - name: Seed the catalog
         run: |
-          if [ "$RESET" = "true" ]; then
+          if [ "$ALIASES_ONLY" = "true" ] && [ "$RESET" = "true" ]; then
+            echo "::error::Tick either 'reset' or 'aliases_only', not both"
+            exit 1
+          elif [ "$ALIASES_ONLY" = "true" ]; then
+            go run ./cmd/seed --aliases-only
+          elif [ "$RESET" = "true" ]; then
             go run ./cmd/seed --reset
           else
             go run ./cmd/seed

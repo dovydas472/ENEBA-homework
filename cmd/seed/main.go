@@ -2,6 +2,7 @@
 //
 //	go run ./cmd/seed            # only into an EMPTY catalog (refuses otherwise)
 //	go run ./cmd/seed --reset    # delete the catalog first, then seed
+//	go run ./cmd/seed --aliases-only  # fill ONLY an empty game_aliases table (catalog with orders, Task 18)
 //
 // Run it from the repo root. Like cmd/migrate it reads DATABASE_URL_DIRECT (Neon
 // DIRECT connection, no "-pooler"): locally from .env (Neon `dev` branch), in
@@ -43,15 +44,20 @@ func main() {
 	_ = godotenv.Load(".env")
 
 	reset := flag.Bool("reset", false, "delete the existing catalog data before seeding")
+	aliasesOnly := flag.Bool("aliases-only", false, "fill only the empty search-alias table; the rest of the catalog is not touched")
 	flag.Parse()
 
-	if err := run(*reset); err != nil {
+	if *reset && *aliasesOnly {
+		fmt.Fprintln(os.Stderr, "error: --reset and --aliases-only cannot be used together")
+		os.Exit(2)
+	}
+	if err := run(*reset, *aliasesOnly); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", dbsafe.SafeMessage(err, os.Getenv(envName)))
 		os.Exit(1)
 	}
 }
 
-func run(reset bool) error {
+func run(reset, aliasesOnly bool) error {
 	// 1. Build and check the data first - no database needed for this part.
 	snap, err := igdb.ParseSnapshot(seed.SnapshotJSON)
 	if err != nil {
@@ -100,6 +106,9 @@ func run(reset bool) error {
 	if err := seedgen.Lock(ctx, tx); err != nil {
 		return fmt.Errorf("lock catalog tables (did the migrations run?): %w", err)
 	}
+	if aliasesOnly {
+		return seedAliasesOnly(ctx, tx, catalog)
+	}
 	before, err := seedgen.Counts(ctx, tx)
 	if err != nil {
 		return err
@@ -142,6 +151,21 @@ func run(reset bool) error {
 		stats.AvailableKeys, stats.ExpiredReservedKeys, stats.SoldKeys, stats.NewSellers)
 	fmt.Printf("  search aliases: %d (IGDB + %d hand-written)\n", stats.Aliases, len(extra))
 	fmt.Println("catalog checksum:", sum)
+	return nil
+}
+
+// seedAliasesOnly adds the search aliases to a catalog that has everything else (Task 18: production
+// missed them, and --reset refuses while orders exist). Same transaction and lock as a full seed.
+// No catalog checksum is printed: on a database with sales the key rows differ from a fresh seed.
+func seedAliasesOnly(ctx context.Context, tx pgx.Tx, catalog seedgen.Catalog) error {
+	n, err := seedgen.InsertAliases(ctx, tx, catalog)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	fmt.Printf("--aliases-only: search aliases inserted (committed): %d\n", n)
 	return nil
 }
 

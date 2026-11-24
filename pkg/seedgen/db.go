@@ -147,16 +147,8 @@ func Insert(ctx context.Context, tx pgx.Tx, c Catalog) error {
 		return err
 	}
 
-	// search aliases (game order, then alias order: the ids are deterministic too)
-	var aliasRows [][]any
-	for _, g := range c.Games {
-		for _, a := range g.Aliases {
-			aliasRows = append(aliasRows, []any{gameID[g.Slug], a})
-		}
-	}
-	if _, err := tx.CopyFrom(ctx, pgx.Identifier{"game_aliases"},
-		[]string{"game_id", "alias"}, pgx.CopyFromRows(aliasRows)); err != nil {
-		return fmt.Errorf("copy game aliases: %w", err)
+	if _, err := copyAliases(ctx, tx, c.Games, gameID); err != nil {
+		return err
 	}
 
 	// products
@@ -216,6 +208,59 @@ func Insert(ctx context.Context, tx pgx.Tx, c Catalog) error {
 		return fmt.Errorf("copy keys: %w", err)
 	}
 	return nil
+}
+
+// copyAliases writes the search aliases in game order, then alias order, so the ids are
+// deterministic too. Shared by Insert (full seed) and InsertAliases (aliases only).
+func copyAliases(ctx context.Context, tx pgx.Tx, games []Game, gameID map[string]int64) (int, error) {
+	var aliasRows [][]any
+	for _, g := range games {
+		for _, a := range g.Aliases {
+			aliasRows = append(aliasRows, []any{gameID[g.Slug], a})
+		}
+	}
+	if _, err := tx.CopyFrom(ctx, pgx.Identifier{"game_aliases"},
+		[]string{"game_id", "alias"}, pgx.CopyFromRows(aliasRows)); err != nil {
+		return 0, fmt.Errorf("copy game aliases: %w", err)
+	}
+	return len(aliasRows), nil
+}
+
+// ErrAliasesExist is returned by InsertAliases when game_aliases already has rows.
+var ErrAliasesExist = errors.New("seedgen: search aliases already exist")
+
+// InsertAliases fills ONLY the empty game_aliases table from the catalog (Task 18).
+//
+// Why it exists: production got the aliases table (migration 00003) but its re-seed failed, and a
+// full re-seed (--reset) now refuses because orders exist. Aliases are referenced by nothing, so
+// adding them touches no order, offer or key. The games must already be in the database (same
+// snapshot): every catalog game is looked up by slug, and a missing one stops the run.
+// The identity restarts at 1 and the rows go in the same order as in Insert, so the alias ids are
+// the same as on a database seeded in one go (dev) - the integration test checks that with Checksum.
+// Call it inside a transaction after Lock.
+func InsertAliases(ctx context.Context, tx pgx.Tx, c Catalog) (int, error) {
+	var existing int64
+	if err := tx.QueryRow(ctx, "SELECT count(*) FROM game_aliases").Scan(&existing); err != nil {
+		return 0, fmt.Errorf("count game aliases: %w", err)
+	}
+	if existing > 0 {
+		return 0, fmt.Errorf("%w (%d rows); nothing was changed", ErrAliasesExist, existing)
+	}
+	gameID, err := idsBySlug(ctx, tx, "games")
+	if err != nil {
+		return 0, err
+	}
+	for _, g := range c.Games {
+		if _, ok := gameID[g.Slug]; !ok {
+			return 0, fmt.Errorf("game %q of the snapshot is not in the database; the catalog differs from the snapshot, nothing was changed", g.Slug)
+		}
+	}
+	// The table is empty, so restarting the identity cannot clash with an existing id. Transactional:
+	// a later failure rolls the counter back too.
+	if _, err := tx.Exec(ctx, "ALTER TABLE game_aliases ALTER COLUMN id RESTART WITH 1"); err != nil {
+		return 0, fmt.Errorf("restart identity of game_aliases: %w", err)
+	}
+	return copyAliases(ctx, tx, c.Games, gameID)
 }
 
 // idsBySlug reads slug -> id for a table that was just filled with COPY.
