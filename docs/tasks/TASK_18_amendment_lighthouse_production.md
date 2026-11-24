@@ -1,0 +1,1 @@
+Addendum to Task 18: run Lighthouse mobile on PRODUCTION (enehomeworkba.vercel.app – Home, Store, a product page; median of 3) and put the real numbers in the README Quality section next to Task 17's local numbers, stating the conditions.

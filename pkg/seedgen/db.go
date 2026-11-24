@@ -147,16 +147,8 @@ func Insert(ctx context.Context, tx pgx.Tx, c Catalog) error {
 		return err
 	}
 
-	// search aliases (game order, then alias order: the ids are deterministic too)
-	var aliasRows [][]any
-	for _, g := range c.Games {
-		for _, a := range g.Aliases {
-			aliasRows = append(aliasRows, []any{gameID[g.Slug], a})
-		}
-	}
-	if _, err := tx.CopyFrom(ctx, pgx.Identifier{"game_aliases"},
-		[]string{"game_id", "alias"}, pgx.CopyFromRows(aliasRows)); err != nil {
-		return fmt.Errorf("copy game aliases: %w", err)
+	if _, err := copyAliases(ctx, tx, c.Games, gameID); err != nil {
+		return err
 	}
 
 	// products
@@ -216,6 +208,93 @@ func Insert(ctx context.Context, tx pgx.Tx, c Catalog) error {
 		return fmt.Errorf("copy keys: %w", err)
 	}
 	return nil
+}
+
+// aliasRows lists the search aliases as two parallel columns, in game order, then alias order.
+// That order decides the ids, so it is the same for a full seed (Insert) and InsertAliases.
+func aliasRows(games []Game, gameID map[string]int64) (gameIDs []int64, aliases []string) {
+	for _, g := range games {
+		for _, a := range g.Aliases {
+			gameIDs = append(gameIDs, gameID[g.Slug])
+			aliases = append(aliases, a)
+		}
+	}
+	return gameIDs, aliases
+}
+
+// copyAliases writes all search aliases with COPY (full seed: the table was just emptied).
+func copyAliases(ctx context.Context, tx pgx.Tx, games []Game, gameID map[string]int64) (int, error) {
+	gameIDs, aliases := aliasRows(games, gameID)
+	rows := make([][]any, len(aliases))
+	for i := range aliases {
+		rows[i] = []any{gameIDs[i], aliases[i]}
+	}
+	if _, err := tx.CopyFrom(ctx, pgx.Identifier{"game_aliases"},
+		[]string{"game_id", "alias"}, pgx.CopyFromRows(rows)); err != nil {
+		return 0, fmt.Errorf("copy game aliases: %w", err)
+	}
+	return len(rows), nil
+}
+
+// AliasCounts is what InsertAliases reports: rows before, rows it added, rows after.
+type AliasCounts struct {
+	Before, Inserted, After int64
+}
+
+// insertMissingAliasesSQL adds the snapshot's aliases that are not there yet. unnest(...) WITH ORDINALITY
+// turns the two arrays into rows numbered 1, 2, 3 …; ORDER BY ord keeps the snapshot order, so new ids
+// are handed out in the same order as in a full seed. ON CONFLICT on the unique index
+// (game_id, lower(alias)) skips an alias that already exists instead of failing the transaction.
+const insertMissingAliasesSQL = `
+INSERT INTO game_aliases (game_id, alias)
+SELECT t.game_id, t.alias
+FROM unnest($1::bigint[], $2::text[]) WITH ORDINALITY AS t(game_id, alias, ord)
+ORDER BY t.ord
+ON CONFLICT (game_id, lower(alias)) DO NOTHING`
+
+// InsertAliases adds the snapshot's search aliases that are MISSING from game_aliases (Task 18).
+//
+// Why it exists: production got the aliases table (migration 00003) but its re-seed failed, and a
+// full re-seed (--reset) now refuses because orders exist. Aliases are referenced by nothing, so
+// adding them touches no order, offer or key.
+//
+// Idempotent: running it twice is safe - the second run inserts 0 rows (ON CONFLICT DO NOTHING).
+// The games must already be in the database (same snapshot): every catalog game is looked up by
+// slug, and a missing one stops the run before anything is written.
+// When the table is EMPTY the identity restarts at 1 first, so the ids come out exactly as on a
+// database seeded in one go (dev) - the integration test checks that with Checksum.
+// Call it inside a transaction after Lock.
+func InsertAliases(ctx context.Context, tx pgx.Tx, c Catalog) (AliasCounts, error) {
+	var n AliasCounts
+	if err := tx.QueryRow(ctx, "SELECT count(*) FROM game_aliases").Scan(&n.Before); err != nil {
+		return n, fmt.Errorf("count game aliases: %w", err)
+	}
+	gameID, err := idsBySlug(ctx, tx, "games")
+	if err != nil {
+		return n, err
+	}
+	for _, g := range c.Games {
+		if _, ok := gameID[g.Slug]; !ok {
+			return n, fmt.Errorf("game %q of the snapshot is not in the database; the catalog differs from the snapshot, nothing was changed", g.Slug)
+		}
+	}
+	if n.Before == 0 {
+		// Empty table: restarting the identity cannot clash with an existing id. Transactional, so a
+		// later failure rolls the counter back too.
+		if _, err := tx.Exec(ctx, "ALTER TABLE game_aliases ALTER COLUMN id RESTART WITH 1"); err != nil {
+			return n, fmt.Errorf("restart identity of game_aliases: %w", err)
+		}
+	}
+	gameIDs, aliases := aliasRows(c.Games, gameID)
+	tag, err := tx.Exec(ctx, insertMissingAliasesSQL, gameIDs, aliases)
+	if err != nil {
+		return n, fmt.Errorf("insert missing game aliases: %w", err)
+	}
+	n.Inserted = tag.RowsAffected()
+	if err := tx.QueryRow(ctx, "SELECT count(*) FROM game_aliases").Scan(&n.After); err != nil {
+		return n, fmt.Errorf("count game aliases: %w", err)
+	}
+	return n, nil
 }
 
 // idsBySlug reads slug -> id for a table that was just filled with COPY.

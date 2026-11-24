@@ -42,6 +42,7 @@ The owner must be able to explain ALL code in an interview, so keep code simple 
 - IGDB credentials (`IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`) live only in the local `.env`. Never in code, logs, GitHub secrets or Vercel; never print the token.
 - `cmd/seed` is deterministic (fixed RNG seed, timestamps derived from the snapshot date, no `time.Now()` in generated data). The golden test in `pkg/seedgen` pins the output: if a rule or the snapshot changes on purpose, update the hash in the same PR and say so in the report.
 - `cmd/seed` uses `DATABASE_URL_DIRECT` (same `-pooler` guard and redaction as `cmd/migrate`, shared in `pkg/dbsafe`), refuses a non-empty catalog without `--reset`, and writes everything in one transaction.
+- `cmd/seed --aliases-only` adds only the missing `game_aliases`, idempotent, allowed on a catalog with orders; production only via the workflow, `mode` = `aliases-only`.
 - Locally seed only the Neon `dev` branch. **Production is seeded only by the GitHub Actions workflow `seed-production.yml`** (manual, `confirm` = `seed-production`).
 - Key codes are always fake: `DEMO-XXXX-XXXX-XXXX`.
 

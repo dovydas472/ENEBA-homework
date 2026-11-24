@@ -2215,7 +2215,7 @@ const redact = (s) => String(s)
   .replace(/[REDACTED]/gi, "[REDACTED]")
   .replace(/C:[\\/]+Users[\\/]+[USER]/gi, "C:/Users/[USER]")
   .replace(/\/c\/Users\/[USER]/gi, "/c/Users/[USER]")
-  .replace(/\bdovyd\b/gi, "[USER]");
+  .replace(/\b[USER]\b/gi, "[USER]");
 const clip = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n) + `\n… [truncated; original ${s.length} chars]` : s; };
 const stripReminders = (t) => t.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "").trim();
 const quote = (t) => t.split("\n").map(l => "> " + l).join("\n");
