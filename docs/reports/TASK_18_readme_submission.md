@@ -29,7 +29,7 @@ Task file: [`docs/tasks/TASK_18_readme_submission.md`](../tasks/TASK_18_readme_s
 | `npm test` (PowerShell) | **50 files, 625 tests pass** |
 | `npm run build` | passes (main JS 450.72 kB / gzip 144.03 kB, unchanged) |
 | `cmd/seed --aliases-only` on Neon **dev** (has aliases) | `error: seedgen: search aliases already exist (134 rows); nothing was changed`, exit 1 – the refuse path; `--aliases-only --reset` → "cannot be used together", exit 2 |
-| GitHub CI on the PR | see the PR / chat summary (filled in after the run) |
+| GitHub CI on PR #21 | **all green**: `go` (51 s), `migrations` (1 m 0 s – incl. the new `pkg/seedgen` integration tests; the job's "ran, not skipped" check passed), `frontend` (44 s); Vercel preview deployed |
 
 ### README links and diagrams
 Script in the session scratchpad (Node + mermaid 11 rendered in headless Edge + a GitHub-style heading slugger):
