@@ -147,7 +147,7 @@ Database: [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) (ER diagram: game → produ
 - **Sign-in rate limit** stored in the database (works across serverless instances); the same error text for a wrong email and a wrong password, and a dummy hash so the response time does not reveal which emails exist.
 - **No card fields anywhere** – the payment is a Success/Decline choice; nothing that looks like a real checkout can collect card data.
 - **`noindex`** meta + `robots.txt` `Disallow: /` + a demo banner on every page, so the shop cannot be mistaken for a real one.
-- **Secrets never in the repo:** `.env` is git-ignored; connection strings live in Vercel / GitHub secrets; migration and seed tools never print the host, user or password (Actions logs are public). The git history was scanned for connection strings, Neon passwords, IGDB credentials and e-mail addresses before submission (report of Task 18).
+- **Secrets never in the repo:** `.env` is git-ignored; connection strings live in Vercel / GitHub secrets; migration and seed tools never print the host, user or password (Actions logs are public). The git history was scanned for connection strings, Neon passwords, IGDB credentials and e-mail addresses before submission ([Task 18 report](docs/reports/TASK_18_readme_submission.md)).
 - Raw database errors never reach the client (generic message; `503` when the database is unreachable).
 
 ## Scope and shortcuts (honest list)
