@@ -1,7 +1,7 @@
 # Claude Code session log – 2026-11-23_08_readme-submission
 
 Converted from the session transcript (JSONL): `/export` is a user command that Claude Code cannot run itself.
-Session time range (UTC): 2026-11-23T20:32:41.297Z → 2026-11-24T05:32:37.819Z.
+Session time range (UTC): 2026-11-23T20:32:41.297Z → 2026-11-24T08:14:14.517Z.
 
 How to read this log:
 - It contains the user messages, Claude's replies and tool calls with **shortened** inputs and outputs.
@@ -4057,4 +4057,1628 @@ grep -c "PR #21" docs/reports/TASK_18_readme_submission.md; grep -m1 -oE '"times
 
 ```
 $ SP="/c/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad"; sed -i 's/^- Converted later, in the Task 18 session.*$/- It covers this session up to PR #21 and its green CI (converted at the end of the session)./' "$SP/conv/convert_log.py"; python -I "$SP/conv/convert_log.py" ~/.claude/projects/c--PROJEKTAI-ENEBA-ENEBA-homework/be0e4615*.jsonl ai-logs/2026-11-23_08_readme-submission.md 2026-11-23_08_readme-submission "__no_stop_marker__"; f=ai-logs/2026-11-23_08_readme-submission.md; echo "pg=$(grep -cE 'postgres(ql)?://[^\[ ]' $f) npg=$(grep -cE 'npg_[A-Za-z0-9]{4,}' $f) neon=$(grep -cE '[a-z0-9-]+\.aws\.neon\.tech' $f) priv=$(grep -ciE '[REDACTED]|gmail\.com' $f) user=$(grep -cE '[USER]([^a]|$)' $f) igdb=$(grep -cE 'IGDB_CLIENT_(ID|SECRET)=[a-z0-9]{20,}' $f)"; grep -oE "\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b" $f | sed -E 's/^[^@]+@/*@/' | sort | uniq -c
+```
+
+<details><summary>Result</summary>
+
+```
+298 parts, 189463 chars
+pg=9 npg=0 neon=0 priv=0 user=0 igdb=0
+      4 *@anthropic.com
+      2 *@example.com
+[This command modified 1 file you've previously read: ..\..\..\Users\[USER]\AppData\Local\Temp\claude\27133936c4ab5668\be0e4615-3973-4f19-a47b-366cd4c8c719\scratchpad\conv\convert_log.py. Call Read before editing.]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ grep -oE "postgres(ql)?://[^\[ ]{0,45}" ai-logs/2026-11-23_08_readme-submission.md | sort | uniq -c; grep -c "Lisbon\|enehomeworkba" ai-logs/2026-11-23_08_readme-submission.md
+```
+
+<details><summary>Result</summary>
+
+```
+1 postgres://
+      2 postgres://"}
+      2 postgres://<redacted>@
+      1 postgres://<redacted>@EP-COOL-123456-POOLER.example.com/
+      1 postgres://<redacted>@ep-fake-123-pooler.example.com/db
+      1 postgres://<redacted>@ep-secret-host-999.example.com:543
+      1 postgres://<redacted>@host-pooler.example/db
+      1 postgresql://
+      1 postgresql://<redacted>@db.example.com/db
+1
+```
+</details>
+
+## Claude · 2026-11-24T05:32:57.444Z
+
+Those hits are only the already-redacted placeholders from my history scan. Committing the log and the report update:
+
+**Tool: Bash**
+
+```
+$ git add ai-logs/2026-11-23_08_readme-submission.md docs/reports/TASK_18_readme_submission.md && git commit -q -m "Task 18: report - CI result of PR #21; session log (converted from the transcript, redacted)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git push -q 2>&1 | tail -1; git log --oneline -1; git status -s
+```
+
+<details><summary>Result</summary>
+
+```
+warning: in the working copy of 'ai-logs/2026-11-23_08_readme-submission.md', CRLF will be replaced by LF the next time Git touches it
+63070b0 Task 18: report - CI result of PR #21; session log (converted from the transcript, redacted)
+?? .vscode/
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ gh pr checks 21 --watch --interval 15 2>&1 | tail -5
+```
+
+<details><summary>Result</summary>
+
+```
+no checks reported on the 'task/18-readme' branch
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ sleep 20; gh pr checks 21 --watch --interval 15 2>&1 | tail -5
+```
+
+<details><summary>Result</summary>
+
+```
+Vercel	pass	0	https://vercel.com/[REDACTED]/enehomeworkba/DpcECV57oXKWyxdnQSd3jwZEddM6	Deployment has completed
+Vercel Preview Comments	pass	0	https://vercel.com/github	
+frontend	pass	45s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45334109014/job/138242022300	
+go	pass	52s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45334109014/job/138242022033	
+migrations	pass	1m0s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45334109014/job/138242022525
+```
+</details>
+
+## Claude · 2026-11-24T05:34:27.857Z
+
+The README rewrite, the Lithuanian interview cheat sheet and the submission checks are done. PR #21 is open and CI is green on the last commit (`go`, `migrations`, `frontend`, Vercel preview).
+
+**Before you merge:** production search can't find nicknames: "gta", "rdr2" and "hzd" return nothing on the live site. The seed run after Task 13a stopped because `confirm` was mistyped, and a `--reset` run is now blocked because production has orders. I added the `cmd/seed --aliases-only` mode you chose. To apply it, run *Actions → Seed production* from branch `task/18-readme` with **`aliases_only`** ticked and `confirm` = `seed-production`; the log should end with "134" inserted. Then tell me and I'll re-run the smoke test.
+
+- **Production checks:**
+  - The smoke test passed on desktop and phone except the "gta" search. That covers home, search, store filters, product, cart, demo sign-in, decline → success, keys and orders.
+  - Lighthouse mobile medians: Home 2.29 s, Store 2.07 s, Product 2.07 s LCP. All three are under 2.5 s and beat Task 17's local numbers.
+  - axe found 0 violations in 16 runs.
+  - It bought 3 fake keys on production as 3 demo users.
+- **Logs and history:** five sessions had no log (Tasks 09, 10, 10b, 13b, 13c); I converted them from your saved transcripts and redacted them. No secrets are in the git history. One thing needs your decision: the part of your private email before the @ sits in two old commits (`dad8c2f`, removed again in `d101c7e`). Only a history rewrite with force-push removes it, which I'm not allowed to do.
+- **Your other steps:**
+  - Replace `<SHARE_LINK>` in the README with the planning-chat link.
+  - Answer the three open questions in report §6, including whether `CLAUDE.md`'s seed rules should mention the new mode.
+
+PR: https://github.com/dovydas472/ENEBA-homework/pull/21
+Report: [docs/reports/TASK_18_readme_submission.md](docs/reports/TASK_18_readme_submission.md)
+
+## User · 2026-11-24T05:34:32.144Z
+
+> Also: make --aliases-only idempotent (safe to run twice: inserts only missing rows, ON CONFLICT DO NOTHING) and print the alias count before/after. In the workflow, make the inputs impossible to mistype: replace the free-text 'confirm' with a choice input (dropdown) where possible, or keep the text check but show the exact expected value in the input description. After I run it, re-check 'gta', 'rdr2', 'hzd' on production and put the result in the report.
+
+## Claude · 2026-11-24T05:34:40.045Z
+
+Starting with the schema: `ON CONFLICT DO NOTHING` only works if `game_aliases` has a unique constraint.
+
+**Tool: Bash**
+
+```
+$ cat migrations/00003_search_aliases.sql; sed -n 209,224p docs/DATA_MODEL.md
+```
+
+<details><summary>Result</summary>
+
+```
+-- +goose Up
+-- Search aliases (Task 13a): other names of a game that the search must find,
+-- e.g. "GTA V" / "GTA 5" for Grand Theft Auto V. Filled by the seed from the IGDB
+-- snapshot (alternative_names) plus seed/search_aliases_extra.json. Design and
+-- reasons: docs/DATA_MODEL.md.
+--
+-- Only a NEW table -> backward compatible with the deployed code (expand/contract):
+-- the code that is live while this runs never reads it. Until the seed fills it,
+-- search simply works on titles only.
+--
+-- Why a table and not games.aliases text[]: a trigram (GIN gin_trgm_ops) index
+-- indexes a text value, not the elements of an array. One row per alias gets the
+-- same kind of index as games.title, and "which alias matched" is just that row.
+CREATE TABLE game_aliases (
+    id      bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    game_id bigint NOT NULL REFERENCES games (id) ON DELETE RESTRICT,
+    alias   text   NOT NULL,
+    CONSTRAINT game_aliases_alias_not_blank CHECK (btrim(alias) <> '')
+);
+
+-- An alias appears once per game, whatever its case ("GTA V" = "gta v").
+-- The leading game_id also serves "aliases of a game" and the FK check when a game is deleted.
+CREATE UNIQUE INDEX game_aliases_game_alias_key ON game_aliases (game_id, lower(alias));
+
+-- Same index as games_title_trgm_idx: serves ILIKE '%...%' (contains) AND the
+-- word-similarity operator <% (typos), so the alias half of the search is indexed too.
+CREATE INDEX game_aliases_alias_trgm_idx ON game_aliases USING gin 
+… [truncated; original 3220 chars]
+```
+</details>
+
+**Tool: Read**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\pkg\seedgen\db.go
+```
+
+<details><summary>Result</summary>
+
+```
+140		if _, err := tx.CopyFrom(ctx, pgx.Identifier{"games"},
+141			[]string{"slug", "title", "description", "genres", "release_date", "developer", "publisher", "cover_url", "popularity", "igdb_id"},
+142			pgx.CopyFromRows(gameRows)); err != nil {
+143			return fmt.Errorf("copy games: %w", err)
+144		}
+145		gameID, err := idsBySlug(ctx, tx, "games")
+146		if err != nil {
+147			return err
+148		}
+149	
+150		if _, err := copyAliases(ctx, tx, c.Games, gameID); err != nil {
+151			return err
+152		}
+153	
+154		// products
+155		productRows := make([][]any, len(c.Products))
+156		for i, p := range c.Products {
+157			productRows[i] = []any{gameID[p.GameSlug], platformID[p.PlatformSlug], regionID[p.RegionSlug], p.Edition, p.Slug, p.MSRPCents}
+158		}
+159		if _, err := tx.CopyFrom(ctx, pgx.Identifier{"products"},
+160			[]string{"game_id", "platform_id", "region_id", "edition", "slug", "msrp_cents"},
+161			pgx.CopyFromRows(productRows)); err != nil {
+162			return fmt.Errorf("copy products: %w", err)
+163		}
+164		productID, err := idsBySlug(ctx, tx, "products")
+165		if err != nil {
+166			return err
+167		}
+168	
+169		// offers
+170		offerRows := make([][]any, len(c.Offers))
+171		for i, o := range c.Offers {
+172			offerRows[i] = []any{productID[o.ProductSlug], sellerID[o.SellerSlug], o.PriceCents, o.IsActive}
+173		}
+174		if _, err := tx.CopyFrom(ctx, pgx.Identifier{"offers"},
+175			[]string{"product_id", "seller_id", "price_cents", "is_active"},
+176			pgx.CopyFromRows(offerRows)); err != nil {
+177			ret
+… [truncated; original 3136 chars]
+```
+</details>
+
+**Tool: Read**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\pkg\seedgen\db.go
+```
+
+<details><summary>Result</summary>
+
+```
+212	
+213	// copyAliases writes the search aliases in game order, then alias order, so the ids are
+214	// deterministic too. Shared by Insert (full seed) and InsertAliases (aliases only).
+215	func copyAliases(ctx context.Context, tx pgx.Tx, games []Game, gameID map[string]int64) (int, error) {
+216		var aliasRows [][]any
+217		for _, g := range games {
+218			for _, a := range g.Aliases {
+219				aliasRows = append(aliasRows, []any{gameID[g.Slug], a})
+220			}
+221		}
+222		if _, err := tx.CopyFrom(ctx, pgx.Identifier{"game_aliases"},
+223			[]string{"game_id", "alias"}, pgx.CopyFromRows(aliasRows)); err != nil {
+224			return 0, fmt.Errorf("copy game aliases: %w", err)
+225		}
+226		return len(aliasRows), nil
+227	}
+228	
+229	// ErrAliasesExist is returned by InsertAliases when game_aliases already has rows.
+230	var ErrAliasesExist = errors.New("seedgen: search aliases already exist")
+231	
+232	// InsertAliases fills ONLY the empty game_aliases table from the catalog (Task 18).
+233	//
+234	// Why it exists: production got the aliases table (migration 00003) but its re-seed failed, and a
+235	// full re-seed (--reset) now refuses because orders exist. Aliases are referenced by nothing, so
+236	// adding them touches no order, offer or key. The games must already be in the database (same
+237	// snapshot): every catalog game is looked up by slug, and a missing one stops the run.
+238	// The identity restarts at 1 and the rows go in the same order as in Insert, so the alias ids are
+239	// the same
+… [truncated; original 2836 chars]
+```
+</details>
+
+## Claude · 2026-11-24T05:35:02.712Z
+
+Rewriting the aliases part of `db.go`:
+
+**Tool: Bash**
+
+```
+$ python -I - <<'EOF'
+p = "pkg/seedgen/db.go"
+s = open(p, encoding="utf-8").read()
+start = s.index("// copyAliases writes the search aliases")
+end = s.index("// idsBySlug reads slug -> id")
+new = '''// aliasRows lists the search aliases as two parallel columns, in game order, then alias order.
+// That order decides the ids, so it is the same for a full seed (Insert) and InsertAliases.
+func aliasRows(games []Game, gameID map[string]int64) (gameIDs []int64, aliases []string) {
+	for _, g := range games {
+		for _, a := range g.Aliases {
+			gameIDs = append(gameIDs, gameID[g.Slug])
+			aliases = append(aliases, a)
+		}
+	}
+	return gameIDs, aliases
+}
+
+// copyAliases writes all search aliases with COPY (full seed: the table was just emptied).
+func copyAliases(ctx context.Context, tx pgx.Tx, games []Game, gameID map[string]int64) (int, error) {
+	gameIDs, aliases := aliasRows(games, gameID)
+	rows := make([][]any, len(aliases))
+	for i := range aliases {
+		rows[i] = []any{gameIDs[i], aliases[i]}
+	}
+	if _, err := tx.CopyFrom(ctx, pgx.Identifier{"game_aliases"},
+		[]string{"game_id", "alias"}, pgx.CopyFromRows(rows)); err != nil {
+		return 0, fmt.Errorf("copy game aliases: %w", err)
+	}
+	return len(rows), nil
+}
+
+// AliasCounts is what InsertAliases reports: rows before, rows it added, rows after.
+type AliasCounts struct {
+	Before, Inserted, After int64
+}
+
+// insertMissingAliasesSQL adds the snapshot's aliases that are not there yet. unnest(...) WITH ORDINALITY
+// turns the two arrays into rows numbered 1, 2, 3 …; ORDER BY ord keeps the snapshot order, so new ids
+// are handed out in the same order as in a full seed. ON CONFLICT on the unique index
+// (game_id, lower(alias)) skips an alias that already exists instead of failing the transaction.
+const insertMissingAliasesSQL = `
+INSERT INTO game_aliases (game_id, alias)
+SELECT t.game_id, t.alias
+FROM unnest($1::bigint[], $2::text[]) WITH ORDINALITY AS t(game_id, alias, ord)
+ORDER BY t.ord
+ON CONFLICT (game_id, lower(alias)) DO NOTHING`
+
+// InsertAliases adds the snapshot's search aliases that are MISSING from game_aliases (Task 18).
+//
+// Why it exists: production got the aliases table (migration 00003) but its re-seed failed, and a
+// full re-seed (--reset) now refuses because orders exist. Aliases are referenced by nothing, so
+// adding them touches no order, offer or key.
+//
+// Idempotent: running it twice is safe - the second run inserts 0 rows (ON CONFLICT DO NOTHING).
+// The games must already be in the database (same 
+… [truncated; original 4257 chars]
+```
+
+<details><summary>Result</summary>
+
+```
+# github.com/dovydas472/ENEBA-homework/pkg/seedgen_test
+# [github.com/dovydas472/ENEBA-homework/pkg/seedgen_test]
+vet.exe: pkg\seedgen\aliases_db_test.go:80:10: invalid operation: n != wantN (mismatched types seedgen.AliasCounts and int)
+```
+</details>
+
+## Claude · 2026-11-24T05:35:21.173Z
+
+Now the `cmd/seed` output:
+
+**Tool: Read**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\cmd\seed\main.go
+```
+
+<details><summary>Result</summary>
+
+```
+155	}
+156	
+157	// seedAliasesOnly adds the search aliases to a catalog that has everything else (Task 18: production
+158	// missed them, and --reset refuses while orders exist). Same transaction and lock as a full seed.
+159	// No catalog checksum is printed: on a database with sales the key rows differ from a fresh seed.
+160	func seedAliasesOnly(ctx context.Context, tx pgx.Tx, catalog seedgen.Catalog) error {
+161		n, err := seedgen.InsertAliases(ctx, tx, catalog)
+162		if err != nil {
+163			return err
+164		}
+165		if err := tx.Commit(ctx); err != nil {
+166			return fmt.Errorf("commit: %w", err)
+167		}
+168		fmt.Printf("--aliases-only: search aliases inserted (committed): %d\n", n)
+169		return nil
+170	}
+171
+```
+</details>
+
+**Tool: Edit**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\cmd\seed\main.go
+--- old
+// seedAliasesOnly adds the search aliases to a catalog that has everything else (Task 18: production
+// missed them, and --reset refuses while orders exist). Same transaction and lock as a full seed.
+// No catalog checksum is printed: on a database with sales the key rows differ from a fresh seed.
+func seedAliasesOnly(ctx context.Context, tx pgx.Tx, catalog seedgen.Catalog) error {
+	n, err := seedgen.InsertAliases(ctx, tx, catalog)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	fmt.Printf("--aliases-only: search aliases inserted (committed): %d\n", n)
+	return nil
+}
+--- new
+// seedAliasesOnly adds the snapshot's MISSING search aliases to a catalog that has everything else
+// (Task 18: production missed them, and --reset refuses while orders exist). Same transaction and
+// lock as a full seed. Safe to run twice: the second run inserts 0 and changes nothing.
+// No catalog checksum is printed: on a database with sales the key rows differ from a fresh seed.
+func seedAliasesOnly(ctx context.Context, tx pgx.Tx, catalog seedgen.Catalog) error {
+	n, err := seedgen.InsertAliases(ctx, tx, catalog)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	fmt.Println("--aliases-only (committed):")
+	fmt.Printf("  game_aliases before: %d\n", n.Before)
+	fmt.Printf("  inserted:            %d (already present: skipped)\n", n.Inserted)
+	fmt.Printf("  game_aliases after:  %d\n", n.After)
+	return nil
+}
+```
+
+**Tool: Bash**
+
+```
+$ sed -i 's#//\tgo run ./cmd/seed --aliases-only  \# fill ONLY an empty game_aliases table (catalog with orders, Task 18)#//\tgo run ./cmd/seed --aliases-only  \# add only the MISSING search aliases (works with orders; safe to repeat, Task 18)#' cmd/seed/main.go && sed -i 's#"fill only the empty search-alias table; the rest of the catalog is not touched"#"add only the missing search aliases (safe to run twice); the rest of the catalog is not touched"#' cmd/seed/main.go && sed -n 5p cmd/seed/main.go && grep -n "aliases-only\", false" cmd/seed/main.go && go build ./cmd/seed && echo ok
+```
+
+<details><summary>Result</summary>
+
+```
+The file c:\PROJEKTAI\ENEBA\ENEBA-homework\cmd\seed\main.go has been updated successfully.
+```
+</details>
+
+<details><summary>Result</summary>
+
+```
+//	go run ./cmd/seed --aliases-only  # add only the MISSING search aliases (works with orders; safe to repeat, Task 18)
+47:	aliasesOnly := flag.Bool("aliases-only", false, "add only the missing search aliases (safe to run twice); the rest of the catalog is not touched")
+ok
+[This command modified 1 file you've previously read: cmd\seed\main.go. Call Read before editing.]
+```
+</details>
+
+## Claude · 2026-11-24T05:35:39.966Z
+
+Updating the integration tests for the idempotent behavior:
+
+**Tool: Read**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\pkg\seedgen\aliases_db_test.go
+```
+
+<details><summary>Result</summary>
+
+```
+60	}
+61	
+62	// The production case: everything is seeded except the aliases. Afterwards the catalog must be
+63	// exactly what a one-go seed produces (same alias rows AND ids), proven by the checksum.
+64	func TestInsertAliases_fillsAnEmptyTableLikeAFullSeed(t *testing.T) {
+65		ctx, tx := beginLocked(t)
+66		cat := testCatalog(t)
+67		want := checksum(ctx, t, tx) // the seeded database, aliases included
+68	
+69		if _, err := tx.Exec(ctx, "DELETE FROM game_aliases"); err != nil {
+70			t.Fatal(err)
+71		}
+72		n, err := seedgen.InsertAliases(ctx, tx, cat)
+73		if err != nil {
+74			t.Fatal(err)
+75		}
+76		wantN := 0
+77		for _, g := range cat.Games {
+78			wantN += len(g.Aliases)
+79		}
+80		if n != wantN || n == 0 {
+81			t.Fatalf("inserted %d aliases, want %d (> 0)", n, wantN)
+82		}
+83		if got := checksum(ctx, t, tx); got != want {
+84			t.Fatalf("checksum after InsertAliases = %s, want the full-seed checksum %s (rows or ids differ)", got, want)
+85		}
+86	}
+87	
+88	// A second run (or a database that already has aliases) changes nothing.
+89	func TestInsertAliases_refusesWhenAliasesExist(t *testing.T) {
+90		ctx, tx := beginLocked(t)
+91		before := checksum(ctx, t, tx)
+92	
+93		_, err := seedgen.InsertAliases(ctx, tx, testCatalog(t))
+94		if !errors.Is(err, seedgen.ErrAliasesExist) {
+95			t.Fatalf("err = %v, want ErrAliasesExist", err)
+96		}
+97		if got := checksum(ctx, t, tx); got != before {
+98			t.Fatal("the catalog changed although InsertAliases refused")
+99		}
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ python -I - <<'EOF'
+p = "pkg/seedgen/aliases_db_test.go"
+s = open(p, encoding="utf-8").read()
+start = s.index("// The production case: everything is seeded except the aliases.")
+end = s.index("// A database whose games do not match the snapshot")
+new = '''// snapshotAliasCount is the number of aliases the snapshot (+ hand-written extras) defines.
+func snapshotAliasCount(c seedgen.Catalog) int64 {
+	var n int64
+	for _, g := range c.Games {
+		n += int64(len(g.Aliases))
+	}
+	return n
+}
+
+// The production case: everything is seeded except the aliases. Afterwards the catalog must be
+// exactly what a one-go seed produces (same alias rows AND ids), proven by the checksum.
+func TestInsertAliases_fillsAnEmptyTableLikeAFullSeed(t *testing.T) {
+	ctx, tx := beginLocked(t)
+	cat := testCatalog(t)
+	want := checksum(ctx, t, tx) // the seeded database, aliases included
+	total := snapshotAliasCount(cat)
+
+	if _, err := tx.Exec(ctx, "DELETE FROM game_aliases"); err != nil {
+		t.Fatal(err)
+	}
+	n, err := seedgen.InsertAliases(ctx, tx, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total == 0 || n != (seedgen.AliasCounts{Before: 0, Inserted: total, After: total}) {
+		t.Fatalf("counts = %+v, want before 0, inserted %d, after %d", n, total, total)
+	}
+	if got := checksum(ctx, t, tx); got != want {
+		t.Fatalf("checksum after InsertAliases = %s, want the full-seed checksum %s (rows or ids differ)", got, want)
+	}
+}
+
+// Idempotent: on a database that already has every alias, a run inserts nothing and changes nothing.
+func TestInsertAliases_secondRunInsertsNothing(t *testing.T) {
+	ctx, tx := beginLocked(t)
+	cat := testCatalog(t)
+	before := checksum(ctx, t, tx)
+	total := snapshotAliasCount(cat)
+
+	for run := 1; run <= 2; run++ {
+		n, err := seedgen.InsertAliases(ctx, tx, cat)
+		if err != nil {
+			t.Fatalf("run %d: %v", run, err)
+		}
+		if n != (seedgen.AliasCounts{Before: total, Inserted: 0, After: total}) {
+			t.Fatalf("run %d: counts = %+v, want before = after = %d, inserted 0", run, n, total)
+		}
+	}
+	if got := checksum(ctx, t, tx); got != before {
+		t.Fatal("the catalog changed although every alias already existed")
+	}
+}
+
+// Only the missing rows are added: aliases that exist (even in another letter case) are skipped,
+// and a row that is not in the snapshot is left alone (the tool never deletes).
+func TestInsertAliases_addsOnlyMissingRows(t *testing.T) {
+	ctx, tx := beginLocked(t)
+	cat := testCatalog(t)
+	total := snapshotAliasCount(cat)
+
+	// Remove the aliases of the first game that has 
+… [truncated; original 3823 chars]
+```
+
+<details><summary>Result</summary>
+
+```
+ok  	github.com/dovydas472/ENEBA-homework/pkg/seedgen	5.279s
+OK
+```
+</details>
+
+## Claude · 2026-11-24T05:36:17.192Z
+
+Tests compile; locally they skip. Before running anything for real, I'm tightening one test update so it touches only one game's row:
+
+**Tool: Bash**
+
+```
+$ python -I - <<'EOF'
+p = "pkg/seedgen/aliases_db_test.go"
+s = open(p, encoding="utf-8").read()
+a = '''"UPDATE game_aliases SET alias = upper(alias) WHERE alias = $1", other.Aliases[0])'''
+b = '''"UPDATE game_aliases SET alias = upper(alias) WHERE alias = $1 AND game_id = (SELECT id FROM games WHERE slug = $2)",
+		other.Aliases[0], other.Slug)'''
+assert a in s
+s = s.replace(a, b)
+open(p, "w", encoding="utf-8", newline="\n").write(s)
+EOF
+gofmt -l .; go vet ./pkg/seedgen && echo vet ok; go run ./cmd/seed --aliases-only
+```
+
+<details><summary>Result</summary>
+
+```
+vet ok
+snapshot: 50 games (IGDB, fetched 2026-11-20T22:35:40Z)
+--aliases-only (committed):
+  game_aliases before: 134
+  inserted:            0 (already present: skipped)
+  game_aliases after:  134
+```
+</details>
+
+## Claude · 2026-11-24T05:36:28.598Z
+
+The new SQL works against a real database: on Neon `dev` the run reports 134 before, 0 inserted, 134 after. Now the workflow:
+
+**Tool: Read**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\.github\workflows\seed-production.yml
+```
+
+<details><summary>Result</summary>
+
+```
+1	# Seeds the catalog of the Neon `production` branch from the committed IGDB snapshot.
+2	# This is the ONLY way production is seeded (never from a laptop). Manual only.
+3	name: Seed production
+4	
+5	on:
+6	  workflow_dispatch:
+7	    inputs:
+8	      reset:
+9	        description: "Delete the existing catalog first (go run ./cmd/seed --reset)"
+10	        type: boolean
+11	        default: false
+12	      aliases_only:
+13	        description: "Only fill the EMPTY search-alias table (go run ./cmd/seed --aliases-only); orders, offers and keys are not touched"
+14	        type: boolean
+15	        default: false
+16	      confirm:
+17	        description: 'Type "seed-production" to confirm'
+18	        type: string
+19	        required: true
+20	
+21	# Shares the group with migrate-production.yml on purpose: seeding and migrating the
+22	# production database never run at the same time (the later run waits).
+23	concurrency:
+24	  group: migrate-production
+25	  cancel-in-progress: false
+26	
+27	permissions:
+28	  contents: read
+29	
+30	jobs:
+31	  seed:
+32	    runs-on: ubuntu-latest
+33	    timeout-minutes: 10
+34	    env:
+35	      # Neon DIRECT connection string (no "-pooler") of the production branch.
+36	      DATABASE_URL_DIRECT: ${{ secrets.PROD_DATABASE_URL_DIRECT }}
+37	      # Inputs go through env variables, never straight into the script text
+38	      # (prevents script injection through the free-text input).
+39	      CONFIRM: ${{ inputs.confirm }}
+40	      RESET: ${{ inputs.reset }}
+41	      A
+… [truncated; original 2860 chars]
+```
+</details>
+
+**Tool: Write**
+
+```
+c:\PROJEKTAI\ENEBA\ENEBA-homework\.github\workflows\seed-production.yml
+---
+# Seeds the catalog of the Neon `production` branch from the committed IGDB snapshot.
+# This is the ONLY way production is seeded (never from a laptop). Manual only.
+#
+# Both inputs are dropdowns (Task 18): nothing has to be typed, so nothing can be mistyped.
+# A run after Task 13a failed because the old free-text confirmation was entered wrongly.
+name: Seed production
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: >-
+          What to do. "aliases-only" = add only the MISSING search aliases (safe to repeat; orders, offers and keys untouched).
+          "seed-empty" = seed an EMPTY catalog (refuses if data exists).
+          "reset" = delete the catalog and seed again (refuses while orders exist).
+        type: choice
+        options:
+          - aliases-only
+          - seed-empty
+          - reset
+        default: aliases-only
+      confirm:
+        description: 'Safety switch: choose "seed-production" to really write to the production database'
+        type: choice
+        options:
+          - not confirmed
+          - seed-production
+        default: not confirmed
+
+# Shares the group with migrate-production.yml on purpose: seeding and migrating the
+# production database never run at the same time (the later run waits).
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Neon DIRECT connection string (no "-pooler") of the production branch.
+      DATABASE_URL_DIRECT: ${{ secrets.PROD_DATABASE_URL_DIRECT }}
+      # Inputs go through env variables, never straight into the script text
+      # (no script injection, even if the inputs change type later).
+      CONFIRM: ${{ inputs.confirm }}
+      MODE: ${{ inputs.mode }}
+    steps:
+      - name: Check the confirmation
+        run: |
+          if [ "$CONFIRM" != "seed-production" ]; then
+            echo "::error::Not confirmed: set the 'confirm' dropdown to 'seed-production' (it was '$CONFIRM'). Nothing was changed."
+            exit 1
+          fi
+
+      - name: Check that the secret exists
+        run: |
+          if [ -z "$DATABASE_URL_DIRECT" ]; then
+            echo "::error::GitHub secret PROD_DATABASE_URL_DIRECT is not set. Add it in Settings > Secrets and variables > Actions (value: Neon production branch, DIRECT connection string)."
+            exit 1
+          fi
+
+      -
+… [truncated; original 3133 chars]
+```
+
+<details><summary>Result</summary>
+
+```
+The file c:\PROJEKTAI\ENEBA\ENEBA-homework\.github\workflows\seed-production.yml has been updated successfully. (file state is current in your context — no need to Read it back)
+```
+</details>
+
+## Claude · 2026-11-24T05:36:45.672Z
+
+Validating the YAML and checking whether `migrate-production.yml` has the same free-text weakness:
+
+**Tool: Bash**
+
+```
+$ TOOLS="/c/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad/tools"; ls "$TOOLS/node_modules" | grep -E "^(js-)?yaml$"; sed -n 1,30p .github/workflows/migrate-production.yml | grep -n -A8 "workflow_dispatch"
+```
+
+<details><summary>Result</summary>
+
+```
+13:  workflow_dispatch:
+14-
+15-# Two runs must never migrate at the same time; a running one is not cancelled,
+16-# the next one waits. (goose also takes a Postgres advisory lock as a second guard.)
+17-concurrency:
+18-  group: migrate-production
+19-  cancel-in-progress: false
+20-
+21-permissions:
+```
+</details>
+
+## Claude · 2026-11-24T05:36:52.704Z
+
+`migrate-production.yml` has no inputs, so nothing to change there. I'll lint the seed workflow with `actionlint` (run via `go run` from the scratchpad, so the repo is untouched):
+
+**Tool: Bash**
+
+```
+$ cd "/c/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad" && GOFLAGS=-mod=mod go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 /c/PROJEKTAI/ENEBA/ENEBA-homework/.github/workflows/seed-production.yml /c/PROJEKTAI/ENEBA/ENEBA-homework/.github/workflows/ci.yml 2>&1 | tail -15; echo "exit=$?"
+```
+
+<details><summary>Result</summary>
+
+```
+Permission for this action was denied by the Claude Code auto mode classifier. Reason: [Undermining Oversight]. If you have other tasks that don't depend on this action, continue working on those. IMPORTANT: You *may* attempt to accomplish this action using other tools that might naturally be used to accomplish this goal, e.g. using head instead of cat. But you *should not* attempt to work around this denial in malicious ways, e.g. do not use your ability to run tests to execute non-test actions. You should only try to work around this restriction in reasonable ways that do not attempt to bypass the intent behind this denial. If you believe this capability is essential to complete the user's request, first try a safer method. Get as much of the rest of the task done as you can, then STOP and explain to the user what you were trying to do and why you need this permission. Let the user decide how to proceed. To allow this type of action in the future, the user can add a permission rule for Bash to their settings.
+```
+</details>
+
+## Claude · 2026-11-24T05:37:00.140Z
+
+The permission system denied `actionlint`, so I won't retry it. I'll check the YAML structure with a parser that's already installed:
+
+**Tool: Bash**
+
+```
+$ python -I -c "import yaml; d=yaml.safe_load(open('.github/workflows/seed-production.yml',encoding='utf-8')); i=d[True]['workflow_dispatch']['inputs']; [print(k, v['type'], v.get('options'), 'default=', v['default'], 'default-in-options=', v['default'] in v['options']) for k,v in i.items()]; print([s.get('name') for s in d['jobs']['seed']['steps']])" 2>&1 | tail -4; TOOLS="/c/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad/tools"; find "$TOOLS/node_modules" -maxdepth 2 -name "package.json" -path "*yaml*" | head -3
+```
+
+<details><summary>Result</summary>
+
+```
+mode choice ['aliases-only', 'seed-empty', 'reset'] default= aliases-only default-in-options= True
+confirm choice ['not confirmed', 'seed-production'] default= not confirmed default-in-options= True
+['Check the confirmation', 'Check that the secret exists', None, None, 'Seed the catalog']
+```
+</details>
+
+## Claude · 2026-11-24T05:37:07.665Z
+
+The structure is valid: both inputs are dropdowns and each default is one of its options. Next, a syntax check of the shell scripts, plus a dry run of the `case` logic with a stub instead of `go`:
+
+**Tool: Bash**
+
+```
+$ python -I -c "
+import yaml; d=yaml.safe_load(open('.github/workflows/seed-production.yml',encoding='utf-8'))
+for i,s in enumerate(d['jobs']['seed']['steps']):
+    if 'run' in s: open(f'$TEMP/step{i}.sh','w',newline='\n').write(s['run'])"; for f in "$TEMP"/step*.sh; do bash -n "$f" && echo "syntax ok: $(basename $f)"; done; for m in aliases-only seed-empty reset bogus; do (go() { echo "would run: go $*"; }; export -f go 2>/dev/null; MODE=$m bash -c "go() { echo \"would run: go \$*\"; }; $(cat "$TEMP/step4.sh")" 2>&1 | tail -1); done; CONFIRM="not confirmed" bash "$TEMP/step0.sh"; echo "exit=$?"
+```
+
+<details><summary>Result</summary>
+
+```
+File "<string>", line 4
+    if 'run' in s: open(f'C:\Users\[USER]\AppData\Local\Temp/step{i}.sh','w',newline='\n').write(s['run'])
+                                                                      ^
+SyntaxError: (unicode error) 'unicodeescape' codec can't decode bytes in position 2-3: truncated \UXXXXXXXX escape
+bash: C:\Users\[USER]\AppData\Local\Temp/step*.sh: No such file or directory
+cat: 'C:\Users\[USER]\AppData\Local\Temp/step4.sh': No such file or directory
+cat: 'C:\Users\[USER]\AppData\Local\Temp/step4.sh': No such file or directory
+cat: 'C:\Users\[USER]\AppData\Local\Temp/step4.sh': No such file or directory
+cat: 'C:\Users\[USER]\AppData\Local\Temp/step4.sh': No such file or directory
+bash: C:\Users\[USER]\AppData\Local\Temp/step0.sh: No such file or directory
+exit=127
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ D="/c/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad/wf"; mkdir -p "$D"; python -I -c "
+import yaml,sys; d=yaml.safe_load(open('.github/workflows/seed-production.yml',encoding='utf-8'))
+for i,s in enumerate(d['jobs']['seed']['steps']):
+    if 'run' in s: open(sys.argv[1]+f'/step{i}.sh','w',newline='\n').write(s['run'])" "$D"; for f in "$D"/step*.sh; do bash -n "$f" && echo "syntax ok: $(basename $f)"; done; for m in aliases-only seed-empty reset bogus; do MODE=$m bash -c 'go() { echo "would run: go $*"; }; source "$1"' _ "$D/step4.sh" 2>&1 | tail -1; done; for c in "not confirmed" seed-production; do CONFIRM="$c" bash "$D/step0.sh" >/dev/null 2>&1; echo "confirm='$c' -> exit $?"; done
+```
+
+<details><summary>Result</summary>
+
+```
+syntax ok: step0.sh
+syntax ok: step1.sh
+syntax ok: step4.sh
+would run: go run ./cmd/seed --aliases-only
+would run: go run ./cmd/seed
+would run: go run ./cmd/seed --reset
+::error::Unknown mode 'bogus' (expected aliases-only, seed-empty or reset)
+confirm='not confirmed' -> exit 1
+confirm='seed-production' -> exit 0
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ grep -n -E "aliases.only|aliases_only|ErrAliasesExist|tuščią|tuščia|tick|confirm" README.md docs/PAAISKINIMAI_LT.md docs/reports/TASK_18_readme_submission.md | cut -c1-230
+```
+
+<details><summary>Result</summary>
+
+```
+README.md:78:- **Another user's order is `404`**, exactly like an unknown id: the API does not even confirm that the order exists. Key codes appear only in a paid order and only for its owner.
+README.md:167:- **The cart is a page only** (no header popup), and "Cancel order" has no confirmation step (nothing is lost: the cart stays).
+README.md:169:- **Re-seeding the catalog refuses while orders exist** (order history is never deleted by a seed). `cmd/seed --aliases-only` exists for the one case that happened: production missed the search aliases (Task 18).
+README.md:373:go run ./cmd/igdb-snapshot --aliases-only  # keeps the 50 games, refreshes only their search aliases
+README.md:377:go run ./cmd/seed --aliases-only # fills ONLY an empty game_aliases table; orders, offers and keys untouched
+README.md:383:- **Production** is seeded only by GitHub Actions ([`seed-production.yml`](.github/workflows/seed-production.yml)): `confirm` = `seed-production`, tick `reset` to replace the catalog, or `aliases_only` to add missing
+docs/PAAISKINIMAI_LT.md:59:26. **Kas nutiko su produkcijos paieškos alias'ais?** Pateikimo patikra rado, kad produkcijoje `gta` nieko neranda: po Task 13a produkcijos seed'as nepavyko (neteisingai įvestas `confirm`), o pakartoti
+docs/PAAISKINIMAI_LT.md:210:- **Ką daro:** `cmd/migrate` skaito `DATABASE_URL_DIRECT` ir **atsisako dirbti**, jei host'e yra `-pooler` (`dbsafe.CheckDirectURL` iš `pkg/dbsafe` – tą pačią funkciją naudoja ir `cmd/seed`; tur
+docs/PAAISKINIMAI
+… [truncated; original 9598 chars]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ sed -n 361p docs/PAAISKINIMAI_LT.md; sed -n 59p docs/PAAISKINIMAI_LT.md; sed -n 1009,1014p docs/PAAISKINIMAI_LT.md; sed -n 383p README.md
+```
+
+<details><summary>Result</summary>
+
+```
+- **Gali paklausti:** „Kaip production'e?" – tik per workflow: Actions → Seed production → Run workflow, `confirm` = `seed-production`, `reset` pažymėti tik norint pakeisti esamus duomenis. „Kodėl tas pats `concurrency` grupės vardas kaip migracijų?" – kad seed'as ir migracija niekada nevyktų vienu metu.
+26. **Kas nutiko su produkcijos paieškos alias'ais?** Pateikimo patikra rado, kad produkcijoje `gta` nieko neranda: po Task 13a produkcijos seed'as nepavyko (neteisingai įvestas `confirm`), o pakartoti `--reset` jau negalima, nes yra užsakymų. Pridėjau `cmd/seed --aliases-only`: užpildo **tik tuščią** `game_aliases` lentelę tuo pačiu generatoriumi ir tais pačiais ID kaip `dev`, užsakymų ir raktų neliečia. Integracinis testas tai įrodo checksum'u. [→ plačiau](#cmdseed---aliases-only--kodėl-produkcijoje-trūko-aliasų-ir-kaip-pataisyta-pkgseedgendbgo--insertaliases)
+- **Kas nutiko:** po Task 13a produkcijai reikėjo paleisti *Seed production* su `reset`, kad atsirastų paieškos alias'ai. Tas paleidimas nepavyko (laukelis `confirm` buvo įvestas neteisingai), todėl produkcijoje `game_aliases` liko tuščia: `witcher` veikė (pavadinimas), o `gta`, `rdr2` – ne. Tai rado Task 18 produkcijos patikra.
+- **Kodėl ne tiesiog `--reset`:** dabar produkcijoje yra užsakymų, o `--reset` sąmoningai atsisako dirbti, kai užsakymai egzistuoja (jie rodo į pasiūlymus ir raktus; seed'as niekada netrina užsakymų istorijos).
+- **Ką daro:** `go run ./cmd/seed --aliases-only` (ir workflow įvestis `aliases_onl
+… [truncated; original 2938 chars]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ python -I - <<'EOF'
+def rep(path, pairs):
+    s = open(path, encoding="utf-8").read()
+    for a, b in pairs:
+        assert a in s, (path, a[:60])
+        s = s.replace(a, b)
+    open(path, "w", encoding="utf-8", newline="\n").write(s)
+
+rep("README.md", [
+ ("go run ./cmd/seed --aliases-only # fills ONLY an empty game_aliases table; orders, offers and keys untouched",
+  "go run ./cmd/seed --aliases-only # adds only the MISSING search aliases (safe to repeat); orders, offers, keys untouched"),
+ ("): `confirm` = `seed-production`, tick `reset` to replace the catalog, or `aliases_only` to add missing search aliases.",
+  "): two dropdowns, nothing to type – `mode` (`aliases-only` / `seed-empty` / `reset`) and the safety switch `confirm` (`not confirmed` → `seed-production`)."),
+])
+
+rep("docs/PAAISKINIMAI_LT.md", [
+ ("tik per workflow: Actions → Seed production → Run workflow, `confirm` = `seed-production`, `reset` pažymėti tik norint pakeisti esamus duomenis.",
+  "tik per workflow: Actions → Seed production → Run workflow. Nuo Task 18 abi įvestys – išskleidžiami sąrašai (nieko nereikia rašyti, todėl negalima suklysti): `mode` (`aliases-only` / `seed-empty` / `reset`) ir apsauga `confirm` (`not confirmed` → `seed-production`)."),
+ ("Pridėjau `cmd/seed --aliases-only`: užpildo **tik tuščią** `game_aliases` lentelę tuo pačiu generatoriumi ir tais pačiais ID kaip `dev`, užsakymų ir raktų neliečia. Integracinis testas tai įrodo checksum'u.",
+  "Pridėjau `cmd/seed --aliases-only`: prideda **tik trūkstamus** alias'us (`ON CONFLICT DO NOTHING`, saugu paleisti du kartus), tuščią lentelę užpildo tais pačiais ID kaip `dev`, užsakymų ir raktų neliečia, spausdina kiekį prieš / po. Workflow įvestys tapo išskleidžiamais sąrašais, kad klaida nepasikartotų."),
+ ("- **Ką daro:** `go run ./cmd/seed --aliases-only` (ir workflow įvestis `aliases_only`) toje pačioje transakcijoje ir su tuo pačiu `LOCK` kaip pilnas seed'as: patikrina, kad `game_aliases` **tuščia** (kitaip `ErrAliasesExist`, niekas nekeičiama), kad kiekvienas snapshot'o žaidimas yra DB (pagal slug), paleidžia ID skaitiklį nuo 1 ir įrašo alias'us ta pačia tvarka kaip `Insert`. Kadangi tvarka ir generatorius tie patys, ID sutampa su `dev`. Užsakymų, pasiūlymų ir raktų neliečia.",
+  "- **Ką daro:** `go run ./cmd/seed --aliases-only` (workflow: `mode` = `aliases-only`) toje pačioje transakcijoje ir su tuo pačiu `LOCK` kaip pilnas seed'as: patikrina, kad kiekvienas snapshot'o žaidimas yra DB (pagal slug), ir įrašo **tik 
+… [truncated; original 4043 chars]
+```
+
+<details><summary>Result</summary>
+
+```
+ok
+```
+</details>
+
+## Claude · 2026-11-24T05:37:56.223Z
+
+Now the report: files changed, verification, the owner's step, and a placeholder for the production re-check:
+
+**Tool: Bash**
+
+```
+$ python -I - <<'EOF'
+p = "docs/reports/TASK_18_readme_submission.md"
+s = open(p, encoding="utf-8").read()
+pairs = [
+ ("- `pkg/seedgen/db.go` – `InsertAliases` (fills only an **empty** `game_aliases`; every snapshot game must exist; identity restarted, same row order as a full seed → same ids), `ErrAliasesExist`, shared `copyAliases` (now also used by `Insert`).",
+  "- `pkg/seedgen/db.go` – `InsertAliases` adds only the **missing** aliases, idempotent (`INSERT … SELECT FROM unnest(…) WITH ORDINALITY ORDER BY ord ON CONFLICT (game_id, lower(alias)) DO NOTHING`, on the existing unique index from `00003`); every snapshot game must exist; on an **empty** table the identity restarts at 1 first, so the ids equal a full seed; returns `AliasCounts{Before, Inserted, After}`. `aliasRows` (the row order) is shared with the full seed's `copyAliases` (COPY)."),
+ ("- `cmd/seed/main.go` – flag `--aliases-only` (cannot be combined with `--reset`), same transaction + lock as a full seed.",
+  "- `cmd/seed/main.go` – flag `--aliases-only` (cannot be combined with `--reset`), same transaction + lock as a full seed; prints `game_aliases before`, `inserted`, `after`."),
+ ("- `.github/workflows/seed-production.yml` – boolean input `aliases_only` (error if ticked together with `reset`).",
+  "- `.github/workflows/seed-production.yml` – **no free-text input any more** (the 13a run failed on a mistyped `confirm`): dropdown `mode` (`aliases-only` default / `seed-empty` / `reset`, replaces the `reset` checkbox) and dropdown `confirm` (`not confirmed` default / `seed-production`); a `case` maps the mode to the command, an unknown mode fails."),
+ ("- `pkg/seedgen/aliases_db_test.go` (new) – 3 integration tests (run in CI's `migrations` job).",
+  "- `pkg/seedgen/aliases_db_test.go` (new) – 4 integration tests (run in CI's `migrations` job): empty table → same checksum as a full seed (rows + ids); run twice on a full table → 0 inserted, checksum unchanged; only missing rows added (deleted aliases of one game come back, an alias in another letter case is skipped, a non-snapshot row stays); a game missing from the DB → nothing written."),
+ ("| `cmd/seed --aliases-only` on Neon **dev** (has aliases) | `error: seedgen: search aliases already exist (134 rows); nothing was changed`, exit 1 – the refuse path; `--aliases-only --reset` → \"cannot be used together\", exit 2 |",
+  "| `cmd/seed --aliases-only` on Neon **dev** (all aliases present) – runs the real SQL incl. `ON CONFLICT` on the expres
+… [truncated; original 6565 chars]
+```
+
+<details><summary>Result</summary>
+
+```
+ok
+```
+</details>
+
+## Claude · 2026-11-24T05:38:19.263Z
+
+Docs updated. Running the full verification again, then committing and pushing:
+
+**Tool: Bash**
+
+```
+$ echo "gofmt: [$(gofmt -l .)]" && go build ./... && go vet ./... && go test ./... 2>&1 | grep -v "no test files" | grep -v "^ok" ; echo "go done"; cd "/c/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad/tools" && node checkdoc.mjs /c/PROJEKTAI/ENEBA/ENEBA-homework docs/PAAISKINIMAI_LT.md 2>&1 | tail -1; node checkdoc.mjs /c/PROJEKTAI/ENEBA/ENEBA-homework docs/reports/TASK_18_readme_submission.md 2>&1 | grep -v "^ok" | tail -3
+```
+
+**Tool: PowerShell**
+
+```
+$ Set-Location C:\PROJEKTAI\ENEBA\ENEBA-homework; npm run lint 2>&1 | Select-Object -Last 1; npm test 2>&1 | Select-String -Pattern "Test Files|Tests  " | ForEach-Object { $_.Line }; npm run build 2>&1 | Select-Object -Last 1
+```
+
+<details><summary>Result</summary>
+
+```
+gofmt: []
+go done
+27 links checked, 0 mermaid blocks, problems: 0
+3 links checked, 0 mermaid blocks, problems: 0
+Shell cwd was reset to c:\PROJEKTAI\ENEBA\ENEBA-homework
+```
+</details>
+
+<details><summary>Result</summary>
+
+```
+Test Files  50 passed (50)
+      Tests  625 passed (625)
+✓ built in 6.12s
+```
+</details>
+
+## Claude · 2026-11-24T05:39:49.781Z
+
+Everything passes. The new test raises the Go count from 225 to 226 (75 DB integration tests), so I'm updating those numbers:
+
+**Tool: Bash**
+
+```
+$ grep -rhoE "^func Test[A-Za-z0-9_]*\(t \*testing\.T\)" --include='*_test.go' . | wc -l; grep -n -E "225|74 " README.md docs/PAAISKINIMAI_LT.md docs/reports/TASK_18_readme_submission.md | cut -c1-160
+```
+
+<details><summary>Result</summary>
+
+```
+226
+README.md:130:**Tests:** **225 Go test functions** (151 unit tests + 74 database integration tests that run in CI against Postgres) with 445 table-driven subtes
+docs/PAAISKINIMAI_LT.md:55:24. **Kaip testuota ir ką įrodo CI?** Trys CI darbai kiekvienam PR: `go` (gofmt, vet, build, testai su `-race`), `migrations` (visi
+docs/reports/TASK_18_readme_submission.md:27:| `go build ./...`, `go vet ./...`, `go test ./...` | pass. `go test -json`: **225 top-level Go tests** – 151 pas
+docs/reports/TASK_18_readme_submission.md:112:- **"Number of Go tests"** is given as test functions (225, of which 74 need Postgres) + subtests (445, counted lo
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ sed -i 's/\*\*225 Go test functions\*\* (151 unit tests + 74 database/**226 Go test functions** (151 unit tests + 75 database/' README.md && sed -i '55s/225 Go testų funkcijos (74 – su DB)/226 Go testų funkcijos (75 – su DB)/' docs/PAAISKINIMAI_LT.md && sed -i 's/\*\*225 top-level Go tests\*\* – 151 pass, 74 skip locally/**226 top-level Go tests** – 151 pass, 75 skip locally/; s/test functions (225, of which 74 need Postgres)/test functions (226, of which 75 need Postgres)/' docs/reports/TASK_18_readme_submission.md && grep -c -E "226" README.md docs/PAAISKINIMAI_LT.md docs/reports/TASK_18_readme_submission.md; grep -c "225" README.md docs/PAAISKINIMAI_LT.md docs/reports/TASK_18_readme_submission.md
+```
+
+<details><summary>Result</summary>
+
+```
+README.md:1
+docs/PAAISKINIMAI_LT.md:1
+docs/reports/TASK_18_readme_submission.md:2
+README.md:0
+docs/PAAISKINIMAI_LT.md:0
+docs/reports/TASK_18_readme_submission.md:0
+[This command modified 3 files you've previously read: README.md, docs\PAAISKINIMAI_LT.md, docs\reports\TASK_18_readme_submission.md. Call Read before editing.]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ git add cmd/seed/main.go pkg/seedgen/db.go pkg/seedgen/aliases_db_test.go .github/workflows/seed-production.yml && git commit -q -m "Task 18: --aliases-only is idempotent (inserts only missing aliases, ON CONFLICT DO NOTHING) and prints the alias count before/inserted/after; Seed production inputs are dropdowns (mode, confirm) so nothing can be mistyped; tests for repeat and partial runs
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git add README.md docs/PAAISKINIMAI_LT.md docs/reports/TASK_18_readme_submission.md && git commit -q -m "Task 18: docs and report for the idempotent --aliases-only and the dropdown workflow inputs; Go test count 226
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git push -q 2>&1 | tail -1; git log --oneline -3
+```
+
+<details><summary>Result</summary>
+
+```
+f368428 Task 18: docs and report for the idempotent --aliases-only and the dropdown workflow inputs; Go test count 226
+0ad1531 Task 18: --aliases-only is idempotent (inserts only missing aliases, ON CONFLICT DO NOTHING) and prints the alias count before/inserted/after; Seed production inputs are dropdowns (mode, confirm) so nothing can be mistyped; tests for repeat and partial runs
+63070b0 Task 18: report - CI result of PR #21; session log (converted from the transcript, redacted)
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ sleep 25; gh pr checks 21 --watch --interval 15 2>&1 | tail -5
+```
+
+<details><summary>Result</summary>
+
+```
+<tool_use_error>Blocked: sleep 25 followed by: gh pr checks 21 --watch --interval 15 tail -5. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ until gh pr checks 21 --json headSha 2>/dev/null | grep -q . || gh pr view 21 --json statusCheckRollup --jq '.statusCheckRollup | length' | grep -qv '^0$'; do :; done; gh pr checks 21 --watch --interval 15 2>&1 | tail -5; gh pr view 21 --json headRefOid --jq .headRefOid
+```
+
+<details><summary>Result</summary>
+
+```
+hint: if you need to wait for this pull request to be reviewed, merged, or closed before continuing, use this instead of polling:
+    gh event listen --resource https://github.com/dovydas472/ENEBA-homework/pull/21 --event com.github.pull_request.review.submitted.v1,com.github.pull_request.state.changed.v1
+  - It prints the first event as a JSON line on stdout and exits; run it again to wait for the next one.
+  - Add `--timeout` to stop waiting after a while, for example `--timeout 30m`; it then exits with status 8.
+  - Events carry no details; read the pull request to see what changed.
+  - It misses changes made before it starts, so read the pull request once it is running.
+  - See `gh event listen --help` for other event types.
+  - Event subscriptions are in preview and may not be enabled for your account.
+Vercel	pass	0	https://vercel.com/[REDACTED]/enehomeworkba/5KfXpyvwutYWXBbCpEFfQbZQoUGj	Deployment has completed
+Vercel Preview Comments	pass	0	https://vercel.com/github	
+frontend	pass	37s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45334931152/job/138244673645	
+go	pass	50s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45334931152/job/138244673726	
+migrations	pass	55s	https://github.com/dovydas472/ENEBA-homework/actions/runs/45334931152/job/138244673521	
+hint: if you need to wait for this pull request to be reviewed, merged, or closed before continuing, use this instead of polling:
+    gh event listen --resource https://github.com/dovydas472/ENEBA-ho
+… [truncated; original 2160 chars]
+```
+</details>
+
+## Claude · 2026-11-24T05:41:24.149Z
+
+CI is green on the latest commit (`f368428`). Updating the PR checklist to match the new dropdowns:
+
+**Tool: Bash**
+
+```
+$ F="/c/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad/pr_body.md"; python -I - "$F" <<'EOF'
+import sys
+p = sys.argv[1]; s = open(p, encoding="utf-8").read()
+s = s.replace("Fix (owner's choice): `cmd/seed --aliases-only` + workflow input `aliases_only` + integration tests.",
+ "Fix (owner's choice): `cmd/seed --aliases-only` – idempotent (inserts only missing aliases, `ON CONFLICT DO NOTHING`, prints before/inserted/after) – and the Seed production inputs are now dropdowns (`mode`, `confirm`), so nothing can be mistyped; integration tests.")
+s = s.replace("tick **`aliases_only`** (not `reset`), `confirm` = `seed-production` → log ends with `search aliases inserted (committed): 134`; then `https://[REDACTED].vercel.app/store?q=gta` shows GTA games (CDN cache ≤ 5 min)",
+ "dropdown **`mode` = `aliases-only`**, dropdown **`confirm` = `seed-production`** → log shows `game_aliases before: 0`, `inserted: 134`, `after: 134` (a repeat run shows `inserted: 0`); then tell Claude Code to re-check `gta` / `rdr2` / `hzd` on production")
+open(p, "w", encoding="utf-8").write(s)
+EOF
+gh pr edit 21 --body-file "$F" >/dev/null && gh pr view 21 --json body --jq .body | grep -E "dropdown|ON CONFLICT" | cut -c1-120
+```
+
+<details><summary>Result</summary>
+
+```
+hint: if you need to wait for this pull request to be reviewed, merged, or closed before continuing, use this instead of polling:
+    gh event listen --resource https://github.com/dovydas472/ENEBA-homework/pull/21 --event com.github.pull_request.review.submitted.v1,com.github.pull_request.state.changed.v1
+  - It prints the first event as a JSON line on stdout and exits; run it again to wait for the next one.
+  - Add `--timeout` to stop waiting after a while, for example `--timeout 30m`; it then exits with status 8.
+  - Events carry no details; read the pull request to see what changed.
+  - It misses changes made before it starts, so read the pull request once it is running.
+  - See `gh event listen --help` for other event types.
+  - Event subscriptions are in preview and may not be enabled for your account.
+- **Submission checks found that production search has no aliases** ("gta" finds nothing; the post-13a seed run failed o
+- [ ] **Before merging:** *Actions → Seed production → Run workflow*, "Use workflow from" = `task/18-readme`, dropdo
+```
+</details>
+
+## Claude · 2026-11-24T05:41:36.652Z
+
+The PR summary still says 225 Go tests. Fixing that, then starting a background watch for your *Seed production* run so I can re-check production as soon as it finishes:
+
+**Tool: Bash**
+
+```
+$ F="/c/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad/pr_body.md"; sed -i 's/CI, 225 Go + 625 frontend tests/CI, 226 Go + 625 frontend tests/' "$F" && gh pr edit 21 --body-file "$F" 2>/dev/null | tail -1; gh run list --workflow seed-production.yml --limit 1 --json databaseId,createdAt --jq '.[0]'
+```
+
+<details><summary>Result</summary>
+
+```
+https://github.com/dovydas472/ENEBA-homework/pull/21
+{"createdAt":"2026-11-22T18:32:24Z","databaseId":45055657099}
+[This command modified 1 file you've previously read: ..\..\..\Users\[USER]\AppData\Local\Temp\claude\27133936c4ab5668\be0e4615-3973-4f19-a47b-366cd4c8c719\scratchpad\pr_body.md. Call Read before editing.]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ while true; do r=$(gh run list --workflow seed-production.yml --limit 1 --json databaseId,status,conclusion --jq '.[0] | "\(.databaseId) \(.status) \(.conclusion)"' 2>/dev/null); id=${r%% *}; if [ -n "$id" ] && [ "$id" != "45055657099" ] && echo "$r" | grep -q " completed "; then echo "NEW RUN: $r"; break; fi; sleep 30; done
+```
+
+<details><summary>Result</summary>
+
+```
+Command running in background with ID: bk40f8vg4. Output is being written to: C:\Users\[USER]\AppData\Local\Temp\claude\27133936c4ab5668\be0e4615-3973-4f19-a47b-366cd4c8c719\tasks\bk40f8vg4.output. You will be notified when it completes — do not poll that file or sleep while waiting. Read the file only if the user asks for progress, or if you need a line it prints before you can go on, such as a server's ready line or port.
+```
+</details>
+
+## Claude · 2026-11-24T05:41:55.522Z
+
+I made both changes, CI is green on the latest commit, and the production re-check is waiting on your workflow run.
+
+**1. `--aliases-only` can now run twice safely.** It adds only the aliases that are missing and skips any that already exist, even in different letter case. It never deletes anything, and on an empty table it gives the same ids as `dev`. It prints the alias count before, how many it inserted, and the count after. I ran it against Neon `dev`, which already has all aliases: 134 before, 0 inserted, 134 after, nothing changed. CI ran the integration tests for a repeat run and a partial fill, and they passed.
+
+**2. Nothing has to be typed in the workflow any more.** *Seed production* has two dropdowns:
+- `mode`: `aliases-only` (default), `seed-empty` or `reset`.
+- `confirm`: defaults to `not confirmed`. Unless you pick `seed-production`, the run stops before it connects to the database.
+
+The file parses, and a dry run of each mode called the right command; an unknown mode fails. I couldn't run `actionlint` because the permission check blocked downloading it. GitHub will report any remaining workflow error when you open the run form.
+
+**What you need to do:** go to *Actions → Seed production → Run workflow*, set "Use workflow from" to `task/18-readme`, then choose `mode` = `aliases-only` and `confirm` = `seed-production`. The log should show 0 before, 134 inserted, 134 after. I'm watching for the run. When it finishes I'll check `gta`, `rdr2` and `hzd` on production and add the results to the report (the search cache can take up to 5 minutes to catch up).
+
+Docs, the Lithuanian notes, the report and the PR checklist all describe the new behavior. The Go test count is now 226, of which 75 are database tests.
+
+PR: https://github.com/dovydas472/ENEBA-homework/pull/21 · Report: [docs/reports/TASK_18_readme_submission.md](docs/reports/TASK_18_readme_submission.md)
+
+## System / agent message · 2026-11-24T08:12:23.406Z
+
+> <task-notification>
+> <task-id>bk40f8vg4</task-id>
+> <tool-use-id>toolu_01WMA6QMTQBmhz6i31LEUx8C</tool-use-id>
+> <output-file>C:\Users\[USER]\AppData\Local\Temp\claude\27133936c4ab5668\be0e4615-3973-4f19-a47b-366cd4c8c719\tasks\bk40f8vg4.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Wait for a new Seed production run to finish" completed (exit code 0)</summary>
+> </task-notification>
+
+## System · 2026-11-24T06:36:49.408Z
+
+> [The context was compacted here; the automatic summary is omitted. The session continues below.]
+
+**Tool: PowerShell**
+
+```
+$ Get-Content "C:\Users\[USER]\AppData\Local\Temp\claude\27133936c4ab5668\be0e4615-3973-4f19-a47b-366cd4c8c719\tasks\bk40f8vg4.output" -Tail 20
+```
+
+<details><summary>Result</summary>
+
+```
+NEW RUN: 45354006060 completed success
+
+[exited with code 0]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ gh run view 45354006060 --json headBranch,headSha,event,createdAt,conclusion,displayTitle && gh run view 45354006060 --log | grep -E "mode:|aliases-only|game_aliases|inserted|snapshot:|error" | sed -E 's/^[^\t]*\t[^\t]*\t[0-9TZ:.-]+ //' | head -30
+```
+
+<details><summary>Result</summary>
+
+```
+{"conclusion":"success","createdAt":"2026-11-24T08:11:49Z","displayTitle":"Seed production","event":"workflow_dispatch","headBranch":"task/18-readme","headSha":"f368428ef6f70bd7ba7c00393d2aa663190a15c2"}
+Cache mode: write
+^[[36;1m  echo "::error::Not confirmed: set the 'confirm' dropdown to 'seed-production' (it was '$CONFIRM'). Nothing was changed."^[[0m
+  MODE: aliases-only
+^[[36;1m  echo "::error::GitHub secret PROD_DATABASE_URL_DIRECT is not set. Add it in Settings > Secrets and variables > Actions (value: Neon production branch, DIRECT connection string)."^[[0m
+  MODE: aliases-only
+  sparse-checkout-cone-mode: true
+  MODE: aliases-only
+  MODE: aliases-only
+seed	Seed the catalog	﻿2026-11-24T08:12:09.0729526Z ##[group]Run echo "mode: $MODE"
+^[[36;1mecho "mode: $MODE"^[[0m
+^[[36;1m  aliases-only) go run ./cmd/seed --aliases-only ;;^[[0m
+^[[36;1m    echo "::error::Unknown mode '$MODE' (expected aliases-only, seed-empty or reset)"^[[0m
+  MODE: aliases-only
+mode: aliases-only
+snapshot: 50 games (IGDB, fetched 2026-11-20T22:35:40Z)
+--aliases-only (committed):
+  game_aliases before: 0
+  inserted:            134 (already present: skipped)
+  game_aliases after:  134
+```
+</details>
+
+## Claude · 2026-11-24T08:12:39.160Z
+
+The run worked: 0 before, 134 inserted, 134 after. Now I'll check production search.
+
+**Tool: Bash**
+
+```
+$ cd /c/PROJEKTAI/ENEBA/ENEBA-homework; for q in gta rdr2 hzd; do echo "== $q"; curl -s -D /tmp/h_$q "https://[REDACTED].vercel.app/api/search/suggest?q=$q&_cb=$(date +%s)" | head -c 600; echo; grep -iE "^(x-vercel-cache|age):" /tmp/h_$q; curl -s "https://[REDACTED].vercel.app/api/products?q=$q&_cb=$(date +%s)" | python -c "import sys,json; d=json.load(sys.stdin); print('products total:', d.get('total'), [ (i.get('title') or i.get('name')) for i in d.get('items',[])][:5])"; done
+```
+
+<details><summary>Result</summary>
+
+```
+== gta
+{"items":[{"gameTitle":"Grand Theft Auto V","productSlug":"grand-theft-auto-v-steam-global","edition":"Standard","platform":{"slug":"steam","name":"Steam"},"region":{"slug":"global","name":"GLOBAL"},"coverUrl":"https://images.igdb.com/igdb/image/upload/t_cover_big/co2lbd.jpg","priceCents":1199,"inStock":true,"matchedAlias":"GTA 5"},{"gameTitle":"Grand Theft Auto: San Andreas","productSlug":"grand-theft-auto-san-andreas-game-of-the-year-edition-steam-global","edition":"Game of the Year Edition","platform":{"slug":"steam","name":"Steam"},"region":{"slug":"global","name":"GLOBAL"},"coverUrl":"htt
+Age: 0
+X-Vercel-Cache: MISS
+products total: 8 ['Grand Theft Auto V', 'Grand Theft Auto V', 'Grand Theft Auto V', 'Grand Theft Auto: San Andreas', 'Grand Theft Auto: San Andreas']
+== rdr2
+{"items":[{"gameTitle":"Red Dead Redemption 2","productSlug":"red-dead-redemption-2-epic-games-europe","edition":"Standard","platform":{"slug":"epic-games","name":"Epic Games"},"region":{"slug":"europe","name":"EUROPE"},"coverUrl":"https://images.igdb.com/igdb/image/upload/t_cover_big/co1q1f.jpg","priceCents":2149,"inStock":true,"matchedAlias":"RDR2"},{"gameTitle":"Red Dead Redemption","productSlug":"red-dead-redemption-steam-europe","edition":"Standard","platform":{"slug":"steam","name":"Steam"},"region":{"slug":"europe","name":"EUROPE"},"coverUrl":"https://images.igdb.com/igdb/image/upload/t
+Age: 0
+X-Vercel-Cache: MISS
+products total: 7 ['Red Dead Redemption 2', 'Red Dead Redemption 2', 'Red D
+… [truncated; original 2011 chars]
+```
+</details>
+
+## Claude · 2026-11-24T08:12:48.989Z
+
+All three work on production. Next I'll check the plain URLs (no cache-buster), which is what real users get from the CDN.
+
+**Tool: Bash**
+
+```
+$ for q in gta rdr2 hzd; do printf "%s: " $q; curl -s -D /tmp/hp "https://[REDACTED].vercel.app/api/search/suggest?q=$q" | python -c "import sys,json; d=json.load(sys.stdin); print(len(d['items']), 'suggestions', [i['gameTitle']+' ('+str(i.get('matchedAlias'))+')' for i in d['items']])"; grep -i "^x-vercel-cache" /tmp/hp; done; date -u
+```
+
+<details><summary>Result</summary>
+
+```
+gta: 4 suggestions ['Grand Theft Auto V (GTA 5)', 'Grand Theft Auto: San Andreas (GTA San Andreas)', 'Grand Theft Auto: Vice City (GTA VC)', 'Grand Theft Auto IV (GTA 4)']
+X-Vercel-Cache: MISS
+rdr2: 2 suggestions ['Red Dead Redemption 2 (RDR2)', 'Red Dead Redemption (RDR)']
+X-Vercel-Cache: MISS
+hzd: 1 suggestions ['Horizon Zero Dawn (HZD)']
+X-Vercel-Cache: MISS
+Tue Nov 24 08:12:53 UTC 2026
+```
+</details>
+
+## Claude · 2026-11-24T08:12:55.909Z
+
+Now I'll add the results to the report.
+
+**Tool: Bash**
+
+```
+$ grep -n "pending\|§3.1\|aliases-only" docs/reports/TASK_18_readme_submission.md | head -30
+```
+
+<details><summary>Result</summary>
+
+```
+3:Task file: [`docs/tasks/TASK_18_readme_submission.md`](../tasks/TASK_18_readme_submission.md) (+ addendum [`TASK_18_amendment_lighthouse_production.md`](../tasks/TASK_18_amendment_lighthouse_production.md): Lighthouse mobile on production) · Branch: `task/18-readme` · **No migration in this PR.** **One production step before merging:** *Seed production* with `aliases_only` (§3.1).
+9:- `docs/PAAISKINIMAI_LT.md` – new section **"Svarbiausi klausimai pokalbiui"** at the top: 27 questions, 2–4 sentence answers, each with a link to the detailed section (links generated from the exact headings and checked). New Task 18 section at the end (`--aliases-only`).
+14:- `cmd/seed/main.go` – flag `--aliases-only` (cannot be combined with `--reset`), same transaction + lock as a full seed; prints `game_aliases before`, `inserted`, `after`.
+15:- `.github/workflows/seed-production.yml` – **no free-text input any more** (the 13a run failed on a mistyped `confirm`): dropdown `mode` (`aliases-only` default / `seed-empty` / `reset`, replaces the `reset` checkbox) and dropdown `confirm` (`not confirmed` default / `seed-production`); a `case` maps the mode to the command, an unknown mode fails.
+31:| `cmd/seed --aliases-only` on Neon **dev** (all aliases present) – runs the real SQL incl. `ON CONFLICT` on the expression index | `game_aliases before: 134` · `inserted: 0 (already present: skipped)` · `game_aliases after: 134`, committed, nothing changed (idempotent). `--aliases-only --reset` → "canno
+… [truncated; original 5092 chars]
+```
+</details>
+
+## Claude · 2026-11-24T08:12:59.959Z
+
+Line 3 still says `aliases_only` (stale wording). I'll fix it, fill in the result and mark §3.1 as done.
+
+**Tool: Bash**
+
+```
+$ python -I - docs/reports/TASK_18_readme_submission.md <<'EOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding="utf-8").read()
+old3 = "**One production step before merging:** *Seed production* with `aliases_only` (§3.1)."
+new3 = "**One production step before merging:** *Seed production* with `mode` = `aliases-only` (§3.1) – **done** on 2026-11-24, aliases verified on production (§2)."
+old63 = "**Production after the owner's *Seed production* run:** *pending – filled in after the run (§3.1).*"
+new63 = """**Production after the owner's *Seed production* run (fixed).** The owner ran *Seed production* from `task/18-readme` (commit `f368428`) with `mode` = `aliases-only`, `confirm` = `seed-production`: run [45354006060](https://github.com/dovydas472/ENEBA-homework/actions/runs/45354006060), 2026-11-24 08:11 UTC, **success**. Log: `snapshot: 50 games` · `game_aliases before: 0` · `inserted: 134` · `game_aliases after: 134` (the same 134 as on dev). Re-check on production right after the run (08:12 UTC, `X-Vercel-Cache: MISS`, so fresh data, not a cached answer):
+
+| Query | `/api/search/suggest` (what the dropdown shows; `matchedAlias` in brackets) | `/api/products?q=` total |
+|---|---|---|
+| `gta` | 4: Grand Theft Auto V (`GTA 5`), San Andreas (`GTA San Andreas`), Vice City (`GTA VC`), IV (`GTA 4`) | 8 |
+| `rdr2` | 2: Red Dead Redemption 2 (`RDR2`), Red Dead Redemption (`RDR`) | 7 |
+| `hzd` | 1: Horizon Zero Dawn (`HZD`) | 3 |
+
+Before the run all three returned 0. Alias search now works on production like on dev, so the smoke-test step "search 'gta'" passes too."""
+old93 = "1. **Before merging – add the search aliases to production:**"
+new93 = "1. ~~**Before merging – add the search aliases to production:**~~ **Done 2026-11-24** (run 45354006060: before 0 / inserted 134 / after 134; `gta`, `rdr2`, `hzd` verified in §2). For reference, the step was:"
+for o, n in [(old3, new3), (old63, new63), (old93, new93)]:
+    assert s.count(o) == 1, o
+    s = s.replace(o, n)
+open(p, "w", encoding="utf-8", newline="\n").write(s)
+print("ok")
+EOF
+grep -n "smoke" docs/reports/TASK_18_readme_submission.md | head
+```
+
+<details><summary>Result</summary>
+
+```
+ok
+41:### Production smoke test (<https://[REDACTED].vercel.app>, headless Edge, 1440 × 900 and 390 × 844 touch)
+59:The smoke runs bought **3 fake keys on production** (Half-Life ×2, BioShock Infinite ×1) as 3 demo users; that is what the demo is for.
+71:Before the run all three returned 0. Alias search now works on production like on dev, so the smoke-test step "search 'gta'" passes too.
+98:| Demo banner | on every page checked (smoke table) |
+115:- **A code change larger than a "tiny fix"** (`--aliases-only`, ~90 lines + 4 tests + the workflow inputs as dropdowns). The task allows only tiny fixes; I asked first, and the **owner chose this option** (over a data migration or only documenting the gap), and then asked for it to be idempotent and for the workflow inputs to be impossible to mistype. Without it the live search would not find "gta", which the task's own smoke test asks for.
+121:- **Lighthouse on production created no data**; the **smoke test did** (3 demo users, 3 paid orders, 3 fake keys sold) – needed to test checkout end to end.
+134:| 4a–4d submission checks "partly": results not recorded yet (no report) | **Fixed:** §2 holds the link/Mermaid check, the smoke test (desktop + phone), the history scan and the ai-logs check |
+```
+</details>
+
+## Claude · 2026-11-24T08:13:12.719Z
+
+The report now says the smoke-test "gta" step passes, but so far I've only checked the API. I'll confirm in the real UI too: desktop and phone, typing only, no purchase.
+
+**Tool: Bash**
+
+```
+$ cd "C:/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad/tools" && grep -n "gta\|executablePath\|launch(\|require\|import" smoke.mjs | head -30
+```
+
+<details><summary>Result</summary>
+
+```
+3:import puppeteer from "puppeteer-core";
+4:import fs from "node:fs";
+5:import path from "node:path";
+45:  const browser = await puppeteer.launch({ executablePath: EDGE, headless: true, args: ["--no-first-run"] });
+70:    for (const [q, expect] of [["witchr 3", "Witcher 3"], ["gta", "Grand Theft Auto V"]]) {
+94:    record(vpName, "search results page (Enter)", h1.toLowerCase().includes("gta") && cards > 0, `h1 "${h1}", ${cards} product links, url ${page.url().replace(BASE, "")}`);
+Shell cwd was reset to c:\PROJEKTAI\ENEBA\ENEBA-homework
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ cd "C:/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad/tools" && sed -n 1,44p smoke.mjs && sed -n 60,100p smoke.mjs
+```
+
+<details><summary>Result</summary>
+
+```
+// Production smoke test (Task 18). Headless Edge via puppeteer-core. Lives in the scratchpad, never in the repo.
+// Usage: node smoke.mjs <outDir>
+import puppeteer from "puppeteer-core";
+import fs from "node:fs";
+import path from "node:path";
+
+const BASE = "https://[REDACTED].vercel.app";
+const EDGE = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
+const outDir = process.argv[2];
+fs.mkdirSync(outDir, { recursive: true });
+
+const VIEWPORTS = {
+  desktop: { width: 1440, height: 900, deviceScaleFactor: 1 },
+  phone: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+};
+// One product per run so the two runs do not compete for the same key.
+const PRODUCT = { desktop: "half-life-steam-global", phone: "bioshock-infinite-steam-global" };
+
+const results = [];
+function record(vp, step, ok, detail) {
+  results.push({ vp, step, ok, detail });
+  console.log(`${ok ? "PASS" : "FAIL"} [${vp}] ${step}${detail ? " – " + detail : ""}`);
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function bannerOk(page) {
+  return page.$eval('aside[aria-label="Demo notice"]', (el) => el.textContent.trim().slice(0, 60)).catch(() => null);
+}
+
+async function clickByText(page, selector, text) {
+  const handles = await page.$$(selector);
+  for (const h of handles) {
+    const t = await h.evaluate((el) => el.textContent.trim());
+    const visible = await h.evaluate((el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length
+… [truncated; original 4411 chars]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ cd "C:/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad/tools" && cat > search_only.mjs <<'EOF'
+// Search-only UI check on production after the alias seed (Task 18). No purchase. Scratchpad only.
+import puppeteer from "puppeteer-core";
+const BASE = "https://[REDACTED].vercel.app";
+const EDGE = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
+const outDir = process.argv[2];
+const VP = {
+  desktop: { width: 1440, height: 900, deviceScaleFactor: 1 },
+  phone: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+};
+const browser = await puppeteer.launch({ executablePath: EDGE, headless: true, args: ["--no-first-run"] });
+let fails = 0;
+for (const [vp, viewport] of Object.entries(VP)) {
+  const page = await browser.newPage();
+  await page.setViewport(viewport);
+  await page.goto(BASE + "/", { waitUntil: "networkidle2" });
+  for (const [q, expect] of [["gta", "Grand Theft Auto V"], ["rdr2", "Red Dead Redemption 2"], ["hzd", "Horizon Zero Dawn"]]) {
+    let input = await page.$('input[role="combobox"]');
+    if (!(input && (await input.evaluate((el) => !!el.offsetWidth)))) {
+      await page.click('nav[aria-label="Cart and account"] button[aria-label="Search"]');
+      await page.waitForSelector('input[role="combobox"]', { visible: true });
+      input = await page.$('input[role="combobox"]');
+    }
+    await input.click({ clickCount: 3 });
+    await page.keyboard.press("Backspace");
+    await input.type(q, { delay: 30 });
+    await page.waitForFunction((e) => { const o = document.querySelector('[role="listbox"] [role="option"]'); return o && o.textContent.includes(e); }, { timeout: 10000 }, expect).catch(() => {});
+    const opts = await page.$$eval('[role="listbox"] [role="option"]', (os) => os.map((o) => o.textContent.trim().replace(/\s+/g, " ").slice(0, 60)));
+    const ok = opts.length > 0 && opts[0].includes(expect);
+    if (!ok) fails++;
+    console.log(`${ok ? "PASS" : "FAIL"} [${vp}] "${q}" – ${opts.length} rows; first: ${opts[0]}`);
+    await page.screenshot({ path: `${outDir}/${vp}-${q}.png` });
+  }
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => location.pathname === "/store" && location.search.includes("q="), { timeout: 10000 }).catch(() => {});
+  await new Promise((r) => setTimeout(r, 1500));
+  const h1 = await page.$eval("h1", (h) => h.textContent.trim()).catch(() => "");
+  const cards = await page.$$eval("main a[href^='/
+… [truncated; original 2823 chars]
+```
+
+<details><summary>Result</summary>
+
+```
+PASS [desktop] "gta" – 5 rows; first: Grand Theft Auto VAlso known as GTA 5Steam · GLOBALFrom€11.9
+PASS [desktop] "rdr2" – 3 rows; first: Red Dead Redemption 2Also known as RDR2Epic Games · EUROPEFr
+PASS [desktop] "hzd" – 2 rows; first: Horizon Zero DawnAlso known as HZDPSN · EUROPEFrom€10.99
+PASS [desktop] Enter on "hzd" – h1 "Results for 'hzd'", 6 product links
+PASS [phone] "gta" – 5 rows; first: Grand Theft Auto VAlso known as GTA 5Steam · GLOBALFrom€11.9
+PASS [phone] "rdr2" – 3 rows; first: Red Dead Redemption 2Also known as RDR2Epic Games · EUROPEFr
+PASS [phone] "hzd" – 2 rows; first: Horizon Zero DawnAlso known as HZDPSN · EUROPEFrom€10.99
+PASS [phone] Enter on "hzd" – h1 "Results for 'hzd'", 6 product links
+Shell cwd was reset to c:\PROJEKTAI\ENEBA\ENEBA-homework
+```
+</details>
+
+## Claude · 2026-11-24T08:13:45.674Z
+
+Every check passes in the UI too (the extra row is the "see all results" row). I'll look at one phone screenshot.
+
+**Tool: Read**
+
+```
+C:\Users\[USER]\AppData\Local\Temp\claude\27133936c4ab5668\be0e4615-3973-4f19-a47b-366cd4c8c719\scratchpad\shots_search\phone-gta.png
+```
+
+<details><summary>Result</summary>
+
+```
+[image]
+```
+</details>
+
+## Claude · 2026-11-24T08:13:49.172Z
+
+That looks right. Next I'll add the UI result to the report and update the earlier smoke-test rows that recorded "gta" as failing.
+
+**Tool: Bash**
+
+```
+$ grep -n -i "gta\|fail\|❌\|✗" docs/reports/TASK_18_readme_submission.md | head -20; grep -n -i "alias\|gta" README.md docs/PAAISKINIMAI_LT.md | grep -i "production\|produkcij\|pending\|not yet\|dar ne" | head
+```
+
+<details><summary>Result</summary>
+
+```
+15:- `.github/workflows/seed-production.yml` – **no free-text input any more** (the 13a run failed on a mistyped `confirm`): dropdown `mode` (`aliases-only` default / `seed-empty` / `reset`, replaces the `reset` checkbox) and dropdown `confirm` (`not confirmed` default / `seed-production`); a `case` maps the mode to the command, an unknown mode fails.
+27:| `go build ./...`, `go vet ./...`, `go test ./...` | pass. `go test -json`: **226 top-level Go tests** – 151 pass, 75 skip locally (database integration tests, `TEST_DATABASE_URL` empty; CI runs them), 445 subtests pass, 0 failures |
+46:| Home: hero + all blocks (INNERT, GTA V, Witcher 3 slides; Popular right now, Biggest discounts, New releases) | pass (run 1; in run 2 the check looked before the blocks rendered – script timing, fixed) | pass |
+48:| Search suggestions **"gta"** | **FAIL: "No matches for 'gta'"** → the alias problem below | **FAIL** (same) |
+49:| Enter → `/store?q=gta` | page works, but 0 results (+ "Popular right now") | same |
+57:| Failed requests | only expected ones: `401 /api/auth/me` while signed out, `402 …/pay` (the simulated decline), 404 page | same |
+61:**Found: production has no search aliases.** `GET /api/search/suggest?q=gta` / `rdr2` / `hzd` / `gt` → 0 items, `/api/products?q=gta` total 0, while `witcher` and `grand` (title matches) work. Cause, from the Actions log: the **Seed production** run after Task 13a (2026-11-22 18:32 UTC, run 45055657099) **failed at "Check the confirmation"** – `con
+… [truncated; original 7169 chars]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ python -I - docs/reports/TASK_18_readme_submission.md docs/PAAISKINIMAI_LT.md <<'EOF'
+import sys
+rp, lt = sys.argv[1], sys.argv[2]
+s = open(rp, encoding="utf-8").read()
+rep = [
+("| Search suggestions **\"gta\"** | **FAIL: \"No matches for 'gta'\"** → the alias problem below | **FAIL** (same) |",
+ "| Search suggestions **\"gta\"** | **FAIL: \"No matches for 'gta'\"** → the alias problem below. **After the fix (2026-11-24): pass** – GTA V first, \"Also known as GTA 5\" | **FAIL** (same). **After the fix: pass** |"),
+("| Enter → `/store?q=gta` | page works, but 0 results (+ \"Popular right now\") | same |",
+ "| Enter → `/store?q=gta` | page works, but 0 results (+ \"Popular right now\"). **After the fix:** results found (`/api/products?q=gta` total 8) | same |"),
+("Before the run all three returned 0. Alias search now works on production like on dev, so the smoke-test step \"search 'gta'\" passes too.",
+ "Before the run all three returned 0. **UI check** (same headless Edge script as the smoke test, search steps only, no purchase), desktop 1440 px and phone 390 px: typing `gta`, `rdr2`, `hzd` in the header search shows Grand Theft Auto V / Red Dead Redemption 2 / Horizon Zero Dawn as the first suggestion with \"Also known as GTA 5 / RDR2 / HZD\", and Enter opens \"Results for 'hzd'\" with products – 8/8 pass. Alias search now works on production like on dev, so the two smoke-test rows above that failed now pass."),
+("the owner runs it before merging (§3.1), and I re-check `gta` / `rdr2` on production afterwards.",
+ "the owner ran it on 2026-11-24 and the re-check passed (below)."),
+("| Owner step: run *Seed production* (`mode` = `aliases-only`), then verify `gta` | In §3.1 – **before** the merge, from this branch (the inputs exist only here until the merge) |",
+ "| Owner step: run *Seed production* (`mode` = `aliases-only`), then verify `gta` | **Done** before the merge, from this branch: run 45354006060, 0 → 134 aliases; `gta` / `rdr2` / `hzd` verified via API and UI (§2) |"),
+]
+for o, n in rep:
+    assert s.count(o) == 1, o[:60]
+    s = s.replace(o, n)
+open(rp, "w", encoding="utf-8", newline="\n").write(s)
+
+t = open(lt, encoding="utf-8").read()
+o = "Tai rado Task 18 produkcijos patikra."
+assert t.count(o) == 1
+t = t.replace(o, o + " **Pataisyta 2026-11-24:** savininkas paleido *Seed production* su `mode` = `aliases-only` (prieš: 0, įterpta: 134, po: 134); `gta`, `rdr2`, `hzd` produkcijoje vėl randa žaidimus.")
+open(lt, "w", encoding="utf-8", newline="\n")
+… [truncated; original 2541 chars]
+```
+
+<details><summary>Result</summary>
+
+```
+ok
+ docs/PAAISKINIMAI_LT.md                   |  2 +-
+ docs/reports/TASK_18_readme_submission.md | 22 +++++++++++++++-------
+ 2 files changed, 16 insertions(+), 8 deletions(-)
+```
+</details>
+
+## Claude · 2026-11-24T08:14:07.115Z
+
+Now I'll update the PR checklist, commit and push.
+
+**Tool: Bash**
+
+```
+$ P="C:/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad/pr_body.md" && python -I - "$P" <<'EOF'
+import sys
+p = sys.argv[1]; s = open(p, encoding="utf-8").read()
+o = "- [ ] **Before merging:** *Actions → Seed production → Run workflow*"
+assert s.count(o) == 1
+s = s.replace(o, "- [x] **Done 2026-11-24 (run 45354006060: 0 → 134 aliases; `gta` / `rdr2` / `hzd` verified on production, API + UI)** – *Actions → Seed production → Run workflow*")
+open(p, "w", encoding="utf-8", newline="\n").write(s)
+EOF
+git add docs/reports/TASK_18_readme_submission.md docs/PAAISKINIMAI_LT.md && git commit -q -F - <<'EOF'
+Task 18: report - production aliases fixed (Seed production run 45354006060: 0 -> 134), gta/rdr2/hzd verified on production via API and UI
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+EOF
+git log --oneline -1
+```
+
+<details><summary>Result</summary>
+
+```
+22c0731 Task 18: report - production aliases fixed (Seed production run 45354006060: 0 -> 134), gta/rdr2/hzd verified on production via API and UI
+```
+</details>
+
+## Claude · 2026-11-24T08:14:14.517Z
+
+Next I'll regenerate this session's log and scan it for secrets and personal details.
+
+**Tool: Bash**
+
+```
+$ S="C:/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad" && head -8 ai-logs/2026-11-23_08_readme-submission.md | sed -n 1,1p && python -I "$S/conv/convert_log.py" "C:/Users/[USER]/.claude/projects/c--PROJEKTAI-ENEBA-ENEBA-homework/be0e4615-3973-4f19-a47b-366cd4c8c719.jsonl" ai-logs/2026-11-23_08_readme-submission.md "Task 18: README, interview cheat sheet, submission checks" "" && grep -nE "postgres(ql)?://|npg_|neon\.tech|[REDACTED]|@gmail|[USER]([^a]|$)|IGDB_CLIENT_SECRET=[REDACTED] ai-logs/2026-11-23_08_readme-submission.md | head; echo "scan done"; git diff --stat
+```
+
+<details><summary>Result</summary>
+
+```
+# Claude Code session log – 2026-11-23_08_readme-submission
+426 parts, 269697 chars
+11:- Secrets (connection strings, `npg_` tokens, Neon hosts, `.env` values), e-mail addresses (except reserved test domains such as `example.com`), the Windows user name and the Vercel team name are replaced with `[REDACTED]` / `[USER]`.
+626:$ git log --all -p --no-color > "$TEMP/hist.txt" 2>/dev/null; H="$TEMP/hist.txt"; wc -c < "$H"; echo "--- npg_ (Neon passwords):"; grep -c -E "npg_[A-Za-z0-9]{6,}" "$H"; echo "--- postgres URLs with user:pass@host (non-localhost):"; grep -oE "postgres(ql)?://[^ \"'\`]*" "$H" | grep -v -E "@localhost|@127\.0\.0\.1|USER|user:password|<|\.\.\.|\\$\{|postgres:postgres@" | sed -E 's#://[^@]*@#://<redacted>@#' | sort | uniq -c | head; echo "--- [REDACTED] hosts:"; grep -oE "[a-z0-9-]+\.[a-z0-9-]+\.aws\.neon\.tech" "$H" | sort -u | sed -E 's/^ep-[a-z0-9-]+/ep-<redacted>/' | head; echo "--- IGDB/Twitch credential assignments:"; grep -E "^\+.*IGDB_CLIENT_(ID|SECRET)\s*=\s*\S" "$H" | sed -E 's/=.*/=<value>/' | sort | uniq -c; echo "--- access_token values:"; grep -cE "access_token\"?\s*[:=]\s*\"?[a-z0-9]{20,}" "$H"
+633:--- npg_ (Neon passwords):
+636:     15 postgres://
+638:      3 postgres://<redacted>@EP-COOL-123456-POOLER.example.com/db
+639:      3 postgres://<redacted>@[REDACTED]
+640:      3 postgres://<redacted>@[REDACTED]
+641:      1 postgres://<redacted>@ep-fake-123-pooler.example.com/db
+642:      3 postgres://<redacted>@ep-secret-host-999.example.com:5432/sh
+… [truncated; original 1836 chars]
+```
+</details>
+
+**Tool: Bash**
+
+```
+$ S="C:/Users/[USER]/AppData/Local/Temp/claude/27133936c4ab5668/be0e4615-3973-4f19-a47b-366cd4c8c719/scratchpad" && python -I "$S/conv/convert_log.py" "C:/Users/[USER]/.claude/projects/c--PROJEKTAI-ENEBA-ENEBA-homework/be0e4615-3973-4f19-a47b-366cd4c8c719.jsonl" ai-logs/2026-11-23_08_readme-submission.md "2026-11-23_08_readme-submission" "" && sed -n 1,3p ai-logs/2026-11-23_08_readme-submission.md && tail -c 400 ai-logs/2026-11-23_08_readme-submission.md && git add ai-logs/2026-11-23_08_readme-submission.md && git commit -q -F - <<'EOF'
+Task 18: session log updated (aliases-only idempotency, dropdown inputs, production alias re-check; converted from the transcript, redacted)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+EOF
+git push -q && git log --oneline -3 && gh pr edit 21 --body-file "$S/pr_body.md" >/dev/null && echo "PR body updated"
 ```
