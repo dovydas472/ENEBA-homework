@@ -371,7 +371,7 @@ desktop >=931 +------------ carousel (1fr) ------------+ tile + tile + tile +  2
   same file as the real width at 1024, 1200, 1440 and 1920.
 - **Tiles:** our own design — text top-left on a token gradient, a fan of up to three catalog covers spilling over the bottom-right corner (rotated 8° / −2° / −12°, lifted 10px on hover/focus).
 - **Platform row:** generic lucide icons chosen by NAME from the block config (no brand logos); an unknown name gets `gamepad-2`.
-- **Product rows:** the Store's `ProductCard` (with Add to cart). "View all" is a secondary `ButtonLink` with a hidden ": {row title}", so the three links differ for screen readers.
+- **Product rows:** the Store's `ProductCard` (with Add to cart), **one card per game**: when a game has several versions (platform / edition), only the first one in the row's sort order is shown (decided on the backend, `Service.ProductRow`), so no cover repeats in a row. The Store page itself still shows every version. "View all" is a secondary `ButtonLink` with a hidden ": {row title}", so the three links differ for screen readers.
 - **States:** while the registry loads, a hero-sized skeleton in a screen-tall page (the footer stays off screen); each block has its own skeleton of its final size; a failing block shows
   "“Title” could not be loaded." + a secondary Retry in its own slot; a block that crashes while rendering hides itself (error boundary). Registry error = the page ErrorState with Retry; empty registry = EmptyState + "Browse the store".
 - **Not copied / no dead UI:** cashback, wishlist hearts, "Recommended for you" (no personalisation), Eneba's promo art, language/currency, the "Black Friday" countdown popup, gift-card rows.

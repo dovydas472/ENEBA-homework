@@ -416,6 +416,13 @@ source** (`pkg/homepage`): the hero reads `homepage_slides` (+ live prices from 
 (+ cover images from the catalog), the platform row and the product rows read only the catalog. The frontend has one
 renderer per block **type** and no content of its own.
 
+**One card per game in a product row (Task 20).** The same game is sold in several products (GTA V on Steam, on PSN, "Premium"), so the plain
+first 5 products of a sort could repeat a game. `GET /api/blocks/products/{key}` therefore asks the catalog for the biggest page
+(`catalog.MaxPageSize`), keeps the FIRST product of each game in the row's own sort order (the most popular / the biggest discount / the newest
+version), and cuts to `limit`; with fewer games than `limit` the row is shorter, a game is never repeated to fill it. The games are told apart by
+`products.game_id` (`catalog.Item.GameID`, `json:"-"`: internal, not in the API response), never by title text. Only these rows change; the Store,
+search, tiles and platforms still list every product. No schema change.
+
 **The content rows are inserted by the migration, not by `cmd/seed`** (owner decision): the catalog seed and its golden
 checksum stay unchanged, and production needs no reseed (`seed --reset` refuses once orders exist). `seed --reset` only
 deletes the catalog tables, so it never touches these.
@@ -472,7 +479,7 @@ CHECKs: `homepage_slides_one_target` (not both `product_slug` and `cta_href`) an
 | `hero` (10) | hero | 1. **Innert** (a friend's game in development, art used with permission): badge "Coming soon", no button, WebP files in `public/banners/`. 2. Grand Theft Auto V and 3. The Witcher 3 (the two most popular in-stock games): IGDB artworks `ar6d9m` / `ar3lze`, "Buy now" → product page |
 | `tiles` (20) | tiles | "Up to −{maxDiscount}%" (live, e.g. "Up to −73%") → `/store?sort=discount`, "Steam games" → `/store?platform=steam`, "New releases" → `/store?sort=newest` |
 | `platforms` (30) | platforms | "All games" + every platform with products; generic lucide icon names |
-| `popular` (40), `discounts` (50), `new-releases` (60) | product_row | 5 products by popularity / discount / newest; "View all" → `/store`, `/store?sort=discount`, `/store?sort=newest` |
+| `popular` (40), `discounts` (50), `new-releases` (60) | product_row | 5 cards (one per game: the first product of each game in that sort) by popularity / discount / newest; "View all" → `/store`, `/store?sort=discount`, `/store?sort=newest` |
 
 "Turn a block off" in a database console: `UPDATE homepage_blocks SET enabled = false WHERE key = 'discounts';`
 (locally visible at once; in production within the 5-minute CDN cache).
